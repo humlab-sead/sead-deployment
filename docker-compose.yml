@@ -1,0 +1,108 @@
+version: "2"
+services:
+  traefik:
+    restart: unless-stopped
+    image: traefik:v2.2
+    ports:
+      - "8989:80"
+    volumes:
+            #  - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+  sead_postgresql:
+    restart: unless-stopped
+    image: sead_postgresql
+    networks:
+      sead_query_net:
+        ipv4_address: 172.31.128.5
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
+      - ./postgresql/mounts/logs:/var/lib/postgresql/data/log
+  sead_postgrest:
+    depends_on:
+      - sead_postgresql
+    restart: unless-stopped
+    image: sead_postgrest
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./postgrest/mounts/conf/postgrest.conf:/etc/postgrest.conf
+  sead_mongodb:
+    image: sead_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./mongodb/mounts/log:/var/log/mongodb
+
+  sead_viewstate_server:
+    image: sead_viewstate_server
+    depends_on:
+      - sead_mongodb
+    restart: unless-stopped
+    ports:
+      - "8081:8081" #Port for regular HTTP (not SSL)
+      - "8443:8443" #HTTPS
+    volumes:
+      - ./sead_viewstate_server/sead_viewstate_server:/sead_viewstate_server
+      - ./letsencrypt:/etc/letsencrypt 
+    environment:
+      DOMAIN: ${DOMAIN}
+
+  sqs_nginx:
+    image: sqs_nginx
+    restart: unless-stopped
+    #network_mode: host
+    ports:
+      - "2280:80"
+      - "2443:443"
+      #- "8089:8089" #nginx is proxy for sead_api - not THIS nginx though, the one in the OS
+      - "3000:3000" #nginx is proxy for postgrest
+    volumes:
+      - ./sqs_nginx/mounts/conf:/etc/nginx
+      - ./sqs_nginx/mounts/www:/var/www
+      - ./sqs_nginx/mounts/logs:/var/log/nginx
+      - ./sqs_nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
+      - ./letsencrypt:/etc/letsencrypt
+    environment:
+      DOMAIN: ${DOMAIN}
+
+  sead_query_api:
+    restart: unless-stopped
+    image: sead_query_api
+    ports:
+      - "8090:8089" #8090:8089
+    depends_on:
+      - redis_cache
+    networks:
+      sead_query_net:
+        ipv4_address: 172.31.128.1
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:8089
+    env_file: sead_query_api/conf/.env
+
+  redis_cache:
+    image: "redis:5-alpine"
+    command: ["redis-server", "--appendonly", "yes"]
+    hostname: redis
+    restart: unless-stopped
+    volumes:
+      #- ${REDIS_DATA_DIR:-/tmp}:/data:rw
+      - ./redis/mounts/data:/data/rw
+      - ./redis/mounts/log:/var/log
+    networks:
+      sead_query_net:
+        ipv4_address: 172.31.128.2 
+
+
+networks:  
+  sead_query_net:
+    ipam:
+      config:
+        - subnet: 172.31.0.0/16
