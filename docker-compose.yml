@@ -8,28 +8,28 @@ services:
     volumes:
             #  - ./traefik/traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock
-  sead_postgresql:
+  sqs_postgresql:
     restart: unless-stopped
-    image: sead_postgresql
+    image: sqs_postgresql
     networks:
       sead_query_net:
         ipv4_address: 172.31.128.5
     ports:
       - "5435:5432"
     volumes:
-      - ./postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
-      - ./postgresql/mounts/logs:/var/lib/postgresql/data/log
-  sead_postgrest:
+      - ./sqs_postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
+      - ./sqs_postgresql/mounts/logs:/var/lib/postgresql/data/log
+  sqs_postgrest:
     depends_on:
-      - sead_postgresql
+      - sqs_postgresql
     restart: unless-stopped
-    image: sead_postgrest
+    image: sqs_postgrest
     ports:
       - "3001:3001"
     volumes:
-      - ./postgrest/mounts/conf/postgrest.conf:/etc/postgrest.conf
-  sead_mongodb:
-    image: sead_mongodb
+      - ./sqs_postgrest/mounts/conf/postgrest.conf:/etc/postgrest.conf
+  sqs_mongodb:
+    image: sqs_mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER}
@@ -37,19 +37,18 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
-      - ./mongodb/mounts/log:/var/log/mongodb
+      - ./sqs_mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./sqs_mongodb/mounts/log:/var/log/mongodb
 
-  sead_viewstate_server:
-    image: sead_viewstate_server
+  sqs_viewstate_server:
+    image: sqs_viewstate_server
     depends_on:
-      - sead_mongodb
+      - sqs_mongodb
     restart: unless-stopped
     ports:
       - "8081:8081" #Port for regular HTTP (not SSL)
       - "8443:8443" #HTTPS
     volumes:
-      - ./sead_viewstate_server/sead_viewstate_server:/sead_viewstate_server
       - ./letsencrypt:/etc/letsencrypt 
     environment:
       DOMAIN: ${DOMAIN}
@@ -65,7 +64,7 @@ services:
       - "3000:3000" #nginx is proxy for postgrest
     volumes:
       - ./sqs_nginx/mounts/conf:/etc/nginx
-      - ./sqs_nginx/mounts/www:/var/www
+        #- ./sqs_nginx/mounts/www:/var/www
       - ./sqs_nginx/mounts/logs:/var/log/nginx
       - ./sqs_nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
       - ./letsencrypt:/etc/letsencrypt
