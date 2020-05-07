@@ -33,14 +33,8 @@ The SEAD application is run as a cluster of docker containers through docker-com
 
 
 ## Installation
-* `git clone https://github.com/humlab-sead/sead-docker-cluster`
-
-## Setup
-* WIP
-
-### MongoDB
-* chgrp -R docker mongodb/mounts
-* chmod -R 0770 mongodb/mounts
-  
-### SEAD QUERY API
-
+1. Run `git clone https://github.com/humlab-sead/sead-docker-cluster && cd sead-docker-cluster`
+2. Copy .env.example to .env
+3. Fill out .env with the appropriate information
+4. Run `install.sh` to build all the docker images
+5. Run `docker-compose up`
