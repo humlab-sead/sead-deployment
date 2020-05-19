@@ -10,6 +10,24 @@ docker build -t sqs_mongodb mongodb/docker
 echo "Building PostgresSQL/PostGIS image"
 #TODO: Get a db dump here from somewhere and load it
 docker build -t sqs_postgresql postgresql/docker
+echo "Starting postgres"
+docker run -d -p "5432:5432" sqs_postgresql
+
+#We need to wait here since it will take a while before the postgresql server is ready for connections and the above run command will return before it is
+
+until pg_isready -h localhost -p 5432 -q
+do
+	echo "Waiting for postgres to come up"
+	sleep 2
+done
+
+echo "Postgres is up, now proceeding with creation of the database"
+
+
+#Fetch from...
+#pg_dump -h localhost -p 5432 -U postgres -F c --quote-all-identifiers sead_production > sead_production-2020-05-19.dump
+psql -h localhost -p 5432 -U postgres < postgresql/create_db_and_users.sql
+pg_restore -h localhost -p 5432 -U postgres -d postgresql/sead sead_production-2020-05-19.dump
 
 echo "Building PostgREST image"
 docker build -t sqs_postgrest postgrest/docker
