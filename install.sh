@@ -31,6 +31,14 @@ pg_restore -h localhost -p 5432 -U postgres -d postgresql/sead sead_production-2
 
 echo "Building PostgREST image"
 docker build -t sqs_postgrest postgrest/docker
+cp postgrest/mounts/conf/postgrest.conf.example postgrest/mounts/conf/postgrest.conf
+postgrestPass=`date | sha256sum | cut -c1-64`
+sed -i s/POSTGREST_PASSWORD/$postgrestPass/g postgrest/mounts/conf/postgrest.conf
+cp postgrest/create_user.sql.template postgrest/create_user.sql
+echo "ALTER ROLE postgrest WITH PASSWORD '$postgrestPass';" >> postgrest/create_user.sql
+psql -h localhost -p 5432 -U postgres sead < postgrest/create_user.sql
+
+
 
 echo "Building SEAD Viewstate Server image"
 mkdir -o sqs_viewstate_server/docker

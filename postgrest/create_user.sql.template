@@ -1,0 +1,9 @@
+CREATE ROLE postgrest;
+CREATE ROLE postgrest_anon;
+
+ALTER ROLE postgrest WITH LOGIN NOINHERIT;
+GRANT postgrest_anon TO postgrest;
+
+GRANT ALL PRIVILEGES ON DATABASE sead TO postgrest;
+GRANT USAGE ON SCHEMA postgrest_api TO postgrest_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA postgrest_api TO postgrest_anon;
