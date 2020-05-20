@@ -46,7 +46,7 @@ wget https://raw.githubusercontent.com/humlab-sead/sqs_viewstate_server/master/d
 docker build -t sqs_viewstate_server sqs_viewstate_server/docker
 
 echo "Building Nginx image"
-docker build -t sqs_nginx sqs_nginx/docker
+docker build -t sqs_nginx nginx/docker
 
 echo "Building SEAD Query API image"
 mkdir -p sead_query_api
