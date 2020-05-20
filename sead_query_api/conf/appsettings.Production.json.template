@@ -1,0 +1,16 @@
+{
+  "QueryBuilderSetting": {
+    "Facet": {
+      "CountTable": "tbl_analysis_entities",
+      "CountColumn": "tbl_analysis_entities.analysis_entity_id"
+    },
+    "Store": {
+        "Host": "localhost",                     
+        "Database": "sead",
+        "Port": "5432",
+        "UseRedisCache": false,
+        "CacheHost": "172.31.128.5",
+        "CachePort": 6379
+    }
+  }
+}
