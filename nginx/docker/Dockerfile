@@ -1,19 +1,16 @@
-FROM debian:buster-slim
+FROM debian:bullseye
 
 RUN apt-get update && apt-get install -y curl
 
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 
-RUN apt-get update && apt-get install -y nodejs nginx certbot python-certbot-nginx git procps
+RUN apt-get update && apt-get install -y nodejs nginx git procps
 
 RUN git clone https://github.com/humlab-sead/seadbrowserclient
 
+#No caching from this point onwards
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+
 RUN cd seadbrowserclient && npm install && npm run build:prod && cp -R dist/* /var/www/html/
 
-COPY start.sh /start.sh
-
-RUN chmod +x /start.sh
-
-CMD /start.sh
-
-#CMD echo "Retrieving cert for domain $DOMAIN with email $ADMIN_EMAIL\n" && certbot --non-interactive --email $ADMIN_EMAIL --text --agree-tos --nginx --domains $DOMAIN && /usr/sbin/nginx
+CMD /usr/sbin/nginx -g 'daemon off;'

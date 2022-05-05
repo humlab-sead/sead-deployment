@@ -1,35 +1,40 @@
-version: "2"
+version: "3"
 services:
   traefik:
     restart: unless-stopped
-    image: traefik:v2.2
+    image: traefik:v2.7
     ports:
       - "8989:80"
     volumes:
-            #  - ./traefik/traefik.yml:/etc/traefik/traefik.yml
       - /var/run/docker.sock:/var/run/docker.sock
-  sqs_postgresql:
+
+  postgresql:
     restart: unless-stopped
-    image: sqs_postgresql
-    networks:
-      sead_query_net:
-        ipv4_address: 172.31.128.5
+    image: mdillon/postgis:11
     ports:
       - "5435:5432"
     volumes:
-      - ./sqs_postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
-      - ./sqs_postgresql/mounts/logs:/var/lib/postgresql/data/log
-  sqs_postgrest:
+      - ./postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
+      - ./postgresql/mounts/logs:/var/lib/postgresql/data/log
+
+  postgrest:
     depends_on:
-      - sqs_postgresql
+      - postgresql
     restart: unless-stopped
-    image: sqs_postgrest
+    image: postgrest/postgrest:v9.0.0
     ports:
       - "3001:3001"
-    volumes:
-      - ./sqs_postgrest/mounts/conf/postgrest.conf:/etc/postgrest.conf
-  sqs_mongodb:
-    image: sqs_mongodb
+    environment:
+      PGRST_DB_URI: "postgres://postgrest:${POSTGREST_DB_PASSWORD}@postgresql:5432/${DATABASE_NAME}"
+      PGRST_DB_SCHEMA: "postgrest_api"
+      PGRST_DB_ANON_ROLE: "postgrest_anon"
+      PGRST_LOG_LEVEL: "info"
+      PGRST_SERVER_HOST: "*"
+      PGRST_SERVER_PORT: "3001"
+    command: ['postgrest']
+
+  mongodb:
+    image: mongo:4.4
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER}
@@ -37,54 +42,49 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./sqs_mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
-      - ./sqs_mongodb/mounts/log:/var/log/mongodb
+      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./mongodb/mounts/log:/var/log/mongodb
+    command: ["mongod", "--auth", "--dbpath", "/var/lib/mongodb", "--bind_ip", "0.0.0.0", "--logpath", "/var/log/mongodb/mongodb.log"]
 
-  sqs_viewstate_server:
-    image: sqs_viewstate_server
+  viewstate_server:
+    build: viewstate_server/docker
     depends_on:
-      - sqs_mongodb
+      - mongodb
     restart: unless-stopped
     ports:
       - "8081:8081" #Port for regular HTTP (not SSL)
       - "8443:8443" #HTTPS
     volumes:
-      - ./letsencrypt:/etc/letsencrypt 
+      - ./certs:/etc/certs
     environment:
       DOMAIN: ${DOMAIN}
 
-  sqs_nginx:
-    image: sqs_nginx
+  nginx:
+    build: ./nginx/docker
     restart: unless-stopped
-    #network_mode: host
     ports:
       - "2280:80"
       - "2443:443"
-      #- "8089:8089" #nginx is proxy for sead_api - not THIS nginx though, the one in the OS
-      - "3000:3000" #nginx is proxy for postgrest
     volumes:
-      - ./sqs_nginx/mounts/conf:/etc/nginx
-        #- ./sqs_nginx/mounts/www:/var/www
-      - ./sqs_nginx/mounts/logs:/var/log/nginx
-      - ./sqs_nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
-      - ./letsencrypt:/etc/letsencrypt
+      - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
+      - ./nginx/mounts/logs:/var/log/nginx
+      - ./nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
+      - ./nginx/mounts/logs/stats:/var/www/html/stats
+      - ./certs:/etc/certs
     environment:
       DOMAIN: ${DOMAIN}
 
   sead_query_api:
     restart: unless-stopped
-    image: sead_query_api
+    image: sead_query_api:latest
     ports:
-      - "8090:8089" #8090:8089
+      - "8090:8089"
     depends_on:
       - redis_cache
-    networks:
-      sead_query_net:
-        ipv4_address: 172.31.128.1
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8089
-    env_file: sead_query_api/conf/.env
+    env_file: .env
 
   redis_cache:
     image: "redis:5-alpine"
@@ -92,16 +92,62 @@ services:
     hostname: redis
     restart: unless-stopped
     volumes:
-      #- ${REDIS_DATA_DIR:-/tmp}:/data:rw
       - ./redis/mounts/data:/data/rw
       - ./redis/mounts/log:/var/log
-    networks:
-      sead_query_net:
-        ipv4_address: 172.31.128.2 
+
+  json_api_server:
+    build: ./json_api_server/docker
+    restart: unless-stopped
+    environment:
+      API_PORT: $JAS_API_PORT
+      POSTGRES_HOST: $JAS_POSTGRES_HOST
+      POSTGRES_PORT: $JAS_POSTGRES_PORT
+      POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
+      POSTGRES_USER: $JAS_POSTGRES_USER
+      POSTGRES_PASS: $JAS_POSTGRES_PASS
+      MONGO_HOST: $JAS_MONGO_HOST
+      MONGO_USER: $JAS_MONGO_USER
+      MONGO_PASS: $JAS_MONGO_PASS
+      MONGO_DB: $JAS_MONGO_DB
+      SITE_CACHE_STORAGE: $JAS_SITE_CACHE_STORAGE
+      MAX_CONCURRENT_FETCHES: $JAS_MAX_CONCURRENT_FETCHES
+      USE_SITE_CACHE: $JAS_USE_SITE_CACHE
+      USE_SINGLE_PERSISTENT_DBCON: $JAS_USE_SINGLE_PERSISTENT_DBCON
+    depends_on:
+      - mongodb
+      - postgresql
+    ports:
+      - "8484:8484"
+    volumes:
+      #- "./json_api_server/mounts/.env:/seaddataserver/.env"
+      - "./json_api_server/mounts/site_cache:/seaddataserver/site_cache"
+
+#  keycloak:
+#    image: jboss/keycloak:11.0.3
+#    depends_on:
+#      - keycloak_database
+#    ports:
+#      - "8585:8080"
+#    environment:
+#      KEYCLOAK_USER: $KEYCLOAK_USER
+#      KEYCLOAK_PASSWORD: $KEYCLOAK_PASSWORD
+#      KEYCLOAK_FRONTEND_URL: "https://idp.$DOMAIN/auth/"
+#      DB_VENDOR: "postgres"
+#      DB_ADDR: "keycloak_database"
+#      DB_USER: "keycloak"
+#      DB_PASSWORD: $KEYCLOAK_POSTGRES_PASSWORD
+#      KEYCLOAK_LOGLEVEL: "INFO"
+#      ROOT_LOGLEVEL: "INFO"
+#      PROXY_ADDRESS_FORWARDING: "true"
+
+#  keycloak_database:
+#    image: postgres:12.10
+#    environment:
+#      POSTGRES_USER: keycloak
+#      POSTGRES_PASSWORD: $KEYCLOAK_POSTGRES_PASSWORD
+#      POSTGRES_DB: keycloak
+#      PGDATA: '/pgdata/data'
+#    volumes:
+#      - "./mounts/keycloak_postgresql/data:/pgdata"
 
 
-networks:  
-  sead_query_net:
-    ipam:
-      config:
-        - subnet: 172.31.0.0/16
