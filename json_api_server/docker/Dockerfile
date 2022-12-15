@@ -8,13 +8,10 @@ RUN apt-get update && apt-get install -y nodejs git nano
 
 WORKDIR /
 
-#No caching from this point onwards
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+RUN git clone https://github.com/humlab-sead/sead_json_server.git
 
-RUN git clone https://github.com/humlab-sead/seaddataserver.git
-
-WORKDIR /seaddataserver
+WORKDIR /sead_json_server
 
 RUN npm install
 
-CMD node /seaddataserver/src/index.js
+CMD node /sead_json_server/src/index.js
