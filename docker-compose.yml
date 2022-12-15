@@ -37,14 +37,31 @@ services:
     image: mongo:4.4
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
+      MONGO_INITDB_ROOT_PASSWORD: $MONGODB_ROOT_PASSWORD
     ports:
       - "27017:27017"
     volumes:
       - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
       - ./mongodb/mounts/log:/var/log/mongodb
+      - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
+    #command: ["mongod", "--dbpath", "/var/lib/mongodb", "--logpath", "/var/log/mongodb/mongodb.log", "--config", "/etc/mongod.conf"]
     command: ["mongod", "--auth", "--dbpath", "/var/lib/mongodb", "--bind_ip", "0.0.0.0", "--logpath", "/var/log/mongodb/mongodb.log"]
+
+  mongo-express:
+    image: mongo-express
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: $MONGO_EXPRESS_USER
+      ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_EXPRESS_PASSWORD
+      ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGODB_ROOT_USER
+      ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGODB_ROOT_PASSWORD
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      #ME_CONFIG_SITE_BASEURL: '/mongo-express/'
+    ports:
+      - "4101:8081"
 
   viewstate_server:
     build: viewstate_server/docker
@@ -105,13 +122,17 @@ services:
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
       POSTGRES_USER: $JAS_POSTGRES_USER
       POSTGRES_PASS: $JAS_POSTGRES_PASS
+      POSTGRES_MAX_CONNECTIONS: $JAS_POSTGRES_MAX_CONNECTIONS
       MONGO_HOST: $JAS_MONGO_HOST
       MONGO_USER: $JAS_MONGO_USER
       MONGO_PASS: $JAS_MONGO_PASS
       MONGO_DB: $JAS_MONGO_DB
-      SITE_CACHE_STORAGE: $JAS_SITE_CACHE_STORAGE
+      CACHE_STORAGE_METHOD: $JAS_CACHE_STORAGE_METHOD
       MAX_CONCURRENT_FETCHES: $JAS_MAX_CONCURRENT_FETCHES
       USE_SITE_CACHE: $JAS_USE_SITE_CACHE
+      USE_TAXA_CACHE: $JAS_USE_TAXA_CACHE
+      USE_ECOCODE_CACHE: $JAS_USE_ECOCODE_CACHE
+      USE_QUERY_CACHE: $JAS_USE_QUERY_CACHE
       USE_SINGLE_PERSISTENT_DBCON: $JAS_USE_SINGLE_PERSISTENT_DBCON
     depends_on:
       - mongodb
@@ -120,7 +141,10 @@ services:
       - "8484:8484"
     volumes:
       #- "./json_api_server/mounts/.env:/seaddataserver/.env"
-      - "./json_api_server/mounts/site_cache:/seaddataserver/site_cache"
+      #- "./json_api_server/mounts/app/sead_json_server:/sead_json_server"
+      - "./json_api_server/mounts/site_cache:/sead_json_server/site_cache"
+      - "./json_api_server/mounts/taxa_cache:/sead_json_server/taxa_cache"
+      - "./json_api_server/mounts/query_cache:/sead_json_server/query_cache"
 
 #  keycloak:
 #    image: jboss/keycloak:11.0.3
