@@ -19,3 +19,6 @@ sead_query_api/.docker.env
 postgresql/git
 viewstate_server/docker/config.json
 viewstate_server/docker/config-letsencrypt.json
+run-mongo-express.sh
+mongodb
+sead_browser_client
