@@ -4,7 +4,7 @@ ssl-keys/*
 postgrest.conf
 kc_postgresql/mounts
 mongodb/mounts
-nginx/mounts
+nginx/mounts/logs
 postgresql/mounts
 postgrest/mounts
 redis/mounts

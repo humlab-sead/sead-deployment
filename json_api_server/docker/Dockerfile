@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y nodejs git nano
 WORKDIR /
 
 #No caching from this point onwards
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+#ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
 
 RUN git clone https://github.com/humlab-sead/seaddataserver.git
 

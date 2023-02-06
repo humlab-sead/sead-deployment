@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
     image: mdillon/postgis:11
     ports:
-      - "5435:5432"
+      - "5432:5432"
     volumes:
       - ./postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
       - ./postgresql/mounts/logs:/var/lib/postgresql/data/log
@@ -21,7 +21,7 @@ services:
     depends_on:
       - postgresql
     restart: unless-stopped
-    image: postgrest/postgrest:v9.0.0
+    image: postgrest/postgrest:v9.0.1
     ports:
       - "3001:3001"
     environment:
@@ -44,7 +44,24 @@ services:
     volumes:
       - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
       - ./mongodb/mounts/log:/var/log/mongodb
+      - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
     command: ["mongod", "--auth", "--dbpath", "/var/lib/mongodb", "--bind_ip", "0.0.0.0", "--logpath", "/var/log/mongodb/mongodb.log"]
+
+  mongo-express:
+    image: mongo-express
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: $MONGO_EXPRESS_USER
+      ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_EXPRESS_PASSWORD
+      ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGODB_ROOT_USER
+      ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGODB_ROOT_PASSWORD
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      #ME_CONFIG_SITE_BASEURL: '/mongo-express'
+    ports:
+      - "4101:8081"
 
   viewstate_server:
     build: viewstate_server/docker
@@ -84,6 +101,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://0.0.0.0:8089
+    volumes:
+      - ./sead_query_api/appsettings.json:/app/appsettings.json
     env_file: .env
 
   redis_cache:
@@ -105,13 +124,17 @@ services:
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
       POSTGRES_USER: $JAS_POSTGRES_USER
       POSTGRES_PASS: $JAS_POSTGRES_PASS
+      POSTGRES_MAX_CONNECTIONS: $JAS_POSTGRES_MAX_CONNECTIONS
       MONGO_HOST: $JAS_MONGO_HOST
       MONGO_USER: $JAS_MONGO_USER
       MONGO_PASS: $JAS_MONGO_PASS
       MONGO_DB: $JAS_MONGO_DB
-      SITE_CACHE_STORAGE: $JAS_SITE_CACHE_STORAGE
+      CACHE_STORAGE_METHOD: $JAS_CACHE_STORAGE_METHOD
       MAX_CONCURRENT_FETCHES: $JAS_MAX_CONCURRENT_FETCHES
       USE_SITE_CACHE: $JAS_USE_SITE_CACHE
+      USE_TAXA_CACHE: $JAS_USE_TAXA_CACHE
+      USE_ECOCODE_CACHE: $JAS_USE_ECOCODE_CACHE
+      USE_QUERY_CACHE: $JAS_USE_QUERY_CACHE
       USE_SINGLE_PERSISTENT_DBCON: $JAS_USE_SINGLE_PERSISTENT_DBCON
     depends_on:
       - mongodb
