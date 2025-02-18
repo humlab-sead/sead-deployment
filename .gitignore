@@ -22,3 +22,10 @@ viewstate_server/docker/config-letsencrypt.json
 run-mongo-express.sh
 mongodb
 sead_browser_client
+scripts
+bugs_import_model.sql
+bugsdata.sql
+clearinghouse/
+mariadb/
+matomo/
+sead_query_api/docker-compose-production.yml
