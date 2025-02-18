@@ -9,12 +9,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   postgresql:
-    restart: unless-stopped
-    image: mdillon/postgis:11
+    image: postgis/postgis:16-3.4
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: UwSig16Y22NN175h
+      PGDATA: /pgdata
     volumes:
-      - ./postgresql/mounts/pg-data-volume:/var/lib/postgresql/data
+      - ./postgresql/mounts/pg-data-volume:/pgdata:Z
       - ./postgresql/mounts/logs:/var/lib/postgresql/data/log
 
   postgrest:
@@ -45,7 +47,6 @@ services:
       - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
       - ./mongodb/mounts/log:/var/log/mongodb
       - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
-    #command: ["mongod", "--auth", "--dbpath", "/var/lib/mongodb", "--bind_ip", "0.0.0.0", "--logpath", "/var/log/mongodb/mongodb.log"]
 
   mongo-express:
     image: mongo-express
@@ -89,6 +90,7 @@ services:
       - ./certs:/etc/certs
     environment:
       DOMAIN: ${DOMAIN}
+      CLIENT_RELEASE: ${CLIENT_RELEASE}
 
   sead_query_api:
     restart: unless-stopped
@@ -110,8 +112,8 @@ services:
     hostname: redis
     restart: unless-stopped
     volumes:
-      - ./redis/mounts/data:/data/rw
-      - ./redis/mounts/log:/var/log
+      - ./redis/mounts/data:/data/rw:z
+      - ./redis/mounts/log:/var/log:z
 
   json_api_server:
     build: ./json_api_server/docker
@@ -141,38 +143,46 @@ services:
     ports:
       - "8484:8484"
     volumes:
-      #- "./json_api_server/mounts/.env:/seaddataserver/.env"
-      #- "./json_api_server/mounts/app/sead_json_server:/sead_json_server"
       - "./json_api_server/mounts/site_cache:/sead_json_server/site_cache"
       - "./json_api_server/mounts/taxa_cache:/sead_json_server/taxa_cache"
       - "./json_api_server/mounts/query_cache:/sead_json_server/query_cache"
 
-#  keycloak:
-#    image: jboss/keycloak:11.0.3
-#    depends_on:
-#      - keycloak_database
-#    ports:
-#      - "8585:8080"
-#    environment:
-#      KEYCLOAK_USER: $KEYCLOAK_USER
-#      KEYCLOAK_PASSWORD: $KEYCLOAK_PASSWORD
-#      KEYCLOAK_FRONTEND_URL: "https://idp.$DOMAIN/auth/"
-#      DB_VENDOR: "postgres"
-#      DB_ADDR: "keycloak_database"
-#      DB_USER: "keycloak"
-#      DB_PASSWORD: $KEYCLOAK_POSTGRES_PASSWORD
-#      KEYCLOAK_LOGLEVEL: "INFO"
-#      ROOT_LOGLEVEL: "INFO"
-#      PROXY_ADDRESS_FORWARDING: "true"
+  #clearinghouse:
+  #  build: ./clearinghouse/docker
+  #  restart: unless-stopped
+  #  ports:
+  #    - "8070:8060"
+  #  env_file:
+  #    - ./clearinghouse/docker/.env
 
-#  keycloak_database:
-#    image: postgres:12.10
-#    environment:
-#      POSTGRES_USER: keycloak
-#      POSTGRES_PASSWORD: $KEYCLOAK_POSTGRES_PASSWORD
-#      POSTGRES_DB: keycloak
-#      PGDATA: '/pgdata/data'
-#    volumes:
-#      - "./mounts/keycloak_postgresql/data:/pgdata"
+  maria-db:
+    image: mariadb:10.7
+    restart: unless-stopped
+    volumes:
+      - "./mariadb/data:/var/lib/mysql"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MARIA_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MARIA_DB_NAME}
+      MYSQL_USER: ${MARIA_DB_USER}
+      MYSQL_PASSWORD: ${MARIA_DB_PASSWORD}
+
+  matomo:
+    image: matomo:4.14
+    restart: unless-stopped
+    ports:
+      - "8020:80"
+    depends_on:
+      - maria-db
+    volumes:
+      # To allow you to view/edit Matomo configuration files:
+      - "./matomo/config:/var/www/html/config:rw"
+      # To allow you to easily view Matomo log files:
+      - "./matomo/logs:/var/www/html/logs"
+      # To allow matomo access to apache logs for imports
+      - "./mounts/apache/apache/logs/apache2:/external_logs"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
 
 
