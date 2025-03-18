@@ -4,7 +4,10 @@ services:
 
   sead.query.api:
     container_name: sead_query_api
-    image: sead_query_api:latest
+    build:
+      context: ./sead_query_api
+      args:
+        BRANCH: main
     restart: always
     depends_on:
       - redis.cache

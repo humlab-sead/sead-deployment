@@ -1,0 +1,208 @@
+networks:
+  sead_network:  # Define a shared network
+
+services:
+  router:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./router/vhost.conf:/etc/nginx/conf.d/default.conf
+      - ./router/logs:/var/log/nginx
+    networks:
+      - sead_network
+
+  postgresql:
+    build: ./postgresql/docker
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: sead_staging
+      PGDATA: /pgdata
+      PGUSER: ${DATABASE_USER} #this is for sead_change_control/sqitch
+      PGPASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch
+      SQITCH_USERNAME: ${DATABASE_USER} #this is for sead_change_control/sqitch
+      SQITCH_PASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch
+    volumes:
+      - ./postgresql/mounts/pg-data-volume:/pgdata:Z
+      - ./postgresql/mounts/init-scripts:/docker-entrypoint-initdb.d
+      #- ./postgresql/mounts/logs:/pgdata/log
+      #- ./postgresql/mounts/postgresql.conf:/pgdata/postgresql.conf
+      #- ./postgresql/mounts/pg_hba.conf:/pgdata/pg_hba.conf
+    networks:
+      - sead_network
+
+  postgrest:
+    depends_on:
+      - postgresql
+    restart: unless-stopped
+    image: postgrest/postgrest:v12.2.8
+    environment:
+      PGRST_DB_URI: "postgres://postgrest_anon:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "postgrest_anon"
+      PGRST_LOG_LEVEL: "info"
+      PGRST_SERVER_HOST: "*"
+    command: ['postgrest']
+    networks:
+      - sead_network
+
+  mongodb:
+    image: mongo:4.4
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
+      MONGO_INITDB_ROOT_PASSWORD: $MONGODB_ROOT_PASSWORD
+    volumes:
+      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./mongodb/mounts/log:/var/log/mongodb
+      - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
+    networks:
+      - sead_network
+
+  mongo-express:
+    image: mongo-express
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH_USERNAME: $MONGO_EXPRESS_USER
+      ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_EXPRESS_PASSWORD
+      ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGODB_ROOT_USER
+      ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGODB_ROOT_PASSWORD
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+    networks:
+      - sead_network
+
+  client:
+    build:
+      context: ./sead_browser_client/docker
+      args:
+        SBC_REF: ${SBC_RELEASE}
+        MODE: "dev"
+    restart: unless-stopped
+    volumes:
+      - ./sead_browser_client:/sead_browser_client:Z
+      - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
+      - ./nginx/mounts/logs:/var/log/nginx
+      - ./nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
+      - ./nginx/mounts/logs/stats:/var/www/html/stats
+      - ./certs:/etc/certs
+    environment:
+      DOMAIN: ${DOMAIN}
+      CLIENT_RELEASE: ${CLIENT_RELEASE}
+    networks:
+      - sead_network
+
+  sead_query_api:
+    restart: unless-stopped
+    image: sead_query_api:2024.05.RC1
+    #build:
+    #  context: ./sead_query_api
+    #  args:
+    #    BRANCH: main
+    depends_on:
+      - redis_cache
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://0.0.0.0:8089"
+      QueryBuilderSetting__Store__Username: ${DATABASE_USER}
+      QueryBuilderSetting__Store__Password: ${DATABASE_PASSWORD}
+    volumes:
+      - ./sead_query_api/appsettings.json:/app/appsettings.json
+    #env_file: .env #Hopefully this will no longer be needed since we provide the "QueryBuilderSetting__Store__" environment variables above
+    networks:
+      - sead_network
+
+  redis_cache:
+    image: "redis:5-alpine"
+    command: ["redis-server", "--appendonly", "yes"]
+    hostname: redis
+    restart: unless-stopped
+    volumes:
+      - ./redis/mounts/data:/data/rw:z
+      - ./redis/mounts/log:/var/log:z
+    networks:
+      - sead_network
+
+  json_api_server:
+    build:
+      context: ./json_api_server/docker
+      args:
+        JAS_REF: ${JAS_RELEASE}
+        MODE: "dev"
+    restart: unless-stopped
+    ports:
+      - "8484:8484"
+    environment:
+      API_PORT: $JAS_API_PORT
+      POSTGRES_HOST: $JAS_POSTGRES_HOST
+      POSTGRES_PORT: $JAS_POSTGRES_PORT
+      POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
+      POSTGRES_USER: $DATABASE_READ_ONLY_USER
+      POSTGRES_PASS: $DATABASE_READ_ONLY_PASSWORD
+      POSTGRES_MAX_CONNECTIONS: $JAS_POSTGRES_MAX_CONNECTIONS
+      MONGO_HOST: $JAS_MONGO_HOST
+      MONGO_USER: $MONGODB_ROOT_USER
+      MONGO_PASS: $MONGODB_ROOT_PASSWORD
+      MONGO_DB: $JAS_MONGO_DB
+      CACHE_STORAGE_METHOD: $JAS_CACHE_STORAGE_METHOD
+      MAX_CONCURRENT_FETCHES: $JAS_MAX_CONCURRENT_FETCHES
+      USE_SITE_CACHE: $JAS_USE_SITE_CACHE
+      USE_TAXA_CACHE: $JAS_USE_TAXA_CACHE
+      USE_ECOCODE_CACHE: $JAS_USE_ECOCODE_CACHE
+      USE_QUERY_CACHE: $JAS_USE_QUERY_CACHE
+      USE_SINGLE_PERSISTENT_DBCON: $JAS_USE_SINGLE_PERSISTENT_DBCON
+      PROTECTED_ENDPOINTS_USER: $JAS_PROTECTED_ENDPOINTS_USER
+      PROTECTED_ENDPOINTS_PASS: $JAS_PROTECTED_ENDPOINTS_PASS
+    depends_on:
+      - mongodb
+      - postgresql
+    volumes:
+      - ./json_api_server:/json_api_server:Z
+    networks:
+      - sead_network
+
+  #clearinghouse:
+  #  build: ./clearinghouse/docker
+  #  restart: unless-stopped
+  #  ports:
+  #    - "8070:8060"
+  #  env_file:
+  #    - ./clearinghouse/docker/.env
+
+  maria-db:
+    image: mariadb:10
+    restart: unless-stopped
+    volumes:
+      - "./mariadb/data:/var/lib/mysql"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MARIA_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MARIA_DB_NAME}
+      MYSQL_USER: ${MARIA_DB_USER}
+      MYSQL_PASSWORD: ${MARIA_DB_PASSWORD}
+    networks:
+      - sead_network
+
+  matomo:
+    image: matomo:4
+    restart: unless-stopped
+    depends_on:
+      - maria-db
+    volumes:
+      # To allow you to view/edit Matomo configuration files:
+      - "./matomo/config:/var/www/html/config:rw"
+      # To allow you to easily view Matomo log files:
+      - "./matomo/logs:/var/www/html/logs"
+      # To allow matomo access to apache logs for imports
+      - "./mounts/apache/apache/logs/apache2:/external_logs"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    networks:
+      - sead_network

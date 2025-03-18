@@ -1,3 +1,5 @@
+json_api_server
+sead_change_control/sead_change_control
 .env
 ssl-keys/*
 !ssl-keys/.gitkeep
