@@ -139,7 +139,7 @@ services:
         MODE: "dev"
     restart: unless-stopped
     ports:
-      - "8484:8484"
+      - "${JAS_PORT}:8484"
     environment:
       API_PORT: $JAS_PORT
       POSTGRES_HOST: $JAS_POSTGRES_HOST
