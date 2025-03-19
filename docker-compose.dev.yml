@@ -88,7 +88,7 @@ services:
         MODE: "dev"
     restart: unless-stopped
     volumes:
-      - ./sead_browser_client:/sead_browser_client:Z
+      #- ./sead_browser_client:/sead_browser_client:Z # Uncomment for development - you need a local copy of the client
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
       - ./nginx/mounts/logs:/var/log/nginx
       - ./nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
@@ -164,8 +164,8 @@ services:
     depends_on:
       - mongo
       - postgresql
-    volumes:
-      - ./json_api_server:/json_api_server:Z
+    #volumes:
+    #  - ./json_api_server:/json_api_server:Z # Uncomment for development - you need a local copy of the server
     networks:
       - sead_network
 
