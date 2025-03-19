@@ -7,7 +7,8 @@ postgrest.conf
 kc_postgresql/mounts
 mongodb/mounts
 nginx/mounts/logs
-postgresql/mounts
+postgresql/mounts/pg-data-volume
+postgresql/mounts/logs
 postgrest/mounts
 redis/mounts
 sead_query_api/mounts
