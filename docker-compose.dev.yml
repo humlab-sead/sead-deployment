@@ -50,7 +50,7 @@ services:
     networks:
       - sead_network
 
-  mongodb:
+  mongo:
     image: mongo:4.4
     restart: unless-stopped
     environment:
@@ -66,10 +66,12 @@ services:
   mongo-express:
     image: mongo-express
     restart: unless-stopped
+    ports:
+      - "8082:8081"
     depends_on:
-      - mongodb
+      - mongo
     environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_BASICAUTH_USERNAME: $MONGO_EXPRESS_USER
       ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_EXPRESS_PASSWORD
       ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGODB_ROOT_USER
@@ -160,7 +162,7 @@ services:
       PROTECTED_ENDPOINTS_USER: $JAS_PROTECTED_ENDPOINTS_USER
       PROTECTED_ENDPOINTS_PASS: $JAS_PROTECTED_ENDPOINTS_PASS
     depends_on:
-      - mongodb
+      - mongo
       - postgresql
     volumes:
       - ./json_api_server:/json_api_server:Z
