@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y git nano curl procps && rm -rf /var/lib
 
 ARG BRANCH
 WORKDIR /repo
-RUN git clone https://github.com/humlab-sead/sead_query_api.git --branch $BRANCH --depth 1
+RUN git clone https://github.com/humlab-sead/sead_query_api.git --branch ${BRANCH} --depth 1
 
 # SDK image for building the project
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
