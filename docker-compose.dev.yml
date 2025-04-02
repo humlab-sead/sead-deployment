@@ -102,11 +102,11 @@ services:
 
   sead_query_api:
     restart: unless-stopped
-    image: sead_query_api:2024.05.RC1
-    #build:
-    #  context: ./sead_query_api
-    #  args:
-    #    BRANCH: main
+    #image: sead_query_api:2024.05.RC1
+    build:
+      context: ./sead_query_api
+      args:
+        BRANCH: main
     depends_on:
       - redis_cache
     environment:
@@ -208,3 +208,5 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
     networks:
       - sead_network
+
+  
