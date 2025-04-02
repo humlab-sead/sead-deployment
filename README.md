@@ -20,3 +20,7 @@ If you want to do development of the webclient:
 
 If you want to do development of the JAS:
 1. Open the json_api_server directory in vscode. Server will automatically restart when code changes.
+
+
+Note:
+If you are deploying multiple instances on the same server, make sure to set the COMPOSE_PROJECT_NAME (in .env) to something unique for each instance.
