@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD}
       DATABASE_USER: ${DATABASE_USER}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_DB: sead_staging
+      POSTGRES_DB: ${DATABASE_NAME}
       PGDATA: /pgdata
       PGUSER: ${DATABASE_USER} #this is for sead_change_control/sqitch
       PGPASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch

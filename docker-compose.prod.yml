@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD}
       DATABASE_USER: ${DATABASE_USER}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_DB: sead_staging
+      POSTGRES_DB: ${DATABASE_NAME}
       PGDATA: /pgdata
       PGUSER: ${DATABASE_USER} #this is for sead_change_control/sqitch
       PGPASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch
@@ -85,7 +85,7 @@ services:
       context: ./sead_browser_client/docker
       args:
         SBC_REF: ${SBC_RELEASE}
-        MODE: "dev"
+        MODE: "prod"
     restart: unless-stopped
     volumes:
       - ./sead_browser_client:/sead_browser_client:Z # Uncomment for development - you need a local copy of the client
@@ -102,11 +102,11 @@ services:
 
   sead_query_api:
     restart: unless-stopped
-    image: sead_query_api:2024.05.RC1
-    #build:
-    #  context: ./sead_query_api
-    #  args:
-    #    BRANCH: main
+    #image: sead_query_api:2024.05.RC1
+    build:
+      context: ./sead_query_api
+      args:
+        BRANCH: main
     depends_on:
       - redis_cache
     environment:
@@ -136,7 +136,7 @@ services:
       context: ./json_api_server/docker
       args:
         JAS_REF: ${JAS_RELEASE}
-        MODE: "dev"
+        MODE: "prod"
     restart: unless-stopped
     ports:
       - "${JAS_PORT}:8484"
