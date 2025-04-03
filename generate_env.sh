@@ -36,4 +36,7 @@ if grep -qE '^JAS_MONGO_PASS=\s*$' "$ENV_FILE"; then
   echo "Generated random password for JAS_MONGO_PASS. ✅"
 fi
 
+# Set chmod permissions
+chmod 600 "$ENV_FILE"
+
 echo "All password fields have been updated in '$ENV_FILE'. ✅"
