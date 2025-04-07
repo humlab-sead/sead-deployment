@@ -6,6 +6,7 @@ services:
     image: nginx:latest
     ports:
       - "${WEB_PORT}:80"
+    restart: unless-stopped
     volumes:
       - ./router/vhost.conf:/etc/nginx/conf.d/default.conf
       - ./router/logs:/var/log/nginx
@@ -16,6 +17,7 @@ services:
     build: ./postgresql/docker
     ports:
       - ${POSTGRESQL_PORT}:5432
+    restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD}
       DATABASE_USER: ${DATABASE_USER}
