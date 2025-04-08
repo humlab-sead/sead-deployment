@@ -13,7 +13,7 @@ curl -u "$JAS_PROTECTED_ENDPOINTS_USER:$JAS_PROTECTED_ENDPOINTS_PASS" "${BASE_UR
 echo -e "\n"
 
 # Call /flush/graphcache
-echo "Calling ${BASE_URL}/flush/graphcache..."
+echo "Calling ${BASE_URL}/jsonapi/flush/graphcache..."
 curl -u "$JAS_PROTECTED_ENDPOINTS_USER:$JAS_PROTECTED_ENDPOINTS_PASS" "${BASE_URL}/jsonapi/flush/graphcache"
 
 echo -e "\nDone."
