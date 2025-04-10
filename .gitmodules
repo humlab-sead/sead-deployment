@@ -1,3 +1,0 @@
-[submodule "src/Lib/sead_common"]
-	path = src/Lib/sead_common
-	url = https://github.com/humlab-sead/sead_common
