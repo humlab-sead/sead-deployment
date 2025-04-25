@@ -59,7 +59,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
       MONGO_INITDB_ROOT_PASSWORD: $MONGODB_ROOT_PASSWORD
     volumes:
-      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./mongodb/mounts/mongodb-data-volume:/data
       - ./mongodb/mounts/log:/var/log/mongodb
       - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
     networks:
