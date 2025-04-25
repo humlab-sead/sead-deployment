@@ -59,9 +59,11 @@ services:
       MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
       MONGO_INITDB_ROOT_PASSWORD: $MONGODB_ROOT_PASSWORD
     volumes:
-      - ./mongodb/mounts/mongodb-data-volume:/var/lib/mongodb
+      - ./mongodb/mounts/mongodb-data-volume:/data
       - ./mongodb/mounts/log:/var/log/mongodb
       - ./mongodb/mounts/mongod.conf:/etc/mongod.conf
+    ports:
+      - 27017:27017
     networks:
       - sead_network
 
@@ -89,6 +91,7 @@ services:
       args:
         SBC_REF: ${SBC_RELEASE}
         MODE: "dev"
+        DOMAIN: ${DOMAIN}
     restart: unless-stopped
     volumes:
       - ./sead_browser_client:/sead_browser_client:Z # Uncomment for development - you need a local copy of the client
@@ -144,7 +147,7 @@ services:
     ports:
       - "${JAS_PORT}:8484"
     environment:
-      API_PORT: $JAS_PORT
+      API_PORT: 8484
       POSTGRES_HOST: $JAS_POSTGRES_HOST
       POSTGRES_PORT: $JAS_POSTGRES_PORT
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE

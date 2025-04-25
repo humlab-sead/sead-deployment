@@ -89,6 +89,7 @@ services:
       args:
         SBC_REF: ${SBC_RELEASE}
         MODE: "prod"
+        DOMAIN: ${DOMAIN}
     restart: unless-stopped
     volumes:
       - ./sead_browser_client:/sead_browser_client:Z # Uncomment for development - you need a local copy of the client
@@ -144,7 +145,7 @@ services:
     ports:
       - "${JAS_PORT}:8484"
     environment:
-      API_PORT: $JAS_PORT
+      API_PORT: 8484
       POSTGRES_HOST: $JAS_POSTGRES_HOST
       POSTGRES_PORT: $JAS_POSTGRES_PORT
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
