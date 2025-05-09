@@ -3,7 +3,7 @@
 # Load .env
 export $(grep -v '^#' .env | xargs)
 
-DEPLOY_TAG="@2025.02"
+DEPLOY_TAG="@2025.04"
 TARGET_DB="sead_staging"
 DB_USER="sead_master"
 

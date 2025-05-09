@@ -110,7 +110,7 @@ services:
     restart: unless-stopped
     #image: sead_query_api:2024.05.RC1
     build:
-      context: ./sead_query_api
+      context: ./sead_query_api/docker
       args:
         BRANCH: main
     depends_on:
