@@ -18,10 +18,14 @@ docker compose exec "$SERVICE_NAME" bash -c "$COMMAND"
 
 # Finally, set the password for the postgrest_anon user
 docker compose exec -T "$SERVICE_NAME" psql -h postgresql -U "$DB_USER" -d "$TARGET_DB" -v ON_ERROR_STOP=1 <<-EOSQL
+    -- Enable PostGIS extension
+    CREATE EXTENSION IF NOT EXISTS postgis;
+
     -- Set passwords for users
     ALTER USER postgrest_anon WITH PASSWORD '${DATABASE_READ_ONLY_PASSWORD}';
     ALTER USER sead_ro WITH PASSWORD '${DATABASE_READ_ONLY_PASSWORD}';
     ALTER USER sead_master WITH PASSWORD '${DATABASE_PASSWORD}';
+    ALTER USER humlab_admin WITH PASSWORD '${DATABASE_PASSWORD}';
 
     -- Grant USAGE on schemas (public & facet) to read-only users
     GRANT USAGE ON SCHEMA public TO sead_ro, postgrest_anon;
