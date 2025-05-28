@@ -215,4 +215,23 @@ services:
     networks:
       - sead_network
 
+  ontop:
+    build: ./ontop/docker
+    container_name: ontop
+    depends_on:
+      - postgresql
+    volumes:
+      - ./ontop/models:/opt/ontop/models
+    environment:
+      ONTOP_MAPPING_FILE: /opt/ontop/models/${DATABASE_NAME}_mapping.obda
+      ONTOP_ONTOLOGY_FILE: /opt/ontop/models/${DATABASE_NAME}_ontology.owl
+      ONTOP_DB_USER: ${DATABASE_READ_ONLY_USER}
+      ONTOP_DB_PASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
+      ONTOP_DB_URL: jdbc:postgresql://postgresql:5432/${DATABASE_NAME}
+      ONTOP_DB_DRIVER: "org.postgresql.Driver"
+      ONTOP_WAIT_FOR: "postgresql:5432"
+      DATABASE_NAME: ${DATABASE_NAME}
+      DOMAIN: ${DOMAIN}
+    networks:
+      - sead_network
   

@@ -28,12 +28,28 @@ docker compose exec -T "$SERVICE_NAME" psql -h postgresql -U "$DB_USER" -d "$TAR
     ALTER USER humlab_admin WITH PASSWORD '${DATABASE_PASSWORD}';
 
     -- Grant USAGE on schemas (public & facet) to read-only users
-    GRANT USAGE ON SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA audit TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA bugs_import TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA clearing_house TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
     GRANT USAGE ON SCHEMA facet TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA sead_utility TO sead_ro, postgrest_anon;
+    GRANT USAGE ON SCHEMA sqitch TO sead_ro, postgrest_anon;
 
     -- Grant SELECT on all existing tables in public & facet schemas
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA audit TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA bugs_import TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA clearing_house TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
     GRANT SELECT ON ALL TABLES IN SCHEMA facet TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA sead_utility TO sead_ro, postgrest_anon;
+    GRANT SELECT ON ALL TABLES IN SCHEMA sqitch TO sead_ro, postgrest_anon;
 
     -- Ensure SELECT permission applies to future tables in public & facet schemas
     ALTER DEFAULT PRIVILEGES IN SCHEMA public 
@@ -43,8 +59,16 @@ docker compose exec -T "$SERVICE_NAME" psql -h postgresql -U "$DB_USER" -d "$TAR
     GRANT SELECT ON TABLES TO sead_ro, postgrest_anon;
 
     -- Grant SELECT on all existing sequences (IDs, etc.) in public & facet schemas
-    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audit TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA bugs_import TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA clearing_house TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
     GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA facet TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sead_utility TO sead_ro, postgrest_anon;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sqitch TO sead_ro, postgrest_anon;
 
     -- Ensure SELECT permission applies to future sequences in public & facet schemas
     ALTER DEFAULT PRIVILEGES IN SCHEMA public 
