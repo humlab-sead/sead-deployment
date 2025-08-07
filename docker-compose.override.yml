@@ -1,0 +1,23 @@
+services:
+  client:
+    command: npm run dev -- --port 8090
+    environment:
+      MODE: dev
+    volumes:
+      - ./sead_browser_client:/sead_browser_client:Z
+
+  json_api_server:
+    environment:
+      MODE: dev
+    ports:
+      - "${JAS_PORT}:8484"
+    volumes:
+      - ./json_api_server:/json_api_server:Z
+
+  mongo:
+    ports:
+      - "27017:27017"
+
+networks:
+  sead_network:
+    external: false
