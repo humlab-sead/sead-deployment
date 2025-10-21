@@ -1,6 +1,6 @@
 services:
   client:
-    command: npm run dev -- --port 8090
+    command: npm run dev -- --port 80
     environment:
       MODE: dev
     volumes:
@@ -17,6 +17,22 @@ services:
   mongo:
     ports:
       - "27017:27017"
+
+  postgresql_mcp:
+    image: crystaldba/postgres-mcp:latest
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    # Expose SSE (HTTP) so multiple tools/clients can share the same server
+    command: ["--access-mode=${MCP_ACCESS_MODE}", "--transport=sse"]
+    environment:
+      # Compose-network hostname for Postgres is the service name: "postgres"
+      DATABASE_URI: postgresql://${DATABASE_READ_ONLY_USER}:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}
+    ports:
+      - "${MCP_PORT}:8000"
+    restart: unless-stopped
+    networks:
+      - sead_network  
 
 networks:
   sead_network:

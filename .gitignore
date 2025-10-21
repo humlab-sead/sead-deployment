@@ -32,3 +32,4 @@ clearinghouse/
 mariadb/
 matomo/
 sead_query_api/docker-compose-production.yml
+sead_query_api
