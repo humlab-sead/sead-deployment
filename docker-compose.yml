@@ -213,7 +213,7 @@ services:
       - sead_network
 
   matomo:
-    image: matomo:4
+    image: matomo:5
     restart: unless-stopped
     depends_on:
       - maria-db
