@@ -3,14 +3,16 @@ networks:
 
 services:
   router:
-    image: nginx:latest
+    build: ./router/docker
     ports:
       - "${WEB_PORT}:80"
     restart: unless-stopped
     environment:
       - DOMAIN=${DOMAIN}
+      - BASIC_AUTH_USER=${HTACCESS_USER}
+      - BASIC_AUTH_PASS=${HTACCESS_PASSWORD}
     volumes:
-      - ./router/vhost.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./router/vhost.conf:/etc/nginx/templates/default.conf.template
       - ./router/logs:/var/log/nginx
     networks:
       - sead_network
@@ -246,5 +248,26 @@ services:
       ONTOP_WAIT_FOR: "postgresql:5432"
       DATABASE_NAME: ${DATABASE_NAME}
       DOMAIN: ${DOMAIN}
+    networks:
+      - sead_network
+
+  openrefine:
+    #image: cluedin/openrefine:latest
+    build: ./openrefine/docker
+    restart: unless-stopped
+    volumes:
+      - ./openrefine/projects:/openrefine/projects:Z
+    networks:
+      - sead_network
+
+  sead-authority-service:
+    image: ghcr.io/humlab-sead/sead_authority_service
+    container_name: sead-authority-service-${SEAD_AUTHORITY_ENVIRONMENT:-staging}
+    restart: always
+    env_file:
+      - ./sead_authority_service/.env
+    volumes:
+      - ./sead_authority_service/config.yml:/app/config/config.yml:ro
+      #- ./sead_authority_service/logs:/app/logs
     networks:
       - sead_network
