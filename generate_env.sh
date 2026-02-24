@@ -40,3 +40,24 @@ fi
 chmod 600 "$ENV_FILE"
 
 echo "All password fields have been updated in '$ENV_FILE'. ✅"
+
+# Handle sead_authority_service/.env file
+SAS_ENV_EXAMPLE="./sead_authority_service/.env.example"
+SAS_ENV_FILE="./sead_authority_service/.env"
+
+if [ -f "$SAS_ENV_EXAMPLE" ]; then
+  cp "$SAS_ENV_EXAMPLE" "$SAS_ENV_FILE"
+  echo "Copied '$SAS_ENV_EXAMPLE' to '$SAS_ENV_FILE'."
+  
+  # Clear OPENAI_API_KEY and GEONAMES_USERNAME to empty values
+  sed -i '' -E 's/^OPENAI_API_KEY=.*/OPENAI_API_KEY=/' "$SAS_ENV_FILE" 2>/dev/null || \
+  sed -i -E 's/^OPENAI_API_KEY=.*/OPENAI_API_KEY=/' "$SAS_ENV_FILE"
+  
+  sed -i '' -E 's/^GEONAMES_USERNAME=.*/GEONAMES_USERNAME=/' "$SAS_ENV_FILE" 2>/dev/null || \
+  sed -i -E 's/^GEONAMES_USERNAME=.*/GEONAMES_USERNAME=/' "$SAS_ENV_FILE"
+  
+  chmod 600 "$SAS_ENV_FILE"
+  echo "Cleared OPENAI_API_KEY and GEONAMES_USERNAME in '$SAS_ENV_FILE'. ✅"
+else
+  echo "Warning: '$SAS_ENV_EXAMPLE' not found, skipping sead_authority_service environment setup."
+fi

@@ -1,5 +1,5 @@
 networks:
-  sead_network:  # Define a shared network
+  sead_network: {}
 
 services:
   router:
@@ -50,7 +50,7 @@ services:
     depends_on:
       - postgresql
     restart: unless-stopped
-    image: postgrest/postgrest:v12.2.8
+    image: docker.io/postgrest/postgrest:v12.2.8
     environment:
       PGRST_DB_URI: "postgres://postgrest_anon:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}"
       PGRST_DB_SCHEMA: "public"
@@ -62,7 +62,7 @@ services:
       - sead_network
 
   mongo:
-    image: mongo:4.4
+    image: docker.io/mongo:4.4
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
@@ -75,7 +75,7 @@ services:
       - sead_network
 
   mongo-express:
-    image: mongo-express
+    image: docker.io/mongo-express
     restart: unless-stopped
     ports:
       - "${MONGO_EXPRESS_PORT}:8081"
@@ -134,7 +134,7 @@ services:
       - sead_network
 
   redis_cache:
-    image: "redis:5-alpine"
+    image: "docker.io/redis:5-alpine"
     command: ["redis-server", "--appendonly", "yes"]
     hostname: redis
     restart: unless-stopped
@@ -184,8 +184,6 @@ services:
     depends_on:
       - mongo
       - postgresql
-    volumes:
-      - ./json_api_server:/json_api_server:Z # Uncomment for development - you need a local copy of the server
     networks:
       - sead_network
 
@@ -198,12 +196,12 @@ services:
   #    - ./clearinghouse/docker/.env
 
   maria-db:
-    image: mariadb:10
+    image: docker.io/mariadb:10
     restart: unless-stopped
     volumes:
       - "./mariadb/data:/var/lib/mysql"
-      - "/etc/timezone:/etc/timezone:ro"
-      - "/etc/localtime:/etc/localtime:ro"
+      #- "/etc/timezone:/etc/timezone:ro"
+      #- "/etc/localtime:/etc/localtime:ro"
     environment:
       MYSQL_ROOT_PASSWORD: ${MARIA_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MARIA_DB_NAME}
@@ -213,7 +211,7 @@ services:
       - sead_network
 
   matomo:
-    image: matomo:5
+    image: docker.io/matomo:5
     restart: unless-stopped
     depends_on:
       - maria-db
@@ -227,8 +225,8 @@ services:
       - "./matomo/logs:/var/www/html/logs"
       # To allow matomo access to apache logs for imports
       - "./mounts/apache/apache/logs/apache2:/external_logs"
-      - "/etc/timezone:/etc/timezone:ro"
-      - "/etc/localtime:/etc/localtime:ro"
+      #- "/etc/timezone:/etc/timezone:ro"
+      #- "/etc/localtime:/etc/localtime:ro"
     networks:
       - sead_network
 
@@ -256,7 +254,7 @@ services:
     build: ./openrefine/docker
     restart: unless-stopped
     volumes:
-      - ./openrefine/projects:/openrefine/projects:Z
+      - ./openrefine/data:/data:Z
     networks:
       - sead_network
 
