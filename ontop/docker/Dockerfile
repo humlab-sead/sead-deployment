@@ -1,4 +1,4 @@
-FROM ontop/ontop:5.3.0
+FROM docker.io/ontop/ontop:5.3.0
 
 USER root
 

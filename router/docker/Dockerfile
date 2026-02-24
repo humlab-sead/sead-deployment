@@ -1,4 +1,4 @@
-FROM nginx:alpine
+FROM docker.io/nginx:alpine
 
 # tools: htpasswd + envsubst
 RUN apk add --no-cache apache2-utils gettext

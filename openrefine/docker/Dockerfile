@@ -1,5 +1,5 @@
 # Dockerfile
-FROM eclipse-temurin:17-jre-jammy
+FROM docker.io/eclipse-temurin:17-jre-jammy
 
 # Use the real tarball URL (not the post_download tracker)
 ARG OPENREFINE_VERSION=3.9.5
@@ -26,7 +26,7 @@ RUN useradd -r -u 10001 -g root -d /opt/openrefine -s /usr/sbin/nologin openrefi
 ENV REFINE_HOST=0.0.0.0 \
     REFINE_PORT=3333 \
     WORKSPACE_DIR=/data \
-    MEMORY=2G
+    MEMORY=4G
 
 EXPOSE 3333
 VOLUME ["/data"]
