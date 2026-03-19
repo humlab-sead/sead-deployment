@@ -17,6 +17,7 @@
 #   preload-jas          Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
 #   generate-env         Generate .env from .env-example
+#   rotate-secrets       Overwrite ALL secrets in .env with fresh random values
 
 set -eo pipefail
 
@@ -65,8 +66,16 @@ load_env() {
     fi
 }
 
+# Generates a 48-character alphanumeric password (~285 bits of entropy).
+# Prefers openssl's CSPRNG; falls back to /dev/urandom (equally secure on Linux 3.17+).
 generate_password() {
-    tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24
+    local length=48
+    if command -v openssl &>/dev/null; then
+        # Request ~2× the bytes we need to have plenty after filtering non-alphanumerics.
+        openssl rand -base64 $(( length * 2 )) | tr -dc 'A-Za-z0-9' | head -c "$length"
+    else
+        tr -dc 'A-Za-z0-9' < /dev/urandom | head -c "$length"
+    fi
 }
 
 # Fill any empty PASSWORD / SECRET / SALT / _PASS / _KEY field with a random value.
@@ -116,6 +125,54 @@ cmd_generate_env() {
     fi
 
     warn "Review .env before proceeding — especially DOMAIN and COMPOSE_PROJECT_NAME."
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# rotate-secrets command — replace ALL existing secret values with new ones
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Like fill_random_secrets but replaces populated values too.
+rotate_secrets_in_file() {
+    local file="$1"
+    # Match lines whose key suffix is PASSWORD, SECRET, SALT, _PASS, _KEY, or Password,
+    # regardless of whether there is already a value.
+    local pattern='^([A-Za-z0-9_]*(PASSWORD|SECRET|SALT|_PASS|_KEY|Password))=.*$'
+    while IFS= read -r line; do
+        if [[ "$line" =~ $pattern ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local val
+            val=$(generate_password)
+            sed -i -E "s|^(${key})=.*$|\1=${val}|" "$file"
+            info "Rotated secret for ${key}"
+        fi
+    done < <(grep -E "$pattern" "$file")
+}
+
+cmd_rotate_secrets() {
+    [[ -f .env ]] || die ".env not found. Run './deploy.sh generate-env' first."
+
+    echo
+    echo -e "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║                        WARNING                               ║${NC}"
+    echo -e "${RED}║  ALL passwords and secrets in .env will be OVERWRITTEN with  ║${NC}"
+    echo -e "${RED}║  newly generated random values.                              ║${NC}"
+    echo -e "${RED}║                                                               ║${NC}"
+    echo -e "${RED}║  Running services will lose database/API connectivity until  ║${NC}"
+    echo -e "${RED}║  they are restarted and any affected databases are updated.  ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo
+    read -rp "Type YES (all caps) to confirm: " confirmation
+    [[ "$confirmation" == "YES" ]] || { info "Aborted — no changes made."; return 0; }
+
+    # Back up the current .env before touching it
+    local backup=".env.bak.$(date +%Y%m%d_%H%M%S)"
+    cp .env "$backup"
+    chmod 600 "$backup"
+    info "Backup saved to $backup"
+
+    rotate_secrets_in_file .env
+    success "All secrets in .env have been rotated."
+    warn "Restart the stack ('$0 restart') and re-run any database password updates to apply the new credentials."
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -354,6 +411,12 @@ Commands:
   generate-env         Generate .env (and sead_authority_service/.env) from
                        the example files, auto-filling passwords and secrets.
 
+  rotate-secrets       Overwrite ALL passwords and secrets in the existing .env
+                       with freshly generated cryptographically random values.
+                       A timestamped backup (.env.bak.YYYYMMDD_HHMMSS) is saved
+                       first. You will be prompted to confirm before any changes
+                       are made.
+
 Environment variables:
   CONTAINER_TOOL       Override the container engine (podman | docker).
                        Default: podman if available, otherwise docker.
@@ -381,8 +444,9 @@ case "$command" in
     rebuild-db)   cmd_rebuild_db ;;
     preload-jas)  cmd_preload_jas ;;
     flush-cache)  cmd_flush_cache ;;
-    generate-env) cmd_generate_env ;;
-    help|--help|-h) usage ;;
+    generate-env)    cmd_generate_env ;;
+    rotate-secrets)  cmd_rotate_secrets ;;
+    help|--help|-h)  usage ;;
     "")           usage ;;
     *)            error "Unknown command: $command"; echo; usage; exit 1 ;;
 esac
