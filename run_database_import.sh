@@ -1,9 +1,21 @@
 #!/bin/bash
 
+# Container engine selection: defaults to podman, pass --docker to use docker instead
+CONTAINER_TOOL="podman"
+for arg in "$@"; do
+    if [[ "$arg" == "--docker" ]]; then
+        CONTAINER_TOOL="docker"
+        break
+    fi
+done
+
+echo "Using container tool: $CONTAINER_TOOL"
+
 # Load .env
 export $(grep -v '^#' .env | xargs)
 
-DEPLOY_TAG="@2025.04"
+#DEPLOY_TAG="@2025.04"
+DEPLOY_TAG="@2026.02"
 TARGET_DB="sead_staging"
 DB_USER="sead_master"
 
@@ -14,10 +26,10 @@ SERVICE_NAME="postgresql"
 COMMAND="./bin/deploy-staging --port 5432 --user $DB_USER --create-database --on-conflict drop --source-type empty --target-db-name $TARGET_DB --deploy-to-tag $DEPLOY_TAG --ignore-git-tags --host postgresql"
 
 # Execute the command inside the specified service
-docker compose exec "$SERVICE_NAME" bash -c "$COMMAND"
+$CONTAINER_TOOL compose exec "$SERVICE_NAME" bash -c "$COMMAND"
 
 # Finally, set the password for the postgrest_anon user
-docker compose exec -T "$SERVICE_NAME" psql -h postgresql -U "$DB_USER" -d "$TARGET_DB" -v ON_ERROR_STOP=1 <<-EOSQL
+$CONTAINER_TOOL compose exec -T "$SERVICE_NAME" psql -h postgresql -U "$DB_USER" -d "$TARGET_DB" -v ON_ERROR_STOP=1 <<-EOSQL
     -- Enable PostGIS extension
     CREATE EXTENSION IF NOT EXISTS postgis;
 
