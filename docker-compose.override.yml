@@ -18,7 +18,7 @@ services:
     ports:
       - "27017:27017"
 
-  postgresql_mcp:
+  postgresql_mcp_sse:
     image: crystaldba/postgres-mcp:latest
     depends_on:
       postgresql:
@@ -29,10 +29,28 @@ services:
       # Compose-network hostname for Postgres is the service name: "postgres"
       DATABASE_URI: postgresql://${DATABASE_READ_ONLY_USER}:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}
     ports:
-      - "${MCP_PORT}:8000"
+      - "${MCP_PORT_SSE}:8000"
     restart: unless-stopped
     networks:
-      - sead_network  
+      - sead_network
+
+  postgresql_mcp:
+    build:
+      context: ./postgres_mcp
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      PGHOST: postgresql
+      PGPORT: 5432
+      PGUSER: ${DATABASE_READ_ONLY_USER}
+      PGPASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
+      PGDATABASE: ${DATABASE_NAME}
+    ports:
+      - "${MCP_PORT}:4000"
+    restart: unless-stopped
+    networks:
+      - sead_network
 
 networks:
   sead_network:
