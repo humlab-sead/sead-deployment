@@ -51,6 +51,12 @@ services:
       - postgresql
     restart: unless-stopped
     image: docker.io/postgrest/postgrest:v12.2.8
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     environment:
       PGRST_DB_URI: "postgres://postgrest_anon:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}"
       PGRST_DB_SCHEMA: "public"
@@ -64,6 +70,12 @@ services:
   mongo:
     image: docker.io/mongo:4.4
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mongo --eval 'db.adminCommand(\"ping\")' -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     environment:
       MONGO_INITDB_ROOT_USERNAME: $MONGODB_ROOT_USER
       MONGO_INITDB_ROOT_PASSWORD: $MONGODB_ROOT_PASSWORD
@@ -138,6 +150,12 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     hostname: redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     volumes:
       - ./redis/mounts/data:/data/rw:z
       - ./redis/mounts/log:/var/log:z
@@ -181,6 +199,7 @@ services:
       GITHUB_CLIENT_SECRET: $JAS_GITHUB_CLIENT_SECRET
       ORCID_CLIENT_ID: $JAS_ORCID_CLIENT_ID
       ORCID_CLIENT_SECRET: $JAS_ORCID_CLIENT_SECRET
+      ARTIFICIAL_LATENCY_MS: $JAS_ARTIFICIAL_LATENCY_MS
     depends_on:
       - mongo
       - postgresql
@@ -198,6 +217,12 @@ services:
   maria-db:
     image: docker.io/mariadb:10
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u ${MARIA_DB_USER} -p${MARIA_DB_PASSWORD} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     volumes:
       - "./mariadb/data:/var/lib/mysql"
       #- "/etc/timezone:/etc/timezone:ro"
@@ -218,6 +243,12 @@ services:
     environment:
       MATOMO_ASSUME_SECURE_PROTOCOL: 1
       MATOMO_FORCE_SSL: 0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     volumes:
       # To allow you to view/edit Matomo configuration files:
       - "./matomo/config:/var/www/html/config:rw"
@@ -236,6 +267,12 @@ services:
       - postgresql
     volumes:
       - ./ontop/models:/opt/ontop/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     environment:
       ONTOP_MAPPING_FILE: /opt/ontop/models/${DATABASE_NAME}_mapping.obda
       ONTOP_ONTOLOGY_FILE: /opt/ontop/models/${DATABASE_NAME}_ontology.owl
@@ -253,6 +290,12 @@ services:
     #image: cluedin/openrefine:latest
     build: ./openrefine/docker
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3333/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     volumes:
       - ./openrefine/data:/data:Z
     networks:
@@ -269,3 +312,4 @@ services:
       #- ./sead_authority_service/logs:/app/logs
     networks:
       - sead_network
+    
