@@ -15,17 +15,23 @@ echo "Using container tool: $CONTAINER_TOOL"
 export $(grep -v '^#' .env | xargs)
 
 #DEPLOY_TAG="@2025.04"
-DEPLOY_TAG="@2026.02"
+#DEPLOY_TAG="@2026.02"
+DEPLOY_TAG="@2026.04"
 TARGET_DB="sead_staging"
 DB_USER="sead_master"
 
 # Define the docker service name to run this in
 SERVICE_NAME="postgresql"
 
+# Update the sead_change_control repo before running the import
+echo "Updating sead_change_control repository inside the container..."
+$CONTAINER_TOOL compose exec "$SERVICE_NAME" bash -c "git -C /sead_change_control pull --ff-only"
+
 # Define the command to execute inside the container
 COMMAND="./bin/deploy-staging --port 5432 --user $DB_USER --create-database --on-conflict drop --source-type empty --target-db-name $TARGET_DB --deploy-to-tag $DEPLOY_TAG --ignore-git-tags --host postgresql"
 
 # Execute the command inside the specified service
+echo "Running database import command inside the container..."
 $CONTAINER_TOOL compose exec "$SERVICE_NAME" bash -c "$COMMAND"
 
 # Finally, set the password for the postgrest_anon user
