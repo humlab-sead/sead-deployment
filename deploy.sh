@@ -42,7 +42,18 @@ if [[ -z "$CONTAINER_TOOL" ]]; then
     echo "ERROR: Neither podman nor docker found. Please install one of them." >&2
     exit 1
 fi
-COMPOSE_CMD="$CONTAINER_TOOL compose"
+
+# In prod mode the override file is excluded so COMPOSE_CMD gets explicit -f flags.
+# DEPLOY_MODE is read from .env (set during install); default to dev if unset.
+# Can also be forced on the command line: DEPLOY_MODE=prod ./deploy.sh up
+build_compose_cmd() {
+    if [[ "${DEPLOY_MODE:-dev}" == "prod" ]]; then
+        echo "$CONTAINER_TOOL compose -f docker-compose.yml"
+    else
+        echo "$CONTAINER_TOOL compose"
+    fi
+}
+COMPOSE_CMD="$(build_compose_cmd)"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Colour helpers
@@ -63,6 +74,8 @@ load_env() {
         # shellcheck disable=SC1091
         source .env
         set +a
+        # Rebuild COMPOSE_CMD now that DEPLOY_MODE may have been loaded from .env
+        COMPOSE_CMD="$(build_compose_cmd)"
     fi
 }
 
@@ -80,6 +93,26 @@ generate_password() {
 
 # Fill any empty PASSWORD / SECRET / SALT / _PASS / _KEY field with a random value.
 # Matches both upper- and mixed-case key names (e.g. DATABASE_PASSWORD, QueryBuilderSetting__Store__Password).
+# Keys that must be left for the operator to fill in manually.
+# They are never touched by automatic secret generation or rotation.
+MANUAL_SECRETS=(
+    MATOMO_SUPERUSER_PASSWORD
+    JAS_GOOGLE_CLIENT_ID
+    JAS_GOOGLE_CLIENT_SECRET
+    JAS_GITHUB_CLIENT_ID
+    JAS_GITHUB_CLIENT_SECRET
+    JAS_ORCID_CLIENT_ID
+    JAS_ORCID_CLIENT_SECRET
+)
+
+is_manual_secret() {
+    local key="$1"
+    for skip in "${MANUAL_SECRETS[@]}"; do
+        [[ "$key" == "$skip" ]] && return 0
+    done
+    return 1
+}
+
 fill_random_secrets() {
     local file="$1"
     # Pattern: line ends with a key whose suffix (case-insensitive) is PASSWORD, SECRET, SALT, _PASS, or _KEY,
@@ -88,10 +121,35 @@ fill_random_secrets() {
     while grep -qE "$pattern" "$file"; do
         local key
         key=$(grep -m1 -E "$pattern" "$file" | cut -d= -f1)
+        if is_manual_secret "$key"; then
+            # Break the loop by temporarily marking the line so grep no longer matches it,
+            # then restore the original empty value so the file stays clean.
+            sed -i -E "s|^(${key})=[[:space:]]*$|\1=__SKIP__|" "$file"
+            continue
+        fi
         local val
         val=$(generate_password)
         sed -i -E "s|^(${key})=[[:space:]]*$|\1=${val}|" "$file"
         info "Generated random value for ${key}"
+    done
+    # Restore any temporarily-skipped entries back to empty
+    sed -i -E 's/=__SKIP__$/=/' "$file"
+}
+
+# Copy values from one .env key to another, keeping dependent credentials in sync.
+# Usage: sync_linked_vars <file> <source_key> <dest_key> [<source_key2> <dest_key2> ...]
+sync_linked_vars() {
+    local file="$1"; shift
+    while [[ $# -ge 2 ]]; do
+        local src="$1" dst="$2"; shift 2
+        local val
+        val=$(grep -m1 -E "^${src}=" "$file" | cut -d= -f2-)
+        if [[ -n "$val" ]]; then
+            sed -i -E "s|^(${dst})=.*$|\1=${val}|" "$file"
+            info "Synced ${dst} ← ${src}"
+        else
+            warn "Could not sync ${dst}: source key ${src} has no value in $file"
+        fi
     done
 }
 
@@ -111,6 +169,20 @@ cmd_generate_env() {
     info "Copied .env-example → .env"
 
     fill_random_secrets .env
+
+    # Persist the chosen deploy mode into .env so all future invocations respect it
+    if grep -qE '^DEPLOY_MODE=' .env; then
+        sed -i -E "s|^DEPLOY_MODE=.*$|DEPLOY_MODE=${DEPLOY_MODE}|" .env
+    else
+        echo "DEPLOY_MODE=${DEPLOY_MODE}" >> .env
+    fi
+    info "DEPLOY_MODE=${DEPLOY_MODE} written to .env"
+
+    # Keep QueryBuilder credentials in sync with the read-only DB user/password
+    sync_linked_vars .env \
+        DATABASE_READ_ONLY_USER     QueryBuilderSetting__Store__Username \
+        DATABASE_READ_ONLY_PASSWORD QueryBuilderSetting__Store__Password
+
     success ".env generated with random passwords/secrets."
 
     # Sub-service: sead_authority_service
@@ -125,6 +197,10 @@ cmd_generate_env() {
     fi
 
     warn "Review .env before proceeding — especially DOMAIN and COMPOSE_PROJECT_NAME."
+    warn "The following secrets were left empty and must be set manually:"
+    for key in "${MANUAL_SECRETS[@]}"; do
+        warn "  $key"
+    done
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -140,6 +216,10 @@ rotate_secrets_in_file() {
     while IFS= read -r line; do
         if [[ "$line" =~ $pattern ]]; then
             local key="${BASH_REMATCH[1]}"
+            if is_manual_secret "$key"; then
+                info "Skipping manual secret: ${key}"
+                continue
+            fi
             local val
             val=$(generate_password)
             sed -i -E "s|^(${key})=.*$|\1=${val}|" "$file"
@@ -171,6 +251,12 @@ cmd_rotate_secrets() {
     info "Backup saved to $backup"
 
     rotate_secrets_in_file .env
+
+    # Re-sync derived credentials after rotation
+    sync_linked_vars .env \
+        DATABASE_READ_ONLY_USER     QueryBuilderSetting__Store__Username \
+        DATABASE_READ_ONLY_PASSWORD QueryBuilderSetting__Store__Password
+
     success "All secrets in .env have been rotated."
     warn "Restart the stack ('$0 restart') and re-run any database password updates to apply the new credentials."
 }
@@ -190,6 +276,100 @@ clone_if_missing() {
     fi
 }
 
+# Update or append a KEY=value entry in an env-style file.
+set_env_var() {
+    local file="$1"
+    local key="$2"
+    local value="$3"
+
+    [[ -f "$file" ]] || die "$file not found."
+
+    local escaped_value="$value"
+    escaped_value="${escaped_value//\\/\\\\}"
+    escaped_value="${escaped_value//&/\\&}"
+    escaped_value="${escaped_value//|/\\|}"
+
+    if grep -qE "^${key}=" "$file"; then
+        sed -i -E "s|^(${key})=.*$|\\1=${escaped_value}|" "$file"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$file"
+    fi
+}
+
+# Fetch release tags from GitHub API for a repository.
+# Usage: fetch_github_release_tags "owner/repo"
+# Prints one tag per line. Returns non-zero if none could be fetched.
+fetch_github_release_tags() {
+    local repo="$1"
+    [[ -n "$repo" ]] || return 1
+
+    local api_url="https://api.github.com/repos/${repo}/releases?per_page=100"
+    local release_json
+
+    release_json="$(curl -fsSL "$api_url")" || return 1
+
+    local tags=()
+    mapfile -t tags < <(
+        {
+            printf '%s\n' "$release_json" \
+                | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' \
+                | sed -E 's/.*"([^"]+)"/\1/' \
+                | awk '!seen[$0]++'
+        } || true
+    )
+
+    [[ ${#tags[@]} -gt 0 ]] || return 1
+    printf '%s\n' "${tags[@]}"
+}
+
+# Prompt the operator to choose a ref to deploy.
+# Includes the primary branch and available GitHub release tags.
+# Usage: prompt_release_ref <service_name> <repo> <primary_branch>
+prompt_release_ref() {
+    local service_name="$1"
+    local repo="$2"
+    local primary_branch="$3"
+
+    [[ -n "$service_name" && -n "$repo" && -n "$primary_branch" ]] || die "prompt_release_ref called with missing arguments."
+
+    SELECTED_RELEASE_REF=""
+
+    local options=("$primary_branch")
+    local releases=()
+
+    if mapfile -t releases < <(fetch_github_release_tags "$repo") && [[ ${#releases[@]} -gt 0 ]]; then
+        options+=("${releases[@]}")
+    else
+        warn "Could not fetch release list from GitHub for ${repo}. Falling back to '${primary_branch}' only."
+    fi
+
+    echo
+    echo -e "${CYAN}Select ${service_name} release to deploy:${NC}"
+    local idx
+    for idx in "${!options[@]}"; do
+        if [[ "${options[$idx]}" == "$primary_branch" ]]; then
+            echo "  $((idx + 1))) ${options[$idx]} (branch)"
+        else
+            echo "  $((idx + 1))) ${options[$idx]} (release)"
+        fi
+    done
+
+    local choice selected
+    while true; do
+        read -rp "Enter choice [1-${#options[@]}] (default: 1 ${primary_branch}): " choice
+        choice="${choice:-1}"
+
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
+            selected="${options[$((choice - 1))]}"
+            break
+        fi
+
+        echo "Please enter a number between 1 and ${#options[@]}."
+    done
+
+    SELECTED_RELEASE_REF="$selected"
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # install command
 # ──────────────────────────────────────────────────────────────────────────────
@@ -200,6 +380,24 @@ cmd_install() {
     for tool in git curl; do
         command -v "$tool" &>/dev/null || die "Required tool '$tool' not found. Please install it."
     done
+
+    # Ask for deployment mode
+    echo
+    echo -e "${CYAN}Select deployment mode:${NC}"
+    echo "  1) prod  — production build, docker-compose.override.yml is disabled"
+    echo "  2) dev   — development mode, docker-compose.override.yml is active"
+    local mode_choice
+    while true; do
+        read -rp "Enter choice [1/2] (default: 1 prod): " mode_choice
+        mode_choice="${mode_choice:-1}"
+        case "$mode_choice" in
+            1|prod)  DEPLOY_MODE=prod; break ;;
+            2|dev)   DEPLOY_MODE=dev;  break ;;
+            *) echo "Please enter 1 or 2." ;;
+        esac
+    done
+    info "Deploy mode set to: ${DEPLOY_MODE}"
+    COMPOSE_CMD="$(build_compose_cmd)"
 
     # Clone application source repositories
     clone_if_missing sead_browser_client "https://github.com/humlab-sead/sead_browser_client"
@@ -281,9 +479,43 @@ cmd_update() {
 
     info "Updating service: $service"
 
+    local release_repo=""
+    local primary_branch=""
+    local env_ref_var=""
+    case "$service" in
+        client)
+            release_repo="humlab-sead/sead_browser_client"
+            primary_branch="master"
+            env_ref_var="SBC_RELEASE"
+            ;;
+        json_api_server)
+            release_repo="humlab-sead/json_api_server"
+            primary_branch="main"
+            env_ref_var="JAS_RELEASE"
+            ;;
+    esac
+
+    if [[ -n "$release_repo" ]]; then
+        local selected_ref
+        prompt_release_ref "$service" "$release_repo" "$primary_branch"
+        selected_ref="${SELECTED_RELEASE_REF:-}"
+        [[ -n "$selected_ref" ]] || die "No release selected for ${service}."
+
+        if [[ -f .env ]]; then
+            set_env_var .env "$env_ref_var" "$selected_ref"
+            load_env
+            success "${env_ref_var} set to '$selected_ref' in .env"
+        else
+            export "${env_ref_var}=$selected_ref"
+            warn ".env not found; using ${env_ref_var}='$selected_ref' for this run only."
+        fi
+    fi
+
     local src_dir
     src_dir=$(service_source_dir "$service")
-    if [[ -n "$src_dir" && -d "$src_dir/.git" ]]; then
+    if [[ -n "$release_repo" ]]; then
+        info "${service} release source is controlled via ${env_ref_var} (GitHub ref)."
+    elif [[ -n "$src_dir" && -d "$src_dir/.git" ]]; then
         info "Pulling latest code in $src_dir ..."
         git -C "$src_dir" pull --recurse-submodules
         success "Code updated in $src_dir"
@@ -388,6 +620,10 @@ Commands:
 
   update <service>     Pull latest code (if a local repo exists), rebuild the
                        image without cache, and restart the service.
+                       For 'client', you'll be prompted for a GitHub release
+                       tag (or master), and SBC_RELEASE in .env is updated.
+                       For 'json_api_server', you'll be prompted for a GitHub
+                       release tag (or main), and JAS_RELEASE in .env is updated.
                        Examples:
                          $0 update client
                          $0 update json_api_server
