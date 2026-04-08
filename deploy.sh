@@ -468,7 +468,7 @@ fetch_github_release_tags() {
     local response http_code release_json
 
     if ! response="$(curl -sS -L -w $'\n%{http_code}' "$api_url")"; then
-        warn "Failed to fetch release list from ${api_url} (network/curl error)."
+        warn "Failed to fetch release list from ${api_url} (network/curl error)." >&2
         return 1
     fi
 
@@ -476,7 +476,7 @@ fetch_github_release_tags() {
     release_json="${response%$'\n'*}"
 
     if ! [[ "$http_code" =~ ^[0-9]{3}$ ]]; then
-        warn "Failed to fetch release list for ${repo}: unexpected HTTP status '${http_code}'."
+        warn "Failed to fetch release list for ${repo}: unexpected HTTP status '${http_code}'." >&2
         return 1
     fi
 
@@ -489,9 +489,9 @@ fetch_github_release_tags() {
                 | sed -E 's/.*"([^"]+)"/\1/'
         )"
         if [[ -n "$api_message" ]]; then
-            warn "Failed to fetch release list for ${repo} (HTTP ${http_code}): ${api_message}"
+            warn "Failed to fetch release list for ${repo} (HTTP ${http_code}): ${api_message}" >&2
         else
-            warn "Failed to fetch release list for ${repo} (HTTP ${http_code})."
+            warn "Failed to fetch release list for ${repo} (HTTP ${http_code})." >&2
         fi
         return 1
     fi
@@ -507,7 +507,7 @@ fetch_github_release_tags() {
     )
 
     if [[ ${#tags[@]} -eq 0 ]]; then
-        warn "No release tags found in GitHub response for ${repo}."
+        warn "No release tags found in GitHub response for ${repo}." >&2
         return 1
     fi
     printf '%s\n' "${tags[@]}"
@@ -529,7 +529,12 @@ prompt_release_ref() {
     local releases=()
 
     if mapfile -t releases < <(fetch_github_release_tags "$repo") && [[ ${#releases[@]} -gt 0 ]]; then
-        options+=("${releases[@]}")
+        local tag
+        for tag in "${releases[@]}"; do
+            [[ -z "$tag" ]] && continue
+            [[ "$tag" =~ ^\[[A-Z]+\] ]] && continue
+            options+=("$tag")
+        done
     else
         warn "Could not fetch release list from GitHub for ${repo}. Falling back to '${primary_branch}' only."
     fi
@@ -587,6 +592,8 @@ prompt_db_deploy_tag() {
     if mapfile -t releases < <(fetch_github_release_tags "$SEAD_CHANGE_CONTROL_REPO") && [[ ${#releases[@]} -gt 0 ]]; then
         local tag
         for tag in "${releases[@]}"; do
+            [[ -z "$tag" ]] && continue
+            [[ "$tag" =~ ^\[[A-Z]+\] ]] && continue
             [[ "$tag" == "$default_tag" ]] && continue
             options+=("$tag")
         done
