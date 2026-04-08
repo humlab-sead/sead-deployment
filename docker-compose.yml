@@ -32,6 +32,7 @@ services:
       PGPASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch
       SQITCH_USERNAME: ${DATABASE_USER} #this is for sead_change_control/sqitch
       SQITCH_PASSWORD: ${DATABASE_PASSWORD} #this is for sead_change_control/sqitch
+      POSTGREST_DB_PASSWORD: ${POSTGREST_DB_PASSWORD} #this is for postgrest
     volumes:
       - ./postgresql/mounts/pg-data-volume:/pgdata:Z
       - ./postgresql/mounts/init-scripts:/docker-entrypoint-initdb.d
