@@ -303,7 +303,7 @@ services:
 
   sead-authority-service:
     image: ghcr.io/humlab-sead/sead_authority_service
-    container_name: sead-authority-service-${SEAD_AUTHORITY_ENVIRONMENT:-staging}
+    #container_name: sead-authority-service-${SEAD_AUTHORITY_ENVIRONMENT:-staging}
     restart: always
     env_file:
       - ./sead_authority_service/.env
