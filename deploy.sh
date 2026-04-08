@@ -464,16 +464,40 @@ fetch_github_release_tags() {
     local repo="$1"
     [[ -n "$repo" ]] || return 1
 
-    local api_url="https://api.github.com/repos/${repo}/releases?per_page=100"
+    local endpoint="repos/${repo}/releases?per_page=100"
+    local api_url="https://api.github.com/${endpoint}"
     local response http_code release_json
 
-    if ! response="$(curl -sS -L -w $'\n%{http_code}' "$api_url")"; then
-        warn "Failed to fetch release list from ${api_url} (network/curl error)." >&2
-        return 1
+    # Prefer authenticated GitHub API requests via `gh` to avoid anonymous rate limits.
+    if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+        local gh_response gh_error
+        if gh_response="$(
+            gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "$endpoint" 2>&1
+        )"; then
+            release_json="$gh_response"
+            http_code=200
+        else
+            gh_error="$(printf '%s\n' "$gh_response" | head -n1)"
+            if [[ -n "$gh_error" ]]; then
+                warn "Authenticated GitHub request failed for ${repo} via gh (${gh_error}). Falling back to curl." >&2
+            else
+                warn "Authenticated GitHub request failed for ${repo} via gh. Falling back to curl." >&2
+            fi
+        fi
     fi
 
-    http_code="${response##*$'\n'}"
-    release_json="${response%$'\n'*}"
+    if [[ -z "${release_json:-}" ]]; then
+        if ! response="$(curl -sS -L -w $'\n%{http_code}' "$api_url")"; then
+            warn "Failed to fetch release list from ${api_url} (network/curl error)." >&2
+            return 1
+        fi
+
+        http_code="${response##*$'\n'}"
+        release_json="${response%$'\n'*}"
+    fi
 
     if ! [[ "$http_code" =~ ^[0-9]{3}$ ]]; then
         warn "Failed to fetch release list for ${repo}: unexpected HTTP status '${http_code}'." >&2
