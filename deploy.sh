@@ -465,9 +465,36 @@ fetch_github_release_tags() {
     [[ -n "$repo" ]] || return 1
 
     local api_url="https://api.github.com/repos/${repo}/releases?per_page=100"
-    local release_json
+    local response http_code release_json
 
-    release_json="$(curl -fsSL "$api_url")" || return 1
+    if ! response="$(curl -sS -L -w $'\n%{http_code}' "$api_url")"; then
+        warn "Failed to fetch release list from ${api_url} (network/curl error)."
+        return 1
+    fi
+
+    http_code="${response##*$'\n'}"
+    release_json="${response%$'\n'*}"
+
+    if ! [[ "$http_code" =~ ^[0-9]{3}$ ]]; then
+        warn "Failed to fetch release list for ${repo}: unexpected HTTP status '${http_code}'."
+        return 1
+    fi
+
+    if (( http_code >= 400 )); then
+        local api_message
+        api_message="$(
+            printf '%s\n' "$release_json" \
+                | grep -oE '"message"[[:space:]]*:[[:space:]]*"[^"]+"' \
+                | head -n1 \
+                | sed -E 's/.*"([^"]+)"/\1/'
+        )"
+        if [[ -n "$api_message" ]]; then
+            warn "Failed to fetch release list for ${repo} (HTTP ${http_code}): ${api_message}"
+        else
+            warn "Failed to fetch release list for ${repo} (HTTP ${http_code})."
+        fi
+        return 1
+    fi
 
     local tags=()
     mapfile -t tags < <(
@@ -479,7 +506,10 @@ fetch_github_release_tags() {
         } || true
     )
 
-    [[ ${#tags[@]} -gt 0 ]] || return 1
+    if [[ ${#tags[@]} -eq 0 ]]; then
+        warn "No release tags found in GitHub response for ${repo}."
+        return 1
+    fi
     printf '%s\n' "${tags[@]}"
 }
 
