@@ -189,6 +189,96 @@ sync_linked_vars() {
     done
 }
 
+# Import matching KEY=value entries from an existing env file into a target env file.
+# Only keys already present in the target file are updated.
+import_env_values_from_file() {
+    local target_file="$1"
+    local source_file="$2"
+
+    [[ -f "$target_file" ]] || die "Target env file not found: $target_file"
+    [[ -f "$source_file" ]] || die "Source env file not found: $source_file"
+    [[ -r "$source_file" ]] || die "Source env file is not readable: $source_file"
+
+    declare -A source_values=()
+    local line key value
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"
+        if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[2]}"
+            value="${BASH_REMATCH[3]}"
+            source_values["$key"]="$value"
+        fi
+    done < "$source_file"
+
+    local target_keys=()
+    mapfile -t target_keys < <(
+        grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=' "$target_file" \
+            | sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=.*/\1/' \
+            | awk '!seen[$0]++'
+    )
+
+    local imported=0
+    for key in "${target_keys[@]}"; do
+        if [[ -v "source_values[$key]" ]]; then
+            set_env_var "$target_file" "$key" "${source_values[$key]}"
+            imported=$((imported + 1))
+        fi
+    done
+
+    info "Imported ${imported}/${#target_keys[@]} values from ${source_file}."
+}
+
+# Optionally prompt for an old env file and import matching values.
+prompt_import_old_env() {
+    local target_file="$1"
+    [[ -f "$target_file" ]] || die "Target env file not found: $target_file"
+
+    # Skip prompting in non-interactive runs.
+    if [[ ! -t 0 ]]; then
+        info "Non-interactive mode detected; skipping optional old .env import."
+        return 0
+    fi
+
+    local answer
+    read -rp "Import values from an existing .env file? [y/N]: " answer
+    case "${answer,,}" in
+        y|yes) ;;
+        *)
+            info "Skipping old .env import."
+            return 0
+            ;;
+    esac
+
+    local source_path
+    while true; do
+        read -rp "Enter path to old .env file (ENTER to cancel): " source_path
+        source_path="${source_path%$'\r'}"
+
+        if [[ -z "$source_path" ]]; then
+            info "Old .env import cancelled."
+            return 0
+        fi
+
+        if [[ "$source_path" == "~" ]]; then
+            source_path="$HOME"
+        elif [[ "$source_path" == "~/"* ]]; then
+            source_path="$HOME/${source_path#~/}"
+        fi
+
+        if [[ ! -f "$source_path" ]]; then
+            warn "File not found: $source_path"
+            continue
+        fi
+        if [[ ! -r "$source_path" ]]; then
+            warn "File is not readable: $source_path"
+            continue
+        fi
+
+        import_env_values_from_file "$target_file" "$source_path"
+        return 0
+    done
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # generate-env command
 # ──────────────────────────────────────────────────────────────────────────────
@@ -203,6 +293,8 @@ cmd_generate_env() {
     cp .env-example .env
     chmod 600 .env
     info "Copied .env-example → .env"
+
+    prompt_import_old_env .env
 
     fill_random_secrets .env
 
@@ -722,7 +814,9 @@ Commands:
   flush-cache          Flush the JAS graph cache via the REST API.
 
   generate-env         Generate .env (and sead_authority_service/.env) from
-                       the example files, auto-filling passwords and secrets.
+                       the example files, optionally importing matching values
+                       from an old .env path, then auto-filling passwords and
+                       secrets that remain empty.
 
   rotate-secrets       Overwrite ALL passwords and secrets in the existing .env
                        with freshly generated cryptographically random values.
