@@ -55,6 +55,42 @@ build_compose_cmd() {
 }
 COMPOSE_CMD="$(build_compose_cmd)"
 
+# Keep docker-compose.override.yml aligned with DEPLOY_MODE during install.
+# In prod mode, the override file is renamed to ".disabled".
+# In dev mode, a disabled override file is restored back to its active name.
+sync_override_file_for_mode() {
+    local override_file="docker-compose.override.yml"
+    local disabled_file="${override_file}.disabled"
+
+    if [[ "${DEPLOY_MODE:-dev}" == "prod" ]]; then
+        if [[ -f "$override_file" ]]; then
+            if [[ -f "$disabled_file" ]]; then
+                local backup_file="${disabled_file}.$(date +%Y%m%d_%H%M%S)"
+                mv "$disabled_file" "$backup_file"
+                warn "Found existing ${disabled_file}; moved it to ${backup_file}"
+            fi
+            mv "$override_file" "$disabled_file"
+            info "Disabled ${override_file} for prod mode."
+        elif [[ -f "$disabled_file" ]]; then
+            info "${override_file} already disabled for prod mode."
+        else
+            warn "${override_file} not found; nothing to disable."
+        fi
+        return
+    fi
+
+    if [[ -f "$disabled_file" ]]; then
+        if [[ -f "$override_file" ]]; then
+            local backup_file="${disabled_file}.$(date +%Y%m%d_%H%M%S)"
+            mv "$disabled_file" "$backup_file"
+            warn "Both ${override_file} and ${disabled_file} existed; kept ${override_file} and moved ${disabled_file} to ${backup_file}"
+        else
+            mv "$disabled_file" "$override_file"
+            info "Re-enabled ${override_file} for dev mode."
+        fi
+    fi
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Colour helpers
 # ──────────────────────────────────────────────────────────────────────────────
@@ -296,6 +332,19 @@ set_env_var() {
     fi
 }
 
+# Pull images for services that are image-based (not build-based).
+pull_non_build_images() {
+    info "Pulling prebuilt images for services without local Docker builds..."
+    if $COMPOSE_CMD pull --ignore-buildable; then
+        success "Prebuilt images pulled."
+        return
+    fi
+
+    warn "'$CONTAINER_TOOL compose pull --ignore-buildable' not supported; falling back to '$CONTAINER_TOOL compose pull'."
+    $COMPOSE_CMD pull
+    success "Images pulled."
+}
+
 # Fetch release tags from GitHub API for a repository.
 # Usage: fetch_github_release_tags "owner/repo"
 # Prints one tag per line. Returns non-zero if none could be fetched.
@@ -397,6 +446,7 @@ cmd_install() {
         esac
     done
     info "Deploy mode set to: ${DEPLOY_MODE}"
+    sync_override_file_for_mode
     COMPOSE_CMD="$(build_compose_cmd)"
 
     # Clone application source repositories
@@ -408,6 +458,10 @@ cmd_install() {
 
     [[ -f .env ]] || die ".env is missing. Run './deploy.sh generate-env' to create it."
 
+    # Let the operator choose release refs for services that support release-based deploys.
+    select_and_apply_release_ref "client"
+    select_and_apply_release_ref "json_api_server"
+
     # Reload env so variables (DOMAIN, DATABASE_USER, etc.) are available in this shell
     load_env
 
@@ -415,6 +469,9 @@ cmd_install() {
     warn "Please review .env now (especially DOMAIN and COMPOSE_PROJECT_NAME)."
     warn "Press ENTER to continue with the build, or Ctrl-C to abort."
     read -r
+
+    # Pull image-based services explicitly before local builds.
+    pull_non_build_images
 
     # Build all images
     info "Building Docker images (this may take several minutes)..."
@@ -473,53 +530,68 @@ service_source_dir() {
     esac
 }
 
+# Configure release selection metadata for services that support GitHub releases.
+# Sets RELEASE_REPO, PRIMARY_BRANCH, and ENV_REF_VAR for the given service.
+set_release_selection_config() {
+    local service="$1"
+    RELEASE_REPO=""
+    PRIMARY_BRANCH=""
+    ENV_REF_VAR=""
+
+    case "$service" in
+        client)
+            RELEASE_REPO="humlab-sead/sead_browser_client"
+            PRIMARY_BRANCH="master"
+            ENV_REF_VAR="SBC_RELEASE"
+            ;;
+        json_api_server)
+            RELEASE_REPO="humlab-sead/json_api_server"
+            PRIMARY_BRANCH="main"
+            ENV_REF_VAR="JAS_RELEASE"
+            ;;
+    esac
+}
+
+# Prompt for a service release ref and persist it to .env when possible.
+select_and_apply_release_ref() {
+    local service="$1"
+    set_release_selection_config "$service"
+
+    [[ -n "$RELEASE_REPO" ]] || return 1
+
+    local selected_ref
+    prompt_release_ref "$service" "$RELEASE_REPO" "$PRIMARY_BRANCH"
+    selected_ref="${SELECTED_RELEASE_REF:-}"
+    [[ -n "$selected_ref" ]] || die "No release selected for ${service}."
+
+    if [[ -f .env ]]; then
+        set_env_var .env "$ENV_REF_VAR" "$selected_ref"
+        success "${ENV_REF_VAR} set to '$selected_ref' in .env"
+    else
+        warn ".env not found; using ${ENV_REF_VAR}='$selected_ref' for this run only."
+    fi
+
+    export "${ENV_REF_VAR}=$selected_ref"
+    info "${service} release source is controlled via ${ENV_REF_VAR} (GitHub ref)."
+}
+
 cmd_update() {
     local service="${1:-}"
     [[ -z "$service" ]] && die "Usage: $0 update <service>"
 
     info "Updating service: $service"
 
-    local release_repo=""
-    local primary_branch=""
-    local env_ref_var=""
-    case "$service" in
-        client)
-            release_repo="humlab-sead/sead_browser_client"
-            primary_branch="master"
-            env_ref_var="SBC_RELEASE"
-            ;;
-        json_api_server)
-            release_repo="humlab-sead/json_api_server"
-            primary_branch="main"
-            env_ref_var="JAS_RELEASE"
-            ;;
-    esac
-
-    if [[ -n "$release_repo" ]]; then
-        local selected_ref
-        prompt_release_ref "$service" "$release_repo" "$primary_branch"
-        selected_ref="${SELECTED_RELEASE_REF:-}"
-        [[ -n "$selected_ref" ]] || die "No release selected for ${service}."
-
-        if [[ -f .env ]]; then
-            set_env_var .env "$env_ref_var" "$selected_ref"
-            load_env
-            success "${env_ref_var} set to '$selected_ref' in .env"
-        else
-            export "${env_ref_var}=$selected_ref"
-            warn ".env not found; using ${env_ref_var}='$selected_ref' for this run only."
-        fi
+    if select_and_apply_release_ref "$service"; then
+        load_env
     fi
 
     local src_dir
     src_dir=$(service_source_dir "$service")
-    if [[ -n "$release_repo" ]]; then
-        info "${service} release source is controlled via ${env_ref_var} (GitHub ref)."
-    elif [[ -n "$src_dir" && -d "$src_dir/.git" ]]; then
+    if [[ -z "$RELEASE_REPO" && -n "$src_dir" && -d "$src_dir/.git" ]]; then
         info "Pulling latest code in $src_dir ..."
         git -C "$src_dir" pull --recurse-submodules
         success "Code updated in $src_dir"
-    else
+    elif [[ -z "$RELEASE_REPO" ]]; then
         info "No local source directory for '$service' — image will be rebuilt from its Dockerfile."
     fi
 
@@ -617,6 +689,11 @@ Commands:
   install              Perform a fresh installation of the entire SEAD stack.
                        Clones repos, generates .env, builds images, starts
                        services, imports the database, and preloads JAS cache.
+                       During install, you'll be prompted for release refs for
+                       'client' (SBC_RELEASE) and 'json_api_server'
+                       (JAS_RELEASE).
+                       If prod mode is chosen, docker-compose.override.yml is
+                       renamed to docker-compose.override.yml.disabled.
 
   update <service>     Pull latest code (if a local repo exists), rebuild the
                        image without cache, and restart the service.
