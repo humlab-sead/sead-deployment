@@ -110,7 +110,7 @@ services:
       context: ./sead_browser_client/docker
       args:
         SBC_REF: ${SBC_RELEASE}
-        MODE: "prod"
+        MODE: ${DEPLOY_MODE:-dev}
         DOMAIN: ${DOMAIN}
     restart: unless-stopped
     volumes:

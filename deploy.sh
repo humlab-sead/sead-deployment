@@ -13,7 +13,7 @@
 #   status               Show running status of all containers
 #   logs [service]       Tail logs (all services or specific one)
 #   shell <service>      Open an interactive shell inside a container
-#   rebuild-db           Re-import the PostgreSQL database
+#   import-db            Re-import the PostgreSQL database
 #   preload-jas          Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
 #   generate-env         Generate .env from .env-example
@@ -101,18 +101,38 @@ warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 die()     { error "$*"; exit 1; }
 
+# Database import defaults
+SEAD_CHANGE_CONTROL_REPO="humlab-sead/sead_change_control"
+DEFAULT_DB_DEPLOY_TAG="@2026.04"
+DB_IMPORT_TARGET_DB="sead_staging"
+DB_IMPORT_USER="sead_master"
+DB_IMPORT_SERVICE="postgresql"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Environment helpers
 # ──────────────────────────────────────────────────────────────────────────────
 load_env() {
+    local explicit_deploy_mode_set=0
+    local explicit_deploy_mode="${DEPLOY_MODE:-}"
+    if [[ -n "${DEPLOY_MODE+x}" ]]; then
+        explicit_deploy_mode_set=1
+    fi
+
     if [[ -f .env ]]; then
         set -a
         # shellcheck disable=SC1091
         source .env
         set +a
-        # Rebuild COMPOSE_CMD now that DEPLOY_MODE may have been loaded from .env
-        COMPOSE_CMD="$(build_compose_cmd)"
     fi
+
+    # Keep an explicit DEPLOY_MODE from the command invocation authoritative.
+    if (( explicit_deploy_mode_set )); then
+        DEPLOY_MODE="$explicit_deploy_mode"
+        export DEPLOY_MODE
+    fi
+
+    # Rebuild COMPOSE_CMD now that DEPLOY_MODE may have been loaded/overridden.
+    COMPOSE_CMD="$(build_compose_cmd)"
 }
 
 # Generates a 48-character alphanumeric password (~285 bits of entropy).
@@ -511,6 +531,164 @@ prompt_release_ref() {
     SELECTED_RELEASE_REF="$selected"
 }
 
+# Prompt for a sead_change_control deploy tag.
+# Tries to list GitHub release tags and falls back to the default tag.
+# Usage: prompt_db_deploy_tag [deploy_tag]
+prompt_db_deploy_tag() {
+    local provided_tag="${1:-}"
+    local default_tag="$DEFAULT_DB_DEPLOY_TAG"
+
+    SELECTED_DB_DEPLOY_TAG=""
+
+    if [[ -n "$provided_tag" ]]; then
+        SELECTED_DB_DEPLOY_TAG="$provided_tag"
+        return 0
+    fi
+
+    if [[ ! -t 0 ]]; then
+        info "Non-interactive mode detected; using default deploy tag '${default_tag}'."
+        SELECTED_DB_DEPLOY_TAG="$default_tag"
+        return 0
+    fi
+
+    local options=("$default_tag")
+    local releases=()
+
+    if mapfile -t releases < <(fetch_github_release_tags "$SEAD_CHANGE_CONTROL_REPO") && [[ ${#releases[@]} -gt 0 ]]; then
+        local tag
+        for tag in "${releases[@]}"; do
+            [[ "$tag" == "$default_tag" ]] && continue
+            options+=("$tag")
+        done
+    else
+        warn "Could not fetch release tags from GitHub for ${SEAD_CHANGE_CONTROL_REPO}. Defaulting to '${default_tag}' unless you enter a custom tag."
+    fi
+
+    echo
+    echo -e "${CYAN}Select sead_change_control deploy tag:${NC}"
+    local idx
+    for idx in "${!options[@]}"; do
+        if [[ "${options[$idx]}" == "$default_tag" ]]; then
+            echo "  $((idx + 1))) ${options[$idx]} (default)"
+        else
+            echo "  $((idx + 1))) ${options[$idx]} (release)"
+        fi
+    done
+    echo "  c) Enter a custom tag"
+
+    local choice selected custom_tag
+    while true; do
+        read -rp "Enter choice [1-${#options[@]} or c] (default: 1 ${default_tag}): " choice
+        choice="${choice:-1}"
+
+        case "${choice,,}" in
+            c)
+                read -rp "Enter deploy tag (example: ${default_tag}): " custom_tag
+                custom_tag="${custom_tag//$'\r'/}"
+                if [[ -n "$custom_tag" ]]; then
+                    selected="$custom_tag"
+                    break
+                fi
+                echo "Deploy tag cannot be empty."
+                ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
+                    selected="${options[$((choice - 1))]}"
+                    break
+                fi
+                echo "Please enter a number between 1 and ${#options[@]}, or 'c' for custom."
+                ;;
+        esac
+    done
+
+    SELECTED_DB_DEPLOY_TAG="$selected"
+}
+
+# Execute the database import workflow previously handled by run_database_import.sh.
+# Usage: run_database_import [deploy_tag]
+run_database_import() {
+    local deploy_tag="${1:-}"
+
+    prompt_db_deploy_tag "$deploy_tag"
+    deploy_tag="${SELECTED_DB_DEPLOY_TAG:-$DEFAULT_DB_DEPLOY_TAG}"
+
+    [[ -n "${DATABASE_READ_ONLY_PASSWORD:-}" ]] || die "DATABASE_READ_ONLY_PASSWORD is empty. Check .env."
+    [[ -n "${DATABASE_PASSWORD:-}" ]] || die "DATABASE_PASSWORD is empty. Check .env."
+
+    info "Using deploy tag '${deploy_tag}' for sead_change_control."
+
+    info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -lc "git -C /sead_change_control pull --ff-only"
+
+    info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -lc \
+        "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_IMPORT_TARGET_DB} --deploy-to-tag '${deploy_tag}' --ignore-git-tags --host postgresql"
+
+    info "Applying extensions, passwords, and grants..."
+    $COMPOSE_CMD exec -T "$DB_IMPORT_SERVICE" psql -h postgresql -U "$DB_IMPORT_USER" -d "$DB_IMPORT_TARGET_DB" -v ON_ERROR_STOP=1 <<-EOSQL
+	    -- Enable PostGIS extension
+	    CREATE EXTENSION IF NOT EXISTS postgis;
+
+	    -- Set passwords for users
+	    ALTER USER postgrest_anon WITH PASSWORD '${DATABASE_READ_ONLY_PASSWORD}';
+	    ALTER USER sead_ro WITH PASSWORD '${DATABASE_READ_ONLY_PASSWORD}';
+	    ALTER USER sead_master WITH PASSWORD '${DATABASE_PASSWORD}';
+	    ALTER USER humlab_admin WITH PASSWORD '${DATABASE_PASSWORD}';
+
+	    -- Grant USAGE on schemas (public & facet) to read-only users
+	    GRANT USAGE ON SCHEMA audit TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA bugs_import TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA clearing_house TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA facet TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA public TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA sead_utility TO sead_ro, postgrest_anon;
+	    GRANT USAGE ON SCHEMA sqitch TO sead_ro, postgrest_anon;
+
+	    -- Grant SELECT on all existing tables in public & facet schemas
+	    GRANT SELECT ON ALL TABLES IN SCHEMA audit TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA bugs_import TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA clearing_house TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA facet TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA public TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA sead_utility TO sead_ro, postgrest_anon;
+	    GRANT SELECT ON ALL TABLES IN SCHEMA sqitch TO sead_ro, postgrest_anon;
+
+	    -- Ensure SELECT permission applies to future tables in public & facet schemas
+	    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+	    GRANT SELECT ON TABLES TO sead_ro, postgrest_anon;
+
+	    ALTER DEFAULT PRIVILEGES IN SCHEMA facet
+	    GRANT SELECT ON TABLES TO sead_ro, postgrest_anon;
+
+	    -- Grant SELECT on all existing sequences (IDs, etc.) in public & facet schemas
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA audit TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA bugs_import TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA clearing_house TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA clearing_house_commit TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA facet TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA postgrest_api TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA postgrest_default_api TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sead_utility TO sead_ro, postgrest_anon;
+	    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sqitch TO sead_ro, postgrest_anon;
+
+	    -- Ensure SELECT permission applies to future sequences in public & facet schemas
+	    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+	    GRANT USAGE, SELECT ON SEQUENCES TO sead_ro, postgrest_anon;
+
+	    ALTER DEFAULT PRIVILEGES IN SCHEMA facet
+	    GRANT USAGE, SELECT ON SEQUENCES TO sead_ro, postgrest_anon;
+	EOSQL
+
+    success "Database import complete."
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # install command
 # ──────────────────────────────────────────────────────────────────────────────
@@ -587,8 +765,7 @@ cmd_install() {
 
     # Import database schema & data
     info "Importing database via sead_change_control (this may take a long time)..."
-    bash run_database_import.sh
-    success "Database import complete."
+    run_database_import
 
     # Preload JSON API Server MongoDB cache
     info "Preloading JSON API Server cache (this may take a long time)..."
@@ -751,10 +928,10 @@ cmd_shell() {
 # ──────────────────────────────────────────────────────────────────────────────
 # Database / cache maintenance commands
 # ──────────────────────────────────────────────────────────────────────────────
-cmd_rebuild_db() {
+cmd_import_db() {
+    local deploy_tag="${1:-}"
     info "Re-importing the PostgreSQL database..."
-    bash run_database_import.sh
-    success "Database import complete."
+    run_database_import "$deploy_tag"
 }
 
 cmd_preload_jas() {
@@ -809,7 +986,10 @@ Commands:
   logs [service]       Tail logs (100 lines) from all services or a specific one.
   shell <service>      Open an interactive shell inside a running container.
 
-  rebuild-db           Re-import the PostgreSQL database via sead_change_control.
+  import-db [tag]      Re-import the PostgreSQL database via sead_change_control.
+                       Prompts for a deploy tag (default: @2026.04) and tries
+                       to list available tags from GitHub releases:
+                       https://github.com/humlab-sead/sead_change_control
   preload-jas          Preload the JSON API Server MongoDB cache from PostgreSQL.
   flush-cache          Flush the JAS graph cache via the REST API.
 
@@ -848,7 +1028,7 @@ case "$command" in
     status)       cmd_status ;;
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
-    rebuild-db)   cmd_rebuild_db ;;
+    import-db)    cmd_import_db "${1:-}" ;;
     preload-jas)  cmd_preload_jas ;;
     flush-cache)  cmd_flush_cache ;;
     generate-env)    cmd_generate_env ;;
