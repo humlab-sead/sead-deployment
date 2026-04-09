@@ -830,10 +830,10 @@ run_database_import() {
     info "Using deploy tag '${deploy_tag}' for sead_change_control."
 
     info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -lc "git -C /sead_change_control pull --ff-only"
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c "git -C /sead_change_control pull --ff-only"
 
     info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -lc \
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c \
         "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_IMPORT_TARGET_DB} --deploy-to-tag '${deploy_tag}' --ignore-git-tags --host postgresql"
 
     info "Applying extensions, passwords, and grants..."
