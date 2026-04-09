@@ -444,6 +444,157 @@ set_env_var() {
     fi
 }
 
+get_env_var() {
+    local file="$1"
+    local key="$2"
+    grep -m1 -E "^${key}=" "$file" | cut -d= -f2- || true
+}
+
+is_valid_compose_project_name() {
+    local value="$1"
+    [[ "$value" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+}
+
+is_valid_domain_name() {
+    local value="$1"
+    [[ -n "$value" ]] || return 1
+    [[ "$value" =~ [[:space:]/:] ]] && return 1
+    return 0
+}
+
+is_valid_tcp_port() {
+    local port="$1"
+    [[ "$port" =~ ^[0-9]+$ ]] || return 1
+    (( port >= 1 && port <= 65535 ))
+}
+
+is_host_port_in_use() {
+    local port="$1"
+    if command -v ss &>/dev/null; then
+        ss -H -ltn "( sport = :${port} )" 2>/dev/null | grep -q .
+        return
+    fi
+    if command -v lsof &>/dev/null; then
+        lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+        return
+    fi
+    return 1
+}
+
+find_duplicate_port_key() {
+    local file="$1"
+    local target_key="$2"
+    local target_port="$3"
+    local key configured_port
+
+    for key in WEB_PORT MONGO_EXPRESS_PORT JAS_PORT POSTGRESQL_PORT; do
+        [[ "$key" == "$target_key" ]] && continue
+        configured_port="$(get_env_var "$file" "$key")"
+        [[ -n "$configured_port" && "$configured_port" == "$target_port" ]] || continue
+        echo "$key"
+        return 0
+    done
+    return 1
+}
+
+prompt_compose_project_name() {
+    local file="$1"
+    local current input
+
+    current="$(get_env_var "$file" COMPOSE_PROJECT_NAME)"
+    while true; do
+        read -rp "COMPOSE_PROJECT_NAME (unique, lowercase letters/numbers/_/-) [${current}]: " input
+        input="${input:-$current}"
+        input="${input%$'\r'}"
+
+        if ! is_valid_compose_project_name "$input"; then
+            warn "Invalid COMPOSE_PROJECT_NAME '${input}'. Use: lowercase letters, numbers, '_' or '-'."
+            continue
+        fi
+
+        set_env_var "$file" COMPOSE_PROJECT_NAME "$input"
+        return 0
+    done
+}
+
+prompt_domain_name() {
+    local file="$1"
+    local current input
+
+    current="$(get_env_var "$file" DOMAIN)"
+    while true; do
+        read -rp "DOMAIN (unique host name, no scheme/port) [${current}]: " input
+        input="${input:-$current}"
+        input="${input%$'\r'}"
+
+        if ! is_valid_domain_name "$input"; then
+            warn "Invalid DOMAIN '${input}'. Provide a host name like 'sead.local' or 'sead.example.org'."
+            continue
+        fi
+
+        set_env_var "$file" DOMAIN "$input"
+        return 0
+    done
+}
+
+prompt_unique_host_port() {
+    local file="$1"
+    local key="$2"
+    local label="$3"
+    local current input keep_port duplicate_key
+
+    current="$(get_env_var "$file" "$key")"
+    while true; do
+        read -rp "${label} [${current}]: " input
+        input="${input:-$current}"
+        input="${input%$'\r'}"
+
+        if ! is_valid_tcp_port "$input"; then
+            warn "Invalid port '${input}'. Enter a number from 1 to 65535."
+            continue
+        fi
+
+        if duplicate_key="$(find_duplicate_port_key "$file" "$key" "$input")"; then
+            warn "${key}=${input} conflicts with ${duplicate_key}. Each published host port must be unique."
+            continue
+        fi
+
+        if is_host_port_in_use "$input"; then
+            read -rp "Port ${input} is currently in use on this host. Keep it anyway? [y/N]: " keep_port
+            case "${keep_port,,}" in
+                y|yes) ;;
+                *) continue ;;
+            esac
+        fi
+
+        set_env_var "$file" "$key" "$input"
+        return 0
+    done
+}
+
+prompt_unique_instance_settings() {
+    local file="$1"
+    [[ -f "$file" ]] || die "Env file not found: $file"
+
+    if [[ ! -t 0 ]]; then
+        info "Non-interactive mode detected; keeping COMPOSE_PROJECT_NAME, DOMAIN, and host ports from ${file}."
+        return 0
+    fi
+
+    echo
+    echo -e "${CYAN}Set per-instance values (must be unique on a shared host):${NC}"
+    warn "These values are intentionally not auto-generated."
+
+    prompt_compose_project_name "$file"
+    prompt_domain_name "$file"
+    prompt_unique_host_port "$file" WEB_PORT            "WEB_PORT (router HTTP)"
+    prompt_unique_host_port "$file" MONGO_EXPRESS_PORT  "MONGO_EXPRESS_PORT (mongo-express)"
+    prompt_unique_host_port "$file" JAS_PORT            "JAS_PORT (JSON API Server)"
+    prompt_unique_host_port "$file" POSTGRESQL_PORT     "POSTGRESQL_PORT (PostgreSQL)"
+
+    success "Saved unique instance settings in ${file}."
+}
+
 # Pull images for services that are image-based (not build-based).
 pull_non_build_images() {
     info "Pulling prebuilt images for services without local Docker builds..."
@@ -788,6 +939,7 @@ cmd_install() {
     cmd_generate_env
 
     [[ -f .env ]] || die ".env is missing. Run './deploy.sh generate-env' to create it."
+    prompt_unique_instance_settings .env
 
     # Let the operator choose release refs for services that support release-based deploys.
     select_and_apply_release_ref "client"
@@ -797,7 +949,7 @@ cmd_install() {
     load_env
 
     echo
-    warn "Please review .env now (especially DOMAIN and COMPOSE_PROJECT_NAME)."
+    warn "Please review .env now (especially manual API/OAuth credentials)."
     warn "Press ENTER to continue with the build, or Ctrl-C to abort."
     read -r
 
@@ -1072,6 +1224,9 @@ Commands:
   install              Perform a fresh installation of the entire SEAD stack.
                        Clones repos, generates .env, builds images, starts
                        services, imports the database, and preloads JAS cache.
+                       Prompts for unique per-instance values
+                       (COMPOSE_PROJECT_NAME, DOMAIN, and published host ports)
+                       so multiple stacks can safely share one host.
                        During install, you'll be prompted for release refs for
                        'client' (SBC_RELEASE) and 'json_api_server'
                        (JAS_RELEASE).
