@@ -905,6 +905,56 @@ select_and_apply_release_ref() {
     info "${service} release source is controlled via ${ENV_REF_VAR} (GitHub ref)."
 }
 
+# Ensure a release-managed service has a local checkout at the selected ref.
+# For primary branch deploys, this fast-forwards the branch to origin.
+# For release deploys, this checks out the selected tag in detached HEAD.
+sync_local_repo_to_selected_ref() {
+    local service="$1"
+    local src_dir="$2"
+    local repo="$3"
+    local primary_branch="$4"
+    local env_ref_var="$5"
+    local selected_ref="${!env_ref_var:-}"
+
+    [[ -n "$service" && -n "$src_dir" && -n "$repo" && -n "$primary_branch" && -n "$env_ref_var" ]] \
+        || die "sync_local_repo_to_selected_ref called with missing arguments."
+    [[ -n "$selected_ref" ]] || die "No selected ref found in ${env_ref_var} for ${service}."
+
+    clone_if_missing "$src_dir" "https://github.com/${repo}"
+    [[ -d "$src_dir/.git" ]] || die "Expected git repository at ${src_dir}, but none was found."
+
+    if [[ -n "$(git -C "$src_dir" status --porcelain)" ]]; then
+        die "Local repo ${src_dir} has uncommitted changes. Commit/stash them before updating ${service}."
+    fi
+
+    info "Fetching latest refs for ${service} in ${src_dir} ..."
+    git -C "$src_dir" fetch --prune --tags origin
+
+    if [[ "$selected_ref" == "$primary_branch" ]]; then
+        info "Checking out branch '${primary_branch}' in ${src_dir} ..."
+        if git -C "$src_dir" show-ref --verify --quiet "refs/heads/${primary_branch}"; then
+            git -C "$src_dir" checkout "$primary_branch"
+        else
+            git -C "$src_dir" checkout -b "$primary_branch" --track "origin/${primary_branch}"
+        fi
+
+        info "Fast-forwarding '${primary_branch}' in ${src_dir} ..."
+        git -C "$src_dir" pull --ff-only --recurse-submodules origin "$primary_branch"
+        git -C "$src_dir" submodule update --init --recursive
+        success "${service} is now on latest '${primary_branch}'."
+        return
+    fi
+
+    if ! git -C "$src_dir" rev-parse -q --verify "refs/tags/${selected_ref}" &>/dev/null; then
+        die "Selected ref '${selected_ref}' is not present as a local tag in ${src_dir} after fetch."
+    fi
+
+    info "Checking out tag '${selected_ref}' in ${src_dir} ..."
+    git -C "$src_dir" checkout --detach "refs/tags/${selected_ref}"
+    git -C "$src_dir" submodule update --init --recursive
+    success "${service} is now checked out at tag '${selected_ref}'."
+}
+
 cmd_update() {
     local service="${1:-}"
     [[ -z "$service" ]] && die "Usage: $0 update <service>"
@@ -917,11 +967,14 @@ cmd_update() {
 
     local src_dir
     src_dir=$(service_source_dir "$service")
-    if [[ -z "$RELEASE_REPO" && -n "$src_dir" && -d "$src_dir/.git" ]]; then
+    if [[ -n "$RELEASE_REPO" ]]; then
+        [[ -n "$src_dir" ]] || die "No local source directory configured for release-managed service '$service'."
+        sync_local_repo_to_selected_ref "$service" "$src_dir" "$RELEASE_REPO" "$PRIMARY_BRANCH" "$ENV_REF_VAR"
+    elif [[ -n "$src_dir" && -d "$src_dir/.git" ]]; then
         info "Pulling latest code in $src_dir ..."
-        git -C "$src_dir" pull --recurse-submodules
+        git -C "$src_dir" pull --ff-only --recurse-submodules
         success "Code updated in $src_dir"
-    elif [[ -z "$RELEASE_REPO" ]]; then
+    else
         info "No local source directory for '$service' — image will be rebuilt from its Dockerfile."
     fi
 
@@ -1025,8 +1078,9 @@ Commands:
                        If prod mode is chosen, docker-compose.override.yml is
                        renamed to docker-compose.override.yml.disabled.
 
-  update <service>     Pull latest code (if a local repo exists), rebuild the
-                       image without cache, and restart the service.
+  update <service>     Sync local source to the selected release ref (or pull
+                       latest for non-release services), rebuild the image
+                       without cache, and restart the service.
                        For 'client', you'll be prompted for a GitHub release
                        tag (or master), and SBC_RELEASE in .env is updated.
                        For 'json_api_server', you'll be prompted for a GitHub
