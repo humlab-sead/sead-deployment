@@ -110,11 +110,9 @@ services:
       context: ./sead_browser_client/docker
       args:
         SBC_REF: ${SBC_RELEASE}
-        MODE: ${DEPLOY_MODE:-dev}
         DOMAIN: ${DOMAIN}
     restart: unless-stopped
     volumes:
-      - ./sead_browser_client:/sead_browser_client:Z # Uncomment for development - you need a local copy of the client
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
       - ./nginx/mounts/logs:/var/log/nginx
       - ./nginx/mounts/logs/letsencrypt.log:/var/log/letsencrypt.log
