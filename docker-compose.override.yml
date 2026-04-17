@@ -1,4 +1,19 @@
 services:
+  sead_query_api:
+    build:
+      context: ./sead_query_api
+      dockerfile: docker/Dockerfile.dev
+    command: >
+      sh -c "dotnet watch --project sead.query.api/sead.query.api.csproj run --no-launch-profile --no-restore"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:8089
+      ASPNETCORE_APPSETTINGS_FOLDER: /workspace
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER: "1"
+    volumes:
+      - ./sead_query_api:/workspace:Z
+
   client:
     command: npm run dev -- --port 80
     environment:
@@ -17,40 +32,6 @@ services:
   mongo:
     ports:
       - "27017:27017"
-
-  postgresql_mcp_sse:
-    image: crystaldba/postgres-mcp:latest
-    depends_on:
-      postgresql:
-        condition: service_healthy
-    # Expose SSE (HTTP) so multiple tools/clients can share the same server
-    command: ["--access-mode=${MCP_ACCESS_MODE}", "--transport=sse"]
-    environment:
-      # Compose-network hostname for Postgres is the service name: "postgres"
-      DATABASE_URI: postgresql://${DATABASE_READ_ONLY_USER}:${DATABASE_READ_ONLY_PASSWORD}@postgresql:5432/${DATABASE_NAME}
-    ports:
-      - "${MCP_PORT_SSE}:8000"
-    restart: unless-stopped
-    networks:
-      - sead_network
-
-  postgresql_mcp:
-    build:
-      context: ./postgres_mcp
-    depends_on:
-      postgresql:
-        condition: service_healthy
-    environment:
-      PGHOST: postgresql
-      PGPORT: 5432
-      PGUSER: ${DATABASE_READ_ONLY_USER}
-      PGPASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
-      PGDATABASE: ${DATABASE_NAME}
-    ports:
-      - "${MCP_PORT}:4000"
-    restart: unless-stopped
-    networks:
-      - sead_network
 
 networks:
   sead_network:

@@ -287,30 +287,27 @@ services:
     networks:
       - sead_network
 
-  openrefine:
-    #image: cluedin/openrefine:latest
-    build: ./openrefine/docker
+  postgresql_mcp:
+    build:
+      context: ./postgres_mcp
     restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3333/ || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/healthz || exit 1"]
       interval: 30s
       timeout: 10s
-      start_period: 60s
+      start_period: 30s
       retries: 3
-    volumes:
-      - ./openrefine/data:/data:Z
+    environment:
+      PGHOST: postgresql
+      PGPORT: 5432
+      PGUSER: ${DATABASE_READ_ONLY_USER}
+      PGPASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
+      PGDATABASE: ${DATABASE_NAME}
+      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
+    ports:
+      - "${MCP_PORT}:4000"
     networks:
       - sead_network
-
-  sead-authority-service:
-    image: ghcr.io/humlab-sead/sead_authority_service
-    #container_name: sead-authority-service-${SEAD_AUTHORITY_ENVIRONMENT:-staging}
-    restart: always
-    env_file:
-      - ./sead_authority_service/.env
-    volumes:
-      - ./sead_authority_service/config.yml:/app/config/config.yml:ro
-      #- ./sead_authority_service/logs:/app/logs
-    networks:
-      - sead_network
-    

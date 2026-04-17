@@ -1,5 +1,5 @@
 import express from "express";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { randomUUID, timingSafeEqual } from "crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -10,6 +10,9 @@ import { Pool } from "pg";
  */
 const PORT = Number(process.env.PORT || 4000);
 const MCP_PATH = process.env.MCP_PATH || "/mcp";
+const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN;
+
+if (!MCP_BEARER_TOKEN) throw new Error("Missing MCP_BEARER_TOKEN");
 
 const PGHOST = process.env.PGHOST || "postgresql";
 const PGPORT = Number(process.env.PGPORT || 5432);
@@ -61,37 +64,61 @@ function isReadOnlySql(sql) {
     return false;
   }
 
-  const banned = [
-    "insert ",
-    "update ",
-    "delete ",
-    "drop ",
-    "alter ",
-    "truncate ",
-    "create ",
-    "grant ",
-    "revoke ",
-    "comment ",
-    "copy ",
-    "vacuum ",
-    "analyze ",
-    "refresh materialized view",
-    "reindex ",
-    "call ",
-    "do ",
-    "listen ",
-    "notify ",
-    "unlisten ",
-    "set ",
-    "reset ",
-    "show ",
-    "begin",
-    "commit",
-    "rollback",
-    "lock "
-  ];
+  return true;
+}
 
-  return !banned.some(token => lower.includes(token));
+function getSqlKind(sql) {
+  const lower = normalizeSql(sql).toLowerCase();
+  if (lower.startsWith("explain")) return "explain";
+  if (lower.startsWith("with")) return "with";
+  return "select";
+}
+
+function parseBearerToken(authHeader) {
+  if (typeof authHeader !== "string") return null;
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+}
+
+function isValidBearerToken(token, expectedToken) {
+  if (!token || !expectedToken) return false;
+  const tokenBuffer = Buffer.from(token, "utf8");
+  const expectedBuffer = Buffer.from(expectedToken, "utf8");
+  if (tokenBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(tokenBuffer, expectedBuffer);
+}
+
+async function runReadOnlyQuery(sql, values = []) {
+  return withClient(async client => {
+    await client.query("BEGIN");
+    try {
+      await client.query("SET TRANSACTION READ ONLY");
+      const result = await client.query(sql, values);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {}
+      throw error;
+    }
+  });
+}
+
+function errorMessageForClient(prefix, error) {
+  if (process.env.NODE_ENV === "development") {
+    return `${prefix}: ${error.message}`;
+  }
+  return `${prefix}.`;
+}
+
+function isInitializeRequest(body) {
+  return Boolean(body && !Array.isArray(body) && body.method === "initialize");
+}
+
+function getSingleHeaderValue(header) {
+  if (Array.isArray(header)) return header[0] ?? null;
+  return typeof header === "string" ? header : null;
 }
 
 function serverText(value) {
@@ -144,7 +171,8 @@ function makeServer() {
 
         return serverText(result.rows[0]);
       } catch (error) {
-        return serverError(`db_ping failed: ${error.message}`);
+        await ctx?.mcpReq?.log?.("error", `db_ping failed: ${error.message}`);
+        return serverError(errorMessageForClient("db_ping failed", error));
       }
     }
   );
@@ -180,7 +208,8 @@ function makeServer() {
 
         return serverText(result.rows);
       } catch (error) {
-        return serverError(`list_tables failed: ${error.message}`);
+        await ctx?.mcpReq?.log?.("error", `list_tables failed: ${error.message}`);
+        return serverError(errorMessageForClient("list_tables failed", error));
       }
     }
   );
@@ -223,7 +252,8 @@ function makeServer() {
 
         return serverText(result.rows);
       } catch (error) {
-        return serverError(`describe_table failed: ${error.message}`);
+        await ctx?.mcpReq?.log?.("error", `describe_table failed: ${error.message}`);
+        return serverError(errorMessageForClient("describe_table failed", error));
       }
     }
   );
@@ -249,14 +279,20 @@ function makeServer() {
           );
         }
 
-        const limitedSql = `
-          select * from (
-            ${normalized}
-          ) as mcp_query
-          limit ${limit}
-        `;
-
-        const result = await withClient(client => client.query(limitedSql));
+        let result;
+        if (getSqlKind(normalized) === "explain") {
+          result = await runReadOnlyQuery(normalized);
+          result.rows = result.rows.slice(0, limit);
+          result.rowCount = result.rows.length;
+        } else {
+          const limitedSql = `
+            select * from (
+              ${normalized}
+            ) as mcp_query
+            limit $1
+          `;
+          result = await runReadOnlyQuery(limitedSql, [limit]);
+        }
 
         await ctx?.mcpReq?.log?.("info", `query_readonly returned ${result.rowCount} rows`);
 
@@ -265,7 +301,8 @@ function makeServer() {
           rows: result.rows
         });
       } catch (error) {
-        return serverError(`query_readonly failed: ${error.message}`);
+        await ctx?.mcpReq?.log?.("error", `query_readonly failed: ${error.message}`);
+        return serverError(errorMessageForClient("query_readonly failed", error));
       }
     }
   );
@@ -273,27 +310,70 @@ function makeServer() {
   return server;
 }
 
-const app = createMcpExpressApp({ host: "0.0.0.0" });
+const app = express();
 app.use(express.json({ limit: "1mb" }));
+const transports = new Map();
+
+app.use((req, res, next) => {
+  if (req.path === "/healthz") return next();
+  const token = parseBearerToken(getSingleHeaderValue(req.headers["authorization"]));
+  if (!isValidBearerToken(token, MCP_BEARER_TOKEN)) {
+    res.setHeader("WWW-Authenticate", "Bearer");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+});
 
 app.get("/healthz", async (_req, res) => {
   try {
     const result = await withClient(client => client.query("select 1 as ok"));
     res.status(200).json({ ok: result.rows[0].ok === 1 });
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
+    res.status(500).json({ ok: false, error: errorMessageForClient("healthz failed", error) });
   }
 });
 
 app.post(MCP_PATH, async (req, res) => {
-  const server = makeServer();
+  const sessionId = getSingleHeaderValue(req.headers["mcp-session-id"]);
 
   try {
+    if (sessionId && transports.has(sessionId)) {
+      const state = transports.get(sessionId);
+      await state.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    if (!sessionId && isInitializeRequest(req.body)) {
+      const sessionServer = makeServer();
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: initializedSessionId => {
+          transports.set(initializedSessionId, { transport, server: sessionServer });
+        }
+      });
+
+      transport.onclose = async () => {
+        const currentSessionId = transport.sessionId;
+        if (currentSessionId) {
+          transports.delete(currentSessionId);
+        }
+        try {
+          await sessionServer.close();
+        } catch {}
+      };
+
+      await sessionServer.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Backward-compatible stateless handling for non-session clients.
+    const statelessServer = makeServer();
     const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined
+      sessionIdGenerator: undefined
     });
 
-    await server.connect(transport);
+    await statelessServer.connect(transport);
     await transport.handleRequest(req, res, req.body);
 
     res.on("close", async () => {
@@ -301,7 +381,7 @@ app.post(MCP_PATH, async (req, res) => {
         await transport.close();
       } catch {}
       try {
-        await server.close();
+        await statelessServer.close();
       } catch {}
     });
   } catch (error) {
@@ -319,26 +399,68 @@ app.post(MCP_PATH, async (req, res) => {
   }
 });
 
-app.get(MCP_PATH, (_req, res) => {
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: {
-      code: -32000,
-      message: "Method not allowed."
-    },
-    id: null
-  });
+app.get(MCP_PATH, async (req, res) => {
+  const sessionId = getSingleHeaderValue(req.headers["mcp-session-id"]);
+  if (!sessionId || !transports.has(sessionId)) {
+    res.status(400).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message: "Invalid or missing MCP session ID."
+      },
+      id: null
+    });
+    return;
+  }
+
+  try {
+    const state = transports.get(sessionId);
+    await state.transport.handleRequest(req, res);
+  } catch (error) {
+    console.error("MCP GET request failed:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Internal server error"
+        },
+        id: null
+      });
+    }
+  }
 });
 
-app.delete(MCP_PATH, (_req, res) => {
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: {
-      code: -32000,
-      message: "Method not allowed."
-    },
-    id: null
-  });
+app.delete(MCP_PATH, async (req, res) => {
+  const sessionId = getSingleHeaderValue(req.headers["mcp-session-id"]);
+  if (!sessionId || !transports.has(sessionId)) {
+    res.status(400).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message: "Invalid or missing MCP session ID."
+      },
+      id: null
+    });
+    return;
+  }
+
+  try {
+    const state = transports.get(sessionId);
+    await state.transport.handleRequest(req, res);
+  } catch (error) {
+    console.error("MCP DELETE request failed:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Internal server error"
+        },
+        id: null
+      });
+    }
+  }
 });
 
 const server = app.listen(PORT, "0.0.0.0", () => {
@@ -350,6 +472,18 @@ async function shutdown(signal) {
   console.log(`Received ${signal}, shutting down...`);
   server.close(async () => {
     try {
+      const states = Array.from(transports.values());
+      await Promise.all(
+        states.map(async state => {
+          try {
+            await state.transport.close();
+          } catch {}
+          try {
+            await state.server.close();
+          } catch {}
+        })
+      );
+      transports.clear();
       await pool.end();
     } finally {
       process.exit(0);
