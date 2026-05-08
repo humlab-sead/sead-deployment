@@ -689,7 +689,7 @@ fetch_github_release_tags() {
 }
 
 # Prompt the operator to choose a ref to deploy.
-# Includes the primary branch and available GitHub release tags.
+# Includes the primary branch, the 5 newest GitHub release tags, and a manual ref option.
 # Usage: prompt_release_ref <service_name> <repo> <primary_branch>
 prompt_release_ref() {
     local service_name="$1"
@@ -700,19 +700,25 @@ prompt_release_ref() {
 
     SELECTED_RELEASE_REF=""
 
+    local manual_ref_option="[Enter another Git ref]"
     local options=("$primary_branch")
     local releases=()
 
     if mapfile -t releases < <(fetch_github_release_tags "$repo") && [[ ${#releases[@]} -gt 0 ]]; then
         local tag
+        local release_count=0
         for tag in "${releases[@]}"; do
             [[ -z "$tag" ]] && continue
             [[ "$tag" =~ ^\[[A-Z]+\] ]] && continue
             options+=("$tag")
+            release_count=$((release_count + 1))
+            [[ $release_count -ge 5 ]] && break
         done
     else
         warn "Could not fetch release list from GitHub for ${repo}. Falling back to '${primary_branch}' only."
     fi
+
+    options+=("$manual_ref_option")
 
     echo
     echo -e "${CYAN}Select ${service_name} release to deploy:${NC}"
@@ -720,6 +726,8 @@ prompt_release_ref() {
     for idx in "${!options[@]}"; do
         if [[ "${options[$idx]}" == "$primary_branch" ]]; then
             echo "  $((idx + 1))) ${options[$idx]} (branch)"
+        elif [[ "${options[$idx]}" == "$manual_ref_option" ]]; then
+            echo "  $((idx + 1))) ${options[$idx]}"
         else
             echo "  $((idx + 1))) ${options[$idx]} (release)"
         fi
@@ -737,6 +745,16 @@ prompt_release_ref() {
 
         echo "Please enter a number between 1 and ${#options[@]}."
     done
+
+    if [[ "$selected" == "$manual_ref_option" ]]; then
+        while true; do
+            read -rp "Enter a Git ref (branch, tag, or commit): " selected
+            if [[ -n "$selected" ]]; then
+                break
+            fi
+            echo "Git ref cannot be empty."
+        done
+    fi
 
     SELECTED_RELEASE_REF="$selected"
 }
@@ -1058,8 +1076,8 @@ select_and_apply_release_ref() {
 }
 
 # Ensure a release-managed service has a local checkout at the selected ref.
-# For primary branch deploys, this fast-forwards the branch to origin.
-# For release deploys, this checks out the selected tag in detached HEAD.
+# Primary branch deploys are fast-forwarded. Tags are checked out detached.
+# Other refs can resolve to remote branches or any fetchable Git ref.
 sync_local_repo_to_selected_ref() {
     local service="$1"
     local src_dir="$2"
@@ -1097,14 +1115,39 @@ sync_local_repo_to_selected_ref() {
         return
     fi
 
-    if ! git -C "$src_dir" rev-parse -q --verify "refs/tags/${selected_ref}" &>/dev/null; then
-        die "Selected ref '${selected_ref}' is not present as a local tag in ${src_dir} after fetch."
+    if git -C "$src_dir" rev-parse -q --verify "refs/tags/${selected_ref}" &>/dev/null; then
+        info "Checking out tag '${selected_ref}' in ${src_dir} ..."
+        git -C "$src_dir" checkout --detach "refs/tags/${selected_ref}"
+        git -C "$src_dir" submodule update --init --recursive
+        success "${service} is now checked out at tag '${selected_ref}'."
+        return
     fi
 
-    info "Checking out tag '${selected_ref}' in ${src_dir} ..."
-    git -C "$src_dir" checkout --detach "refs/tags/${selected_ref}"
-    git -C "$src_dir" submodule update --init --recursive
-    success "${service} is now checked out at tag '${selected_ref}'."
+    if git -C "$src_dir" rev-parse -q --verify "refs/remotes/origin/${selected_ref}" &>/dev/null; then
+        info "Checking out branch '${selected_ref}' in ${src_dir} ..."
+        if git -C "$src_dir" show-ref --verify --quiet "refs/heads/${selected_ref}"; then
+            git -C "$src_dir" checkout "$selected_ref"
+            git -C "$src_dir" branch --set-upstream-to="origin/${selected_ref}" "$selected_ref" >/dev/null 2>&1 || true
+        else
+            git -C "$src_dir" checkout -b "$selected_ref" --track "origin/${selected_ref}"
+        fi
+
+        info "Fast-forwarding '${selected_ref}' in ${src_dir} ..."
+        git -C "$src_dir" pull --ff-only --recurse-submodules origin "$selected_ref"
+        git -C "$src_dir" submodule update --init --recursive
+        success "${service} is now on latest '${selected_ref}'."
+        return
+    fi
+
+    info "Attempting to fetch arbitrary ref '${selected_ref}' in ${src_dir} ..."
+    if git -C "$src_dir" fetch --recurse-submodules origin "$selected_ref"; then
+        git -C "$src_dir" checkout --detach FETCH_HEAD
+        git -C "$src_dir" submodule update --init --recursive
+        success "${service} is now checked out at ref '${selected_ref}'."
+        return
+    fi
+
+    die "Selected ref '${selected_ref}' could not be resolved as a tag, remote branch, or fetchable Git ref."
 }
 
 cmd_update() {
@@ -1236,10 +1279,12 @@ Commands:
   update <service>     Sync local source to the selected release ref (or pull
                        latest for non-release services), rebuild the image
                        without cache, and restart the service.
-                       For 'client', you'll be prompted for a GitHub release
-                       tag (or master), and SBC_RELEASE in .env is updated.
-                       For 'json_api_server', you'll be prompted for a GitHub
-                       release tag (or main), and JAS_RELEASE in .env is updated.
+                                             For 'client', you'll be prompted for master, the 5 most
+                                             recent GitHub releases, or any Git ref, and SBC_RELEASE
+                                             in .env is updated.
+                                             For 'json_api_server', you'll be prompted for main, the
+                                             5 most recent GitHub releases, or any Git ref, and
+                                             JAS_RELEASE in .env is updated.
                        Examples:
                          $0 update client
                          $0 update json_api_server
