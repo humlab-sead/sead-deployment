@@ -111,6 +111,7 @@ services:
       args:
         SBC_REF: ${SBC_RELEASE}
         DOMAIN: ${DOMAIN}
+        SBC_BUILD: ${SBC_BUILD}
     restart: unless-stopped
     volumes:
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
