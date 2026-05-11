@@ -41,6 +41,13 @@ chmod 600 "$ENV_FILE"
 
 echo "All password fields have been updated in '$ENV_FILE'. ✅"
 
+# Generate MCP_BEARER_TOKEN if empty
+if grep -qE '^MCP_BEARER_TOKEN=\s*$' "$ENV_FILE"; then
+  mcp_token=$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+  sed -i -E "s/^MCP_BEARER_TOKEN=\s*$/MCP_BEARER_TOKEN=${mcp_token}/" "$ENV_FILE"
+  echo "Generated random token for MCP_BEARER_TOKEN. ✅"
+fi
+
 # Handle sead_authority_service/.env file
 SAS_ENV_EXAMPLE="./sead_authority_service/.env.example"
 SAS_ENV_FILE="./sead_authority_service/.env"
