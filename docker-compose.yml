@@ -120,6 +120,7 @@ services:
       - ./certs:/etc/certs
     environment:
       DOMAIN: ${DOMAIN}
+      SCHEME: ${SCHEME}
       CLIENT_RELEASE: ${CLIENT_RELEASE}
     networks:
       - sead_network
