@@ -38,3 +38,7 @@ postgres_mcp/node_modules
 pygwalker
 router/logs
 plans
+.codex
+openconnect
+mcp.json
+excluded
