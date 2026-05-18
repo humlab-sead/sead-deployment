@@ -48,18 +48,18 @@ fi
 # Can also be forced on the command line: DEPLOY_MODE=prod ./deploy.sh up
 build_compose_cmd() {
     if [[ "${DEPLOY_MODE:-dev}" == "prod" ]]; then
-        echo "$CONTAINER_TOOL compose -f docker-compose.yml"
+        echo "$CONTAINER_TOOL compose -f compose.yml"
     else
         echo "$CONTAINER_TOOL compose"
     fi
 }
 COMPOSE_CMD="$(build_compose_cmd)"
 
-# Keep docker-compose.override.yml aligned with DEPLOY_MODE during install.
+# Keep compose.override.yml aligned with DEPLOY_MODE during install.
 # In prod mode, the override file is renamed to ".disabled".
 # In dev mode, a disabled override file is restored back to its active name.
 sync_override_file_for_mode() {
-    local override_file="docker-compose.override.yml"
+    local override_file="compose.override.yml"
     local disabled_file="${override_file}.disabled"
 
     if [[ "${DEPLOY_MODE:-dev}" == "prod" ]]; then
@@ -933,8 +933,8 @@ cmd_install() {
     # Ask for deployment mode
     echo
     echo -e "${CYAN}Select deployment mode:${NC}"
-    echo "  1) prod  — production build, docker-compose.override.yml is disabled"
-    echo "  2) dev   — development mode, docker-compose.override.yml is active"
+    echo "  1) prod  — production build, compose.override.yml is disabled"
+    echo "  2) dev   — development mode, compose.override.yml is active"
     local mode_choice
     while true; do
         read -rp "Enter choice [1/2] (default: 1 prod): " mode_choice
@@ -1273,8 +1273,8 @@ Commands:
                        During install, you'll be prompted for release refs for
                        'client' (SBC_RELEASE) and 'json_api_server'
                        (JAS_RELEASE).
-                       If prod mode is chosen, docker-compose.override.yml is
-                       renamed to docker-compose.override.yml.disabled.
+                       If prod mode is chosen, compose.override.yml is
+                       renamed to compose.override.yml.disabled.
 
   update <service>     Sync local source to the selected release ref (or pull
                        latest for non-release services), rebuild the image
