@@ -39,6 +39,7 @@ pygwalker
 router/logs
 plans
 .codex
+.vscode
 openconnect
 mcp.json
 excluded
