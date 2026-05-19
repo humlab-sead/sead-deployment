@@ -933,12 +933,53 @@ run_database_import() {
 # install command
 # ──────────────────────────────────────────────────────────────────────────────
 cmd_install() {
-    info "Starting fresh SEAD installation using $CONTAINER_TOOL"
+    info "Starting fresh SEAD installation"
 
     # Prerequisites
     for tool in git curl; do
         command -v "$tool" &>/dev/null || die "Required tool '$tool' not found. Please install it."
     done
+
+    # Ask which container engine to use
+    echo
+    echo -e "${CYAN}Select container engine:${NC}"
+    local engine_opts=()
+    local engine_labels=()
+    for candidate in podman docker; do
+        if command -v "$candidate" &>/dev/null; then
+            if "$candidate" ps &>/dev/null; then
+                engine_opts+=("$candidate")
+                engine_labels+=("$candidate (available, daemon running)")
+            else
+                engine_opts+=("$candidate")
+                engine_labels+=("$candidate (installed, daemon NOT reachable)")
+            fi
+        fi
+    done
+    if [[ ${#engine_opts[@]} -eq 0 ]]; then
+        die "Neither podman nor docker found. Please install one of them."
+    fi
+    local default_engine_idx=0
+    # Prefer the already-detected CONTAINER_TOOL as the default.
+    for i in "${!engine_opts[@]}"; do
+        [[ "${engine_opts[$i]}" == "$CONTAINER_TOOL" ]] && default_engine_idx=$i
+    done
+    for i in "${!engine_opts[@]}"; do
+        printf '  %d) %s\n' "$((i+1))" "${engine_labels[$i]}"
+    done
+    local engine_choice
+    while true; do
+        read -rp "Enter choice [1-${#engine_opts[@]}] (default: $((default_engine_idx+1)) ${engine_opts[$default_engine_idx]}): " engine_choice
+        engine_choice="${engine_choice:-$((default_engine_idx+1))}"
+        if [[ "$engine_choice" =~ ^[0-9]+$ ]] && (( engine_choice >= 1 && engine_choice <= ${#engine_opts[@]} )); then
+            CONTAINER_TOOL="${engine_opts[$((engine_choice-1))]}"
+            break
+        fi
+        echo "Please enter a number between 1 and ${#engine_opts[@]}."
+    done
+    export CONTAINER_TOOL
+    COMPOSE_CMD="$(build_compose_cmd)"
+    info "Using container engine: $CONTAINER_TOOL"
 
     # Ask for deployment mode
     echo
@@ -967,6 +1008,9 @@ cmd_install() {
     cmd_generate_env
 
     [[ -f .env ]] || die ".env is missing. Run './deploy.sh generate-env' to create it."
+    # Persist the chosen container engine before load_env so sourcing .env doesn't
+    # overwrite the selection with the blank template value.
+    set_env_var .env CONTAINER_TOOL "$CONTAINER_TOOL"
     prompt_unique_instance_settings .env
 
     # Let the operator choose release refs for services that support release-based deploys.
