@@ -27,14 +27,24 @@ cd "$SCRIPT_DIR"
 # ──────────────────────────────────────────────────────────────────────────────
 # Container engine detection
 # ──────────────────────────────────────────────────────────────────────────────
+# Prefer an engine whose daemon is actually reachable (verified via `ps`).
+# Falls back to existence-only check when neither daemon responds.
 detect_container_engine() {
-    if command -v podman &>/dev/null; then
-        echo "podman"
-    elif command -v docker &>/dev/null; then
-        echo "docker"
-    else
-        echo ""
-    fi
+    local candidate
+    for candidate in podman docker; do
+        if command -v "$candidate" &>/dev/null && "$candidate" ps &>/dev/null; then
+            echo "$candidate"
+            return
+        fi
+    done
+    # Neither daemon is reachable — fall back to whichever binary exists.
+    for candidate in podman docker; do
+        if command -v "$candidate" &>/dev/null; then
+            echo "$candidate"
+            return
+        fi
+    done
+    echo ""
 }
 
 CONTAINER_TOOL="${CONTAINER_TOOL:-$(detect_container_engine)}"
