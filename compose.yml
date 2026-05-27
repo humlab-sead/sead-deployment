@@ -132,7 +132,7 @@ services:
     build:
       context: ./sead_query_api/docker
       args:
-        BRANCH: main
+        BRANCH: ${SEAD_QUERY_API_RELEASE}
     depends_on:
       - redis_cache
     environment:

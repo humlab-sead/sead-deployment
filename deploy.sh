@@ -14,7 +14,8 @@
 #   logs [service]       Tail logs (all services or specific one)
 #   shell <service>      Open an interactive shell inside a container
 #   import-db            Re-import the PostgreSQL database
-#   preload-jas          Preload the JSON API Server MongoDB cache
+#   preload-jas [--background]
+#                         Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
 #   generate-env         Generate .env from .env-example
 #   rotate-secrets       Overwrite ALL secrets in .env with fresh random values
@@ -27,17 +28,33 @@ cd "$SCRIPT_DIR"
 # ──────────────────────────────────────────────────────────────────────────────
 # Container engine detection
 # ──────────────────────────────────────────────────────────────────────────────
-# Prefer an engine whose daemon is actually reachable (verified via `ps`).
-# Falls back to existence-only check when neither daemon responds.
+# Returns true when the engine's compose stack is actually usable.
+# 'podman-compose' is the standalone Python tool; it just needs to be installed.
+# 'podman'/'docker' delegate to their compose sub-command which requires the
+# daemon socket to be reachable.
+_engine_compose_works() {
+    local engine="$1"
+    case "$engine" in
+        podman-compose|docker-compose)
+            command -v "$engine" &>/dev/null
+            ;;
+        podman|docker)
+            command -v "$engine" &>/dev/null && "$engine" compose ls &>/dev/null 2>&1
+            ;;
+        *) return 1 ;;
+    esac
+}
+
 detect_container_engine() {
     local candidate
-    for candidate in podman docker; do
-        if command -v "$candidate" &>/dev/null && "$candidate" ps &>/dev/null; then
+    # Prefer the first engine whose compose stack is fully working.
+    for candidate in podman-compose podman docker; do
+        if _engine_compose_works "$candidate"; then
             echo "$candidate"
             return
         fi
     done
-    # Neither daemon is reachable — fall back to whichever binary exists.
+    # No compose stack works — fall back to whichever runtime binary exists.
     for candidate in podman docker; do
         if command -v "$candidate" &>/dev/null; then
             echo "$candidate"
@@ -56,12 +73,21 @@ fi
 # In prod mode the override file is excluded so COMPOSE_CMD gets explicit -f flags.
 # DEPLOY_MODE is read from .env (set during install); default to dev if unset.
 # Can also be forced on the command line: DEPLOY_MODE=prod ./deploy.sh up
+#
+# Standalone compose tools (podman-compose, docker-compose) are invoked directly.
+# Integrated tools (podman, docker) use the 'compose' sub-command.
 build_compose_cmd() {
-    if [[ "${DEPLOY_MODE:-dev}" == "prod" ]]; then
-        echo "$CONTAINER_TOOL compose -f compose.yml"
-    else
-        echo "$CONTAINER_TOOL compose"
-    fi
+    local prod="${DEPLOY_MODE:-dev}"
+    case "$CONTAINER_TOOL" in
+        podman-compose|docker-compose)
+            # Standalone tools: 'podman-compose -f compose.yml' or 'podman-compose'
+            [[ "$prod" == "prod" ]] && echo "$CONTAINER_TOOL -f compose.yml" || echo "$CONTAINER_TOOL"
+            ;;
+        *)
+            # Integrated sub-command: 'podman compose -f compose.yml' or 'podman compose'
+            [[ "$prod" == "prod" ]] && echo "$CONTAINER_TOOL compose -f compose.yml" || echo "$CONTAINER_TOOL compose"
+            ;;
+    esac
 }
 COMPOSE_CMD="$(build_compose_cmd)"
 
@@ -114,6 +140,8 @@ die()     { error "$*"; exit 1; }
 # Database import defaults
 SEAD_CHANGE_CONTROL_REPO="humlab-sead/sead_change_control"
 DEFAULT_DB_DEPLOY_TAG="@2026.04"
+SEAD_QUERY_API_REPO="humlab-sead/sead_query_api"
+DEFAULT_SEAD_QUERY_API_RELEASE="main"
 DB_IMPORT_TARGET_DB="sead_staging"
 DB_IMPORT_USER="sead_master"
 DB_IMPORT_SERVICE="postgresql"
@@ -926,6 +954,11 @@ run_database_import() {
 	    GRANT USAGE, SELECT ON SEQUENCES TO sead_ro, postgrest_anon;
 	EOSQL
 
+    if [[ -f .env ]]; then
+        set_env_var .env SEAD_CHANGE_CONTROL_RELEASE "$deploy_tag"
+        success "SEAD_CHANGE_CONTROL_RELEASE set to '${deploy_tag}' in .env"
+    fi
+
     success "Database import complete."
 }
 
@@ -945,16 +978,24 @@ cmd_install() {
     echo -e "${CYAN}Select container engine:${NC}"
     local engine_opts=()
     local engine_labels=()
+    # podman-compose: standalone Python tool — works without any daemon socket.
+    if command -v podman-compose &>/dev/null; then
+        engine_opts+=("podman-compose")
+        engine_labels+=("podman-compose (standalone, compose working)")
+    fi
+    # podman / docker: test both the runtime (ps) and compose (compose ls).
     for candidate in podman docker; do
-        if command -v "$candidate" &>/dev/null; then
-            if "$candidate" ps &>/dev/null; then
-                engine_opts+=("$candidate")
-                engine_labels+=("$candidate (available, daemon running)")
-            else
-                engine_opts+=("$candidate")
-                engine_labels+=("$candidate (installed, daemon NOT reachable)")
-            fi
+        command -v "$candidate" &>/dev/null || continue
+        local runtime_ok=0 compose_ok=0
+        "$candidate" ps &>/dev/null 2>&1              && runtime_ok=1
+        "$candidate" compose ls &>/dev/null 2>&1      && compose_ok=1
+        local label="$candidate"
+        if   (( runtime_ok && compose_ok ));  then label+=' (daemon running, compose working)'
+        elif (( runtime_ok ));                then label+=' (daemon running, compose NOT working — start socket or install podman-compose)'
+        else                                       label+=' (daemon NOT reachable)'
         fi
+        engine_opts+=("$candidate")
+        engine_labels+=("$label")
     done
     if [[ ${#engine_opts[@]} -eq 0 ]]; then
         die "Neither podman nor docker found. Please install one of them."
@@ -1016,6 +1057,7 @@ cmd_install() {
     # Let the operator choose release refs for services that support release-based deploys.
     select_and_apply_release_ref "client"
     select_and_apply_release_ref "json_api_server"
+    select_and_apply_release_ref "sead_query_api"
 
     # Reload env so variables (DOMAIN, DATABASE_USER, etc.) are available in this shell
     load_env
@@ -1052,16 +1094,14 @@ cmd_install() {
     info "Importing database via sead_change_control (this may take a long time)..."
     run_database_import
 
-    # Preload JSON API Server MongoDB cache
-    info "Preloading JSON API Server cache (this may take a long time)..."
-    bash preload_jas.sh
-    success "JAS cache preloaded."
-
-    # Final restart so all services pick up the populated database
+    # Restart services so everything picks up the populated database
     info "Restarting all services..."
     cmd_down
     $COMPOSE_CMD up -d
     success "Stack restarted."
+
+    # Preload JSON API Server MongoDB cache in the background so install can finish immediately.
+    start_preload_jas_background
 
     # Re-load env to get fresh DOMAIN / WEB_PORT values
     load_env
@@ -1102,6 +1142,11 @@ set_release_selection_config() {
             RELEASE_REPO="humlab-sead/json_api_server"
             PRIMARY_BRANCH="main"
             ENV_REF_VAR="JAS_RELEASE"
+            ;;
+        sead_query_api)
+            RELEASE_REPO="$SEAD_QUERY_API_REPO"
+            PRIMARY_BRANCH="$DEFAULT_SEAD_QUERY_API_RELEASE"
+            ENV_REF_VAR="SEAD_QUERY_API_RELEASE"
             ;;
     esac
 }
@@ -1297,10 +1342,35 @@ cmd_import_db() {
     run_database_import "$deploy_tag"
 }
 
+start_preload_jas_background() {
+    local preload_log_dir="$SCRIPT_DIR/logs"
+    local preload_log_file="${preload_log_dir}/preload_jas_$(date +%Y%m%d_%H%M%S).log"
+    mkdir -p "$preload_log_dir"
+
+    info "Starting JSON API Server cache preload in background..."
+    nohup bash preload_jas.sh >"$preload_log_file" 2>&1 < /dev/null &
+    local preload_pid=$!
+    success "JAS cache preload started in background (PID: ${preload_pid})."
+    info "Follow progress with: tail -f ${preload_log_file}"
+}
+
 cmd_preload_jas() {
-    info "Preloading JSON API Server MongoDB cache..."
-    bash preload_jas.sh
-    success "JAS preload complete."
+    local mode="${1:-}"
+    [[ $# -le 1 ]] || die "Usage: $0 preload-jas [--background]"
+
+    case "$mode" in
+        "" )
+            info "Preloading JSON API Server MongoDB cache..."
+            bash preload_jas.sh
+            success "JAS preload complete."
+            ;;
+        --background|-b)
+            start_preload_jas_background
+            ;;
+        *)
+            die "Usage: $0 preload-jas [--background]"
+            ;;
+    esac
 }
 
 cmd_flush_cache() {
@@ -1326,7 +1396,8 @@ Commands:
                        so multiple stacks can safely share one host.
                        During install, you'll be prompted for release refs for
                        'client' (SBC_RELEASE) and 'json_api_server'
-                       (JAS_RELEASE).
+                       (JAS_RELEASE), and 'sead_query_api'
+                       (SEAD_QUERY_API_RELEASE).
                        If prod mode is chosen, compose.override.yml is
                        renamed to compose.override.yml.disabled.
 
@@ -1339,6 +1410,9 @@ Commands:
                                              For 'json_api_server', you'll be prompted for main, the
                                              5 most recent GitHub releases, or any Git ref, and
                                              JAS_RELEASE in .env is updated.
+                                             For 'sead_query_api', you'll be prompted for main, the
+                                             5 most recent GitHub releases, or any Git ref, and
+                                             SEAD_QUERY_API_RELEASE in .env is updated.
                        Examples:
                          $0 update client
                          $0 update json_api_server
@@ -1359,7 +1433,10 @@ Commands:
                        Prompts for a deploy tag (default: @2026.04) and tries
                        to list available tags from GitHub releases:
                        https://github.com/humlab-sead/sead_change_control
-  preload-jas          Preload the JSON API Server MongoDB cache from PostgreSQL.
+  preload-jas [--background]
+                       Preload the JSON API Server MongoDB cache from PostgreSQL.
+                       Use --background (or -b) to start it detached and return
+                       immediately, writing logs under ./logs/.
   flush-cache          Flush the JAS graph cache via the REST API.
 
   generate-env         Generate .env (and sead_authority_service/.env) from
@@ -1398,7 +1475,7 @@ case "$command" in
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
     import-db)    cmd_import_db "${1:-}" ;;
-    preload-jas)  cmd_preload_jas ;;
+    preload-jas)  cmd_preload_jas "$@" ;;
     flush-cache)  cmd_flush_cache ;;
     generate-env)    cmd_generate_env ;;
     rotate-secrets)  cmd_rotate_secrets ;;
