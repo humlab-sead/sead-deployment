@@ -262,27 +262,4 @@ services:
     networks:
       - sead_network
 
-  postgresql_mcp:
-    build:
-      context: ./postgres_mcp
-    restart: unless-stopped
-    depends_on:
-      postgresql:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4000/healthz || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
-    environment:
-      PGHOST: postgresql
-      PGPORT: 5432
-      PGUSER: ${DATABASE_READ_ONLY_USER}
-      PGPASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
-      PGDATABASE: ${DATABASE_NAME}
-      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN}
-    ports:
-      - "${MCP_PORT}:4000"
-    networks:
-      - sead_network
+  
