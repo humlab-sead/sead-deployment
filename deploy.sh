@@ -47,16 +47,9 @@ _engine_compose_works() {
 
 detect_container_engine() {
     local candidate
-    # Prefer the first engine whose compose stack is fully working.
-    for candidate in podman-compose podman docker; do
+    # Prefer native compose integrations first.
+    for candidate in podman docker podman-compose docker-compose; do
         if _engine_compose_works "$candidate"; then
-            echo "$candidate"
-            return
-        fi
-    done
-    # No compose stack works — fall back to whichever runtime binary exists.
-    for candidate in podman docker; do
-        if command -v "$candidate" &>/dev/null; then
             echo "$candidate"
             return
         fi
@@ -66,7 +59,7 @@ detect_container_engine() {
 
 CONTAINER_TOOL="${CONTAINER_TOOL:-$(detect_container_engine)}"
 if [[ -z "$CONTAINER_TOOL" ]]; then
-    echo "ERROR: Neither podman nor docker found. Please install one of them." >&2
+    echo "ERROR: No supported compose engine found. Install one of: podman compose, docker compose, podman-compose, docker-compose." >&2
     exit 1
 fi
 
@@ -90,6 +83,23 @@ build_compose_cmd() {
     esac
 }
 COMPOSE_CMD="$(build_compose_cmd)"
+
+# podman-compose may hang on stacks that use depends_on condition: service_healthy.
+# When native podman compose is available, transparently switch to it for compatibility.
+apply_compose_compatibility_override() {
+    [[ "$CONTAINER_TOOL" == "podman-compose" ]] || return 0
+    command -v podman &>/dev/null || return 0
+    podman compose ls &>/dev/null 2>&1 || return 0
+
+    local override_file="compose.override.yml"
+    if [[ "${DEPLOY_MODE:-dev}" == "dev" ]] \
+        && [[ -f "$override_file" ]] \
+        && grep -qE 'condition:[[:space:]]*service_healthy' "$override_file"; then
+        warn "Detected depends_on condition: service_healthy in ${override_file}; switching from podman-compose to native 'podman compose' to avoid known startup hangs."
+        CONTAINER_TOOL="podman"
+        export CONTAINER_TOOL
+    fi
+}
 
 # Keep compose.override.yml aligned with DEPLOY_MODE during install.
 # In prod mode, the override file is renamed to ".disabled".
@@ -169,7 +179,9 @@ load_env() {
         export DEPLOY_MODE
     fi
 
-    # Rebuild COMPOSE_CMD now that DEPLOY_MODE may have been loaded/overridden.
+    apply_compose_compatibility_override
+
+    # Rebuild COMPOSE_CMD now that DEPLOY_MODE / engine may have been updated.
     COMPOSE_CMD="$(build_compose_cmd)"
 }
 
@@ -978,27 +990,20 @@ cmd_install() {
     echo -e "${CYAN}Select container engine:${NC}"
     local engine_opts=()
     local engine_labels=()
-    # podman-compose: standalone Python tool — works without any daemon socket.
-    if command -v podman-compose &>/dev/null; then
-        engine_opts+=("podman-compose")
-        engine_labels+=("podman-compose (standalone, compose working)")
-    fi
-    # podman / docker: test both the runtime (ps) and compose (compose ls).
-    for candidate in podman docker; do
-        command -v "$candidate" &>/dev/null || continue
-        local runtime_ok=0 compose_ok=0
-        "$candidate" ps &>/dev/null 2>&1              && runtime_ok=1
-        "$candidate" compose ls &>/dev/null 2>&1      && compose_ok=1
+    local native_note=" (recommended)"
+
+    # Only show compose-capable engines.
+    for candidate in podman docker podman-compose docker-compose; do
+        _engine_compose_works "$candidate" || continue
         local label="$candidate"
-        if   (( runtime_ok && compose_ok ));  then label+=' (daemon running, compose working)'
-        elif (( runtime_ok ));                then label+=' (daemon running, compose NOT working — start socket or install podman-compose)'
-        else                                       label+=' (daemon NOT reachable)'
+        if [[ "$candidate" == "podman" || "$candidate" == "docker" ]]; then
+            label+="$native_note"
         fi
         engine_opts+=("$candidate")
         engine_labels+=("$label")
     done
     if [[ ${#engine_opts[@]} -eq 0 ]]; then
-        die "Neither podman nor docker found. Please install one of them."
+        die "No supported compose engine found. Install one of: podman compose, docker compose, podman-compose, docker-compose."
     fi
     local default_engine_idx=0
     # Prefer the already-detected CONTAINER_TOOL as the default.
@@ -1019,6 +1024,7 @@ cmd_install() {
         echo "Please enter a number between 1 and ${#engine_opts[@]}."
     done
     export CONTAINER_TOOL
+    apply_compose_compatibility_override
     COMPOSE_CMD="$(build_compose_cmd)"
     info "Using container engine: $CONTAINER_TOOL"
 
