@@ -1,0 +1,3 @@
+vanna[fastapi,httpx,postgres,openai,chromadb] @ git+https://github.com/vanna-ai/vanna.git@v2
+psycopg2-binary>=2.9,<3
+PyYAML>=6.0,<7

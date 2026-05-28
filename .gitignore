@@ -37,6 +37,16 @@ client_secret_*
 postgres_mcp/node_modules
 pygwalker
 router/logs
+vanna/mounts/chroma/*
+!vanna/mounts/chroma/.gitkeep
+vanna/mounts/snapshots/*
+!vanna/mounts/snapshots/.gitkeep
+vanna/mounts/ops/*
+!vanna/mounts/ops/.gitkeep
+vanna/mounts/cache/*
+!vanna/mounts/cache/.gitkeep
+vanna/training/generated/*
+!vanna/training/generated/.gitkeep
 plans
 .codex
 .vscode

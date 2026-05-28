@@ -17,6 +17,10 @@
 #   preload-jas [--background]
 #                         Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
+#   vanna-train [mode]   Run Vanna training workflow (baseline|schema-refresh|apply)
+#   vanna-train-ops      Save ad-hoc operational training note to Vanna memory
+#   vanna-memory-export  Export Vanna Chroma memory snapshot
+#   vanna-memory-import  Import Vanna Chroma memory snapshot
 #   generate-env         Generate .env from .env-example
 #   rotate-secrets       Overwrite ALL secrets in .env with fresh random values
 
@@ -1384,6 +1388,76 @@ cmd_flush_cache() {
     bash flush_jas_graph_cache.sh
 }
 
+cmd_vanna_train() {
+    local mode="${1:-apply}"
+    case "$mode" in
+        baseline|schema-refresh|apply) ;;
+        *)
+            die "Usage: $0 vanna-train [baseline|schema-refresh|apply]"
+            ;;
+    esac
+
+    info "Ensuring vanna service is running..."
+    $COMPOSE_CMD up -d vanna
+
+    info "Running vanna training mode: ${mode}"
+    $COMPOSE_CMD exec -T vanna python /app/scripts/train.py "$mode"
+    success "Vanna training completed (${mode})."
+}
+
+cmd_vanna_train_ops() {
+    [[ $# -ge 1 ]] || die "Usage: $0 vanna-train-ops <file-path|text>"
+
+    local note=""
+    if [[ $# -eq 1 && -f "$1" ]]; then
+        note="$(cat "$1")"
+        [[ -n "$note" ]] || die "Provided file '$1' is empty."
+        info "Loaded Vanna ops note from file: $1"
+    else
+        note="$*"
+    fi
+
+    info "Ensuring vanna service is running..."
+    $COMPOSE_CMD up -d vanna
+
+    info "Saving operational note to Vanna memory..."
+    $COMPOSE_CMD exec -T vanna python /app/scripts/train.py ops-note --text "$note"
+    success "Operational note saved to Vanna memory."
+}
+
+cmd_vanna_memory_export() {
+    local snapshot_name="${1:-}"
+    info "Ensuring vanna service is running..."
+    $COMPOSE_CMD up -d vanna
+
+    if [[ -n "$snapshot_name" ]]; then
+        info "Exporting Vanna memory snapshot: ${snapshot_name}"
+        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py export "$snapshot_name"
+    else
+        info "Exporting Vanna memory snapshot with generated name..."
+        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py export
+    fi
+    success "Vanna memory export completed."
+}
+
+cmd_vanna_memory_import() {
+    local snapshot_name="${1:-}"
+    local force_flag="${2:-}"
+    [[ -n "$snapshot_name" ]] || die "Usage: $0 vanna-memory-import <snapshot-name> [--force]"
+    [[ -z "$force_flag" || "$force_flag" == "--force" ]] || die "Usage: $0 vanna-memory-import <snapshot-name> [--force]"
+
+    info "Ensuring vanna service is running..."
+    $COMPOSE_CMD up -d vanna
+
+    info "Importing Vanna memory snapshot: ${snapshot_name}"
+    if [[ "$force_flag" == "--force" ]]; then
+        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py import "$snapshot_name" --force
+    else
+        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py import "$snapshot_name"
+    fi
+    success "Vanna memory import completed."
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Help
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1444,6 +1518,20 @@ Commands:
                        Use --background (or -b) to start it detached and return
                        immediately, writing logs under ./logs/.
   flush-cache          Flush the JAS graph cache via the REST API.
+  vanna-train [mode]   Run Vanna training workflow inside the vanna service.
+                       Modes:
+                         baseline       Load curated training assets
+                         schema-refresh Regenerate schema snapshot and load memory
+                         apply          Run baseline + schema-refresh (default)
+  vanna-train-ops <file-or-text>
+                       Save an ad-hoc operational note into Vanna memory.
+                       If one argument is a file path, file content is used.
+  vanna-memory-export [snapshot-name]
+                       Export Vanna Chroma memory to ./vanna/mounts/snapshots.
+                       If snapshot name is omitted, a timestamped name is used.
+  vanna-memory-import <snapshot-name> [--force]
+                       Import a Vanna memory snapshot from ./vanna/mounts/snapshots.
+                       Use --force to replace existing memory files.
 
   generate-env         Generate .env (and sead_authority_service/.env) from
                        the example files, optionally importing matching values
@@ -1483,6 +1571,10 @@ case "$command" in
     import-db)    cmd_import_db "${1:-}" ;;
     preload-jas)  cmd_preload_jas "$@" ;;
     flush-cache)  cmd_flush_cache ;;
+    vanna-train)  cmd_vanna_train "${1:-}" ;;
+    vanna-train-ops) cmd_vanna_train_ops "$@" ;;
+    vanna-memory-export) cmd_vanna_memory_export "${1:-}" ;;
+    vanna-memory-import) cmd_vanna_memory_import "${1:-}" "${2:-}" ;;
     generate-env)    cmd_generate_env ;;
     rotate-secrets)  cmd_rotate_secrets ;;
     help|--help|-h)  usage ;;

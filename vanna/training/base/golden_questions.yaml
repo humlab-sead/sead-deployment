@@ -1,0 +1,52 @@
+questions:
+  - question: "List 20 sites with their IDs and names"
+    sql: |
+      SELECT s.site_id, s.site_name
+      FROM public.tbl_sites AS s
+      ORDER BY s.site_id
+      LIMIT 20;
+    notes: "Simple site inventory listing."
+
+  - question: "How many measured values exist per site (top 25)?"
+    sql: |
+      SELECT
+        s.site_id,
+        s.site_name,
+        COUNT(*) AS measured_value_count
+      FROM public.tbl_sites AS s
+      JOIN public.tbl_sample_groups AS sg
+        ON sg.site_id = s.site_id
+      JOIN public.tbl_physical_samples AS ps
+        ON ps.sample_group_id = sg.sample_group_id
+      JOIN public.tbl_analysis_entities AS ae
+        ON ae.physical_sample_id = ps.physical_sample_id
+      JOIN public.tbl_measured_values AS mv
+        ON mv.analysis_entity_id = ae.analysis_entity_id
+      GROUP BY s.site_id, s.site_name
+      ORDER BY measured_value_count DESC, s.site_id
+      LIMIT 25;
+    notes: "Canonical join path from site to measured values."
+
+  - question: "Find measured values for a specific site id"
+    sql: |
+      SELECT
+        s.site_id,
+        s.site_name,
+        sg.sample_group_id,
+        sg.sample_group_name,
+        ps.physical_sample_id,
+        ps.sample_name,
+        mv.measured_value
+      FROM public.tbl_sites AS s
+      JOIN public.tbl_sample_groups AS sg
+        ON sg.site_id = s.site_id
+      JOIN public.tbl_physical_samples AS ps
+        ON ps.sample_group_id = sg.sample_group_id
+      JOIN public.tbl_analysis_entities AS ae
+        ON ae.physical_sample_id = ps.physical_sample_id
+      JOIN public.tbl_measured_values AS mv
+        ON mv.analysis_entity_id = ae.analysis_entity_id
+      WHERE s.site_id = 1
+      ORDER BY sg.sample_group_id, ps.physical_sample_id
+      LIMIT 1000;
+    notes: "Template query; parameterize `site_id` as needed."
