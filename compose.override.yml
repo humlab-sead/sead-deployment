@@ -76,7 +76,7 @@ services:
       VANNA_DB_NAME: ${DATABASE_NAME}
       VANNA_DB_USER: ${DATABASE_READ_ONLY_USER}
       VANNA_DB_PASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
-      VANNA_DB_SCHEMAS: ${VANNA_DB_SCHEMAS:-public,facet}
+      VANNA_DB_SCHEMAS: ${VANNA_DB_SCHEMAS:-public}
       VANNA_CHROMA_DIR: ${VANNA_CHROMA_DIR:-/var/lib/vanna/chroma}
       VANNA_SNAPSHOT_DIR: ${VANNA_SNAPSHOT_DIR:-/var/lib/vanna/snapshots}
       VANNA_TRAINING_DIR: ${VANNA_TRAINING_DIR:-/app/training}
@@ -85,6 +85,8 @@ services:
       VANNA_ADMIN_EMAILS: ${VANNA_ADMIN_EMAILS:-admin@local}
       VANNA_EMAIL_COOKIE: ${VANNA_EMAIL_COOKIE:-vanna_email}
     volumes:
+      - ./vanna/app.py:/app/app.py:Z
+      - ./vanna/scripts:/app/scripts:Z
       - ./vanna/mounts/chroma:/var/lib/vanna/chroma:Z
       - ./vanna/mounts/snapshots:/var/lib/vanna/snapshots:Z
       - ./vanna/mounts/ops:/var/lib/vanna/ops:Z

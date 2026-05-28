@@ -1,4 +1,14 @@
 questions:
+  - question: "Can you give me a few random sites?"
+    sql: |
+      SELECT
+        s.site_id,
+        s.site_name
+      FROM public.tbl_sites AS s
+      ORDER BY random()
+      LIMIT 5;
+    notes: "In SEAD, sites are archaeological site records in public.tbl_sites, not websites. Use this pattern for vague requests for a few random/example sites."
+
   - question: "List 20 sites with their IDs and names"
     sql: |
       SELECT s.site_id, s.site_name
@@ -6,6 +16,34 @@ questions:
       ORDER BY s.site_id
       LIMIT 20;
     notes: "Simple site inventory listing."
+
+  - question: "Retrieve site information"
+    sql: |
+      SELECT
+        s.site_id,
+        s.site_name,
+        s.latitude_dd,
+        s.longitude_dd,
+        s.site_description
+      FROM public.tbl_sites AS s
+      ORDER BY s.site_id
+      LIMIT 20;
+    notes: "Use public.tbl_sites for site information. There is no unprefixed sites table, and Vanna should not ask the user for the basic table name."
+
+  - question: "How many samples are associated with the site Nyköping 231?"
+    sql: |
+      SELECT
+        s.site_id,
+        s.site_name,
+        COUNT(ps.physical_sample_id) AS sample_count
+      FROM public.tbl_sites AS s
+      JOIN public.tbl_sample_groups AS sg
+        ON sg.site_id = s.site_id
+      JOIN public.tbl_physical_samples AS ps
+        ON ps.sample_group_id = sg.sample_group_id
+      WHERE s.site_name = 'Nyköping 231'
+      GROUP BY s.site_id, s.site_name;
+    notes: "In SEAD, user-facing 'samples' are physical samples in public.tbl_physical_samples. There is no unprefixed samples table. Use the site -> sample group -> physical sample join path."
 
   - question: "How many measured values exist per site (top 25)?"
     sql: |

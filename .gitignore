@@ -26,6 +26,8 @@ run-mongo-express.sh
 mongodb
 sead_browser_client
 scripts
+!vanna/scripts/
+!vanna/scripts/*
 bugs_import_model.sql
 bugsdata.sql
 clearinghouse/

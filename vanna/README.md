@@ -17,10 +17,18 @@ Use `deploy.sh` helper commands:
 - `./deploy.sh vanna-train apply`
 - `./deploy.sh vanna-train-ops "Always exclude test records where applicable"`
 
+Show the underlying training script help from the built image:
+
+- `podman run --rm sead-vanna python scripts/train.py --help`
+
 ## Memory snapshots
 
 - Export: `./deploy.sh vanna-memory-export my_snapshot`
 - Import: `./deploy.sh vanna-memory-import my_snapshot`
+
+Show the underlying snapshot script help from the built image:
+
+- `podman run --rm sead-vanna python scripts/memory_snapshot.py --help`
 
 ## Data locations
 
@@ -29,3 +37,4 @@ Use `deploy.sh` helper commands:
 - Ops logs + ledger: `./vanna/mounts/ops`
 - Versioned training assets: `./vanna/training/base`
 - Generated schema catalog: `./vanna/training/generated/schema_catalog.json`
+- Generated public table guide: `./vanna/training/generated/public_table_guide.md`

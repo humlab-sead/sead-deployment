@@ -2,11 +2,11 @@ terms:
   - term: SEAD
     meaning: Strategic Environmental Archaeology Database
   - term: Site
-    meaning: An archaeological site record, often keyed by `site_id`
+    meaning: An archaeological site record in `public.tbl_sites`, keyed by `site_id`; in SEAD, "site" does not mean a website unless the user explicitly says website, web page, URL, or domain
   - term: Sample group
-    meaning: Group of related physical samples from a site
+    meaning: Group of related physical samples from a site; stored in `public.tbl_sample_groups`
   - term: Physical sample
-    meaning: A sampled material unit tied to a sample group
+    meaning: A sampled material unit tied to a sample group; this is what users usually mean by "sample" or "samples", and it is stored in `public.tbl_physical_samples`, not a table named `samples`
   - term: Analysis entity
     meaning: An analytical unit linked to physical samples
   - term: Measured value
@@ -14,8 +14,10 @@ terms:
 
 synonyms:
   - canonical: site
-    aliases: ["locality", "location"]
+    aliases: ["sites", "archaeological site", "locality", "location"]
   - canonical: measured value
     aliases: ["measurement", "observation", "value"]
   - canonical: sample group
     aliases: ["context group", "group"]
+  - canonical: physical sample
+    aliases: ["sample", "samples", "physical samples"]
