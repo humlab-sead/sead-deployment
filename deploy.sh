@@ -672,9 +672,10 @@ fetch_github_release_tags() {
     local endpoint="repos/${repo}/releases?per_page=100"
     local api_url="https://api.github.com/${endpoint}"
     local response http_code release_json
+    local github_token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
 
-    # Prefer authenticated GitHub API requests via `gh` to avoid anonymous rate limits.
-    if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+    # Prefer authenticated GitHub API requests via `gh` when available.
+    if command -v gh &>/dev/null; then
         local gh_response gh_error
         if gh_response="$(
             gh api \
@@ -692,10 +693,26 @@ fetch_github_release_tags() {
                 warn "Authenticated GitHub request failed for ${repo} via gh. Falling back to curl." >&2
             fi
         fi
+
+        # If no explicit env token is set, try reading one from gh for curl fallback.
+        if [[ -z "$github_token" ]]; then
+            github_token="$(gh auth token 2>/dev/null || true)"
+        fi
     fi
 
     if [[ -z "${release_json:-}" ]]; then
-        if ! response="$(curl -sS -L -w $'\n%{http_code}' "$api_url")"; then
+        local -a curl_args=(
+            -sS -L
+            -H "Accept: application/vnd.github+json"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+            -w $'\n%{http_code}'
+        )
+        if [[ -n "$github_token" ]]; then
+            curl_args+=(-H "Authorization: Bearer ${github_token}")
+        fi
+        curl_args+=("$api_url")
+
+        if ! response="$(curl "${curl_args[@]}")"; then
             warn "Failed to fetch release list from ${api_url} (network/curl error)." >&2
             return 1
         fi
