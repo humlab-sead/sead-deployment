@@ -1006,20 +1006,22 @@ cmd_install() {
         command -v "$tool" &>/dev/null || die "Required tool '$tool' not found. Please install it."
     done
 
-    # Ask which container engine to use
+    # Ask which compose command to use.
     echo
-    echo -e "${CYAN}Select container engine:${NC}"
+    echo -e "${CYAN}Select compose command:${NC}"
     local engine_opts=()
     local engine_labels=()
-    local native_note=" (recommended)"
 
     # Only show compose-capable engines.
     for candidate in podman docker podman-compose docker-compose; do
         _engine_compose_works "$candidate" || continue
         local label="$candidate"
-        if [[ "$candidate" == "podman" || "$candidate" == "docker" ]]; then
-            label+="$native_note"
-        fi
+        case "$candidate" in
+            podman)         label="podman compose (recommended)" ;;
+            docker)         label="docker compose (recommended)" ;;
+            podman-compose) label="podman-compose (legacy standalone)" ;;
+            docker-compose) label="docker-compose (legacy standalone)" ;;
+        esac
         engine_opts+=("$candidate")
         engine_labels+=("$label")
     done
@@ -1027,9 +1029,20 @@ cmd_install() {
         die "No supported compose engine found. Install one of: podman compose, docker compose, podman-compose, docker-compose."
     fi
     local default_engine_idx=0
-    # Prefer the already-detected CONTAINER_TOOL as the default.
+    # Prefer native compose integrations as defaults; fall back to auto-detected tool.
     for i in "${!engine_opts[@]}"; do
-        [[ "${engine_opts[$i]}" == "$CONTAINER_TOOL" ]] && default_engine_idx=$i
+        [[ "${engine_opts[$i]}" == "podman" ]] && default_engine_idx=$i
+    done
+    for i in "${!engine_opts[@]}"; do
+        if [[ "${engine_opts[$i]}" == "docker" && "${engine_opts[$default_engine_idx]}" != "podman" ]]; then
+            default_engine_idx=$i
+        fi
+    done
+    for i in "${!engine_opts[@]}"; do
+        if [[ "${engine_opts[$default_engine_idx]}" != "podman" && "${engine_opts[$default_engine_idx]}" != "docker" ]] \
+            && [[ "${engine_opts[$i]}" == "$CONTAINER_TOOL" ]]; then
+            default_engine_idx=$i
+        fi
     done
     for i in "${!engine_opts[@]}"; do
         printf '  %d) %s\n' "$((i+1))" "${engine_labels[$i]}"
@@ -1047,7 +1060,7 @@ cmd_install() {
     export CONTAINER_TOOL
     apply_compose_compatibility_override
     COMPOSE_CMD="$(build_compose_cmd)"
-    info "Using container engine: $CONTAINER_TOOL"
+    info "Using compose command: $CONTAINER_TOOL"
 
     # Ask for deployment mode
     echo
