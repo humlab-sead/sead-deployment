@@ -207,6 +207,45 @@ services:
     networks:
       - sead_network
 
+  vanna:
+    build:
+      context: ./vanna
+    restart: unless-stopped
+    depends_on:
+      - postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      VANNA_OPENAI_MODEL: ${VANNA_OPENAI_MODEL:-gpt-4o-mini}
+      VANNA_DB_HOST: postgresql
+      VANNA_DB_PORT: 5432
+      VANNA_DB_NAME: ${DATABASE_NAME}
+      VANNA_DB_USER: ${DATABASE_READ_ONLY_USER}
+      VANNA_DB_PASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
+      VANNA_DB_SCHEMAS: ${VANNA_DB_SCHEMAS:-public}
+      VANNA_CHROMA_DIR: ${VANNA_CHROMA_DIR:-/var/lib/vanna/chroma}
+      VANNA_SNAPSHOT_DIR: ${VANNA_SNAPSHOT_DIR:-/var/lib/vanna/snapshots}
+      VANNA_TRAINING_DIR: ${VANNA_TRAINING_DIR:-/app/training}
+      VANNA_OPS_DIR: ${VANNA_OPS_DIR:-/var/lib/vanna/ops}
+      VANNA_CACHE_DIR: ${VANNA_CACHE_DIR:-/var/lib/vanna/cache}
+      VANNA_ADMIN_EMAILS: ${VANNA_ADMIN_EMAILS:-admin@local}
+      VANNA_EMAIL_COOKIE: ${VANNA_EMAIL_COOKIE:-vanna_email}
+    volumes:
+      - ./vanna/app.py:/app/app.py:Z
+      - ./vanna/scripts:/app/scripts:Z
+      - ./vanna/mounts/chroma:/var/lib/vanna/chroma:Z
+      - ./vanna/mounts/snapshots:/var/lib/vanna/snapshots:Z
+      - ./vanna/mounts/ops:/var/lib/vanna/ops:Z
+      - ./vanna/mounts/cache:/var/lib/vanna/cache:Z
+      - ./vanna/training:/app/training:Z
+    networks:
+      - sead_network
+
   #clearinghouse:
   #  build: ./clearinghouse/docker
   #  restart: unless-stopped
