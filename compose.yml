@@ -246,6 +246,45 @@ services:
     networks:
       - sead_network
 
+  sead_agent:
+    build:
+      context: ./sead_agent
+    restart: unless-stopped
+    ports:
+      - "${SEAD_AGENT_PORT}:8585"
+    #The LLM the agent talks to is served on the podman host itself (usually through an
+    #ssh tunnel), which is not "localhost" from inside this container. It is reached at
+    #llm-host, a host-only address on the seadllm0 dummy interface - see
+    #sead_agent/scripts/sead-llm-host.service. Binding the tunnel there instead of
+    #0.0.0.0 keeps the model off the LAN and off the VPN entirely.
+    extra_hosts:
+      - "llm-host:10.123.0.1"
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
+    environment:
+      SEAD_AGENT_PORT: 8585
+      SEAD_AGENT_LLM_BASE_URL: ${SEAD_AGENT_LLM_BASE_URL:-}
+      SEAD_AGENT_LLM_API_KEY: ${SEAD_AGENT_LLM_API_KEY:-local}
+      SEAD_AGENT_LLM_MODEL: ${SEAD_AGENT_LLM_MODEL:-}
+      SEAD_AGENT_THINKING_LEVEL: ${SEAD_AGENT_THINKING_LEVEL:-low}
+      SEAD_AGENT_INSTRUCTIONS_FILE: ${SEAD_AGENT_INSTRUCTIONS_FILE:-}
+      SEAD_AGENT_ENABLE_SANDBOX_TOOLS: ${SEAD_AGENT_ENABLE_SANDBOX_TOOLS:-false}
+      SEAD_AGENT_TIMEOUT_MS: ${SEAD_AGENT_TIMEOUT_MS:-120000}
+      SEAD_AGENT_MAX_INPUT_LENGTH: ${SEAD_AGENT_MAX_INPUT_LENGTH:-4000}
+      SEAD_AGENT_RATE_LIMIT_WINDOW_MS: ${SEAD_AGENT_RATE_LIMIT_WINDOW_MS:-60000}
+      SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS: ${SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS:-10}
+      SEAD_AGENT_MAX_CONCURRENT_TURNS: ${SEAD_AGENT_MAX_CONCURRENT_TURNS:-2}
+      SEAD_AGENT_MAX_SESSIONS: ${SEAD_AGENT_MAX_SESSIONS:-20}
+      SEAD_AGENT_SESSION_TTL_MS: ${SEAD_AGENT_SESSION_TTL_MS:-900000}
+      SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS: ${SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS:-60000}
+      SEAD_AGENT_MAX_CLIENT_ACTIONS: ${SEAD_AGENT_MAX_CLIENT_ACTIONS:-20}
+    volumes:
+      #The training documents are appended to the system prompt. Mounted so they can be
+      #edited and reloaded with a restart instead of an image rebuild.
+      - ./sead_agent/training:/sead_agent/training:Z
+    networks:
+      - sead_network
+
   #clearinghouse:
   #  build: ./clearinghouse/docker
   #  restart: unless-stopped

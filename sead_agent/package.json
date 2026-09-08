@@ -1,0 +1,24 @@
+{
+  "name": "sead_agent",
+  "version": "1.0.0",
+  "description": "The SEAD agent - answers the SEAD web client chatbox with a pi harness agent running against a locally hosted LLM",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@ai-sdk/harness": "^1.0.102",
+    "@ai-sdk/harness-pi": "^1.0.104",
+    "@ai-sdk/sandbox-just-bash": "^1.0.102",
+    "ai": "^7.0.93",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "just-bash": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
