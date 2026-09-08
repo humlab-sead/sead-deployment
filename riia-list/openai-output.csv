@@ -1,0 +1,326 @@
+Original term;Inferred common name;Species;Genus;Family;Order;Common name DB match;Common name DB status;Common name ID;Common name taxon_id;Species DB match;Species DB status;Taxon_id;Genus DB match;Genus DB status;Genus_id;Family DB match;Family DB status;Family_id;Order DB match;Order DB status;Order_id
+Aborrskinn;Abborre;Perca fluviatilis;Perca;Percidae;Perciformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Agn;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Al;Al;;Alnus;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Alnus;MATCH;263;Betulaceae;MATCH;32;Fagales;MATCH;19
+Albark;Al;;Alnus;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Alnus;MATCH;263;Betulaceae;MATCH;32;Fagales;MATCH;19
+Alknopp;Al;;Alnus;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Alnus;MATCH;263;Betulaceae;MATCH;32;Fagales;MATCH;19
+Alkottar;Al;;Alnus;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Alnus;MATCH;263;Betulaceae;MATCH;32;Fagales;MATCH;19
+Alkotte;Al;;Alnus;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Alnus;MATCH;263;Betulaceae;MATCH;32;Fagales;MATCH;19
+Alm;Alm;Ulmus glabra;Ulmus;Ulmaceae;Rosales;;NO_MATCH;;;Ulmus glabra;MATCH;5530;Ulmus;MATCH;1061;Ulmaceae;MATCH;182;Rosales;MATCH;22
+Amulettring;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ask;Ask;Fraxinus excelsior;Fraxinus;Oleaceae;Lamiales;ask;MATCH;2542;3213;Fraxinus excelsior;MATCH;3213;Fraxinus;MATCH;702;Oleaceae;MATCH;124;Lamiales;MATCH;1
+Askl;Ask;Fraxinus excelsior;Fraxinus;Oleaceae;Lamiales;ask;MATCH;2542;3213;Fraxinus excelsior;MATCH;3213;Fraxinus;MATCH;702;Oleaceae;MATCH;124;Lamiales;MATCH;1
+Asp;Asp;Populus tremula;Populus;Salicaceae;Malpighiales;asp;MATCH;3871;5051;Populus tremula;MATCH;5051;Populus;MATCH;983;Salicaceae;MATCH;158;Malpighiales;MATCH;28
+Avenbok;Avenbok;Carpinus betulus;Carpinus;Betulaceae;Fagales;avenbok;MATCH;1457;1824;Carpinus betulus;MATCH;1824;Carpinus;MATCH;431;Betulaceae;MATCH;32;Fagales;MATCH;19
+Baljfragment;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Bark;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Barr;Barrträd;;;Pinaceae;Pinales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Pinaceae;MATCH;137;Pinales;MATCH;33
+Barrträd;Barrträd;;;Pinaceae;Pinales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Pinaceae;MATCH;137;Pinales;MATCH;33
+Basstamdelar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Benved;Benved;Euonymus europaeus;Euonymus;Celastraceae;Celastrales;benved;MATCH;1302;1622;;NO_MATCH;;;NO_MATCH;;Celastraceae;MATCH;49;;NO_MATCH;
+Bergssyra;Bergsyra;Rumex acetosella;Rumex;Polygonaceae;Caryophyllales;bergsyra;MATCH;3270;4252;Rumex acetosella;AMBIGUOUS;4251|18005;Rumex;MATCH;897;Polygonaceae;MATCH;144;Caryophyllales;MATCH;8
+Betula;Björk;;Betula;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Betula;MATCH;264;Betulaceae;MATCH;32;Fagales;MATCH;19
+Bitterpilört;Bitterpilört;Persicaria hydropiper;Persicaria;Polygonaceae;Caryophyllales;bitterpilört;MATCH;3238;4208;Persicaria hydropiper;MATCH;4208;Persicaria;MATCH;894;Polygonaceae;MATCH;144;Caryophyllales;MATCH;8
+Bivax;Honungsbi;Apis mellifera;Apis;Apidae;Hymenoptera;;NO_MATCH;;;Apis mellifera;MATCH;39503;Apis;MATCH;15463;APIDAE;MATCH;1977;;NO_MATCH;
+Bjrök;Björk;;Betula;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Betula;MATCH;264;Betulaceae;MATCH;32;Fagales;MATCH;19
+Björkl;Björk;;Betula;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Betula;MATCH;264;Betulaceae;MATCH;32;Fagales;MATCH;19
+Björknäver;Björk;;Betula;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Betula;MATCH;264;Betulaceae;MATCH;32;Fagales;MATCH;19
+Björn;Björn;Ursus arctos;Ursus;Ursidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Blandmaterial;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Bok;Bok;Fagus sylvatica;Fagus;Fagaceae;Fagales;bok;MATCH;2032;2610;Fagus sylvatica;MATCH;2610;Fagus;MATCH;550;Fagaceae;MATCH;76;Fagales;MATCH;19
+Brakved;Brakved;Frangula alnus;Frangula;Rhamnaceae;Rosales;brakved;MATCH;3476;4559;Frangula alnus;MATCH;4559;Frangula;MATCH;934;Rhamnaceae;MATCH;153;Rosales;MATCH;22
+Brudberöd;Brudbröd;Filipendula vulgaris;Filipendula;Rosaceae;Rosales;brudbröd;MATCH;3575;4671;Filipendula vulgaris;MATCH;4671;Filipendula;MATCH;952;Rosaceae;MATCH;154;Rosales;MATCH;22
+Brudbröd;Brudbröd;Filipendula vulgaris;Filipendula;Rosaceae;Rosales;brudbröd;MATCH;3575;4671;Filipendula vulgaris;MATCH;4671;Filipendula;MATCH;952;Rosaceae;MATCH;154;Rosales;MATCH;22
+Brunskära;Brunskära;Bidens tripartita;Bidens;Asteraceae;Asterales;brunskära;MATCH;365;432;Bidens tripartita;MATCH;432;Bidens;MATCH;131;Asteraceae;MATCH;27;Asterales;MATCH;15
+markvegetation;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+matrester;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Brännässla;Brännässla;Urtica dioica;Urtica;Urticaceae;Rosales;brännässla;MATCH;4195;5540;Urtica dioica;AMBIGUOUS;5538|18118;Urtica;MATCH;1063;Urticaceae;MATCH;183;Rosales;MATCH;22
+ben;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Bröd;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+kubbvete;Kubbvete;Triticum compactum;Triticum;Poaceae;Poales;;NO_MATCH;;;;NO_MATCH;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Brödvete;Brödvete;Triticum aestivum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum aestivum;MATCH;4143;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Bärris;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Bäver;Bäver;Castor fiber;Castor;Castoridae;Rodentia;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Ceerealia indet;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Ceralia;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Cerealia;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Cerelia;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Cereralia;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Crerealia;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Cyperaceae;Halvgräs;;;Cyperaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Cyperaceae;MATCH;63;Poales;MATCH;34
+Delfin;Delfin;;;Delphinidae;Cetacea;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;
+Dinkel;Dinkel;Triticum spelta;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum spelta;AMBIGUOUS;4145|18227;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Djurben;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Dån;Dån;;Galeopsis;Lamiaceae;Lamiales;;NO_MATCH;;;;NO_VALUE;;Galeopsis;MATCH;613;Lamiaceae;MATCH;99;Lamiales;MATCH;1
+Däggdjur;Däggdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Däggfjur;Däggdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ek;Ek;Quercus robur;Quercus;Fagaceae;Fagales;ek;MATCH;2035;2614;Quercus robur;MATCH;2614;Quercus;MATCH;551;Fagaceae;MATCH;76;Fagales;MATCH;19
+Ek;Ek;Quercus robur;Quercus;Fagaceae;Fagales;ek;MATCH;2035;2614;Quercus robur;MATCH;2614;Quercus;MATCH;551;Fagaceae;MATCH;76;Fagales;MATCH;19
+Ekbark;Ek;Quercus robur;Quercus;Fagaceae;Fagales;ek;MATCH;2035;2614;Quercus robur;MATCH;2614;Quercus;MATCH;551;Fagaceae;MATCH;76;Fagales;MATCH;19
+Ekl;Ek;Quercus robur;Quercus;Fagaceae;Fagales;ek;MATCH;2035;2614;Quercus robur;MATCH;2614;Quercus;MATCH;551;Fagaceae;MATCH;76;Fagales;MATCH;19
+Ekollon;Ek;Quercus robur;Quercus;Fagaceae;Fagales;ek;MATCH;2035;2614;Quercus robur;MATCH;2614;Quercus;MATCH;551;Fagaceae;MATCH;76;Fagales;MATCH;19
+Emme;Emmer;Triticum dicoccum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum dicoccum;MATCH;18050;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Emmer;Emmer;Triticum dicoccum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum dicoccum;MATCH;18050;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Emmervete;Emmer;Triticum dicoccum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum dicoccum;MATCH;18050;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+En;En;Juniperus communis;Juniperus;Cupressaceae;Pinales;en;MATCH;1510;1880;Juniperus communis;AMBIGUOUS;1878|18071;Juniperus;MATCH;450;Cupressaceae;MATCH;62;Pinales;MATCH;33
+Enbär;En;Juniperus communis;Juniperus;Cupressaceae;Pinales;en;MATCH;1510;1880;Juniperus communis;AMBIGUOUS;1878|18071;Juniperus;MATCH;450;Cupressaceae;MATCH;62;Pinales;MATCH;33
+Enfrön;En;Juniperus communis;Juniperus;Cupressaceae;Pinales;en;MATCH;1510;1880;Juniperus communis;AMBIGUOUS;1878|18071;Juniperus;MATCH;450;Cupressaceae;MATCH;62;Pinales;MATCH;33
+Enkorn;Enkorn;Triticum monococcum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum monococcum;MATCH;18241;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Harts;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fisk;Fisk;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fiskben;Fisk;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fiskfjäll;Fisk;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fläder;Fläder;Sambucus nigra;Sambucus;Adoxaceae;Dipsacales;fläder;MATCH;18;19;Sambucus nigra;MATCH;19;Sambucus;MATCH;9;Adoxaceae;MATCH;6;Dipsacales;MATCH;25
+Frökapsel;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fröskal;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Furu;Furu;Pinus sylvestris;Pinus;Pinaceae;Pinales;;NO_MATCH;;;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Fågel;Fågel;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Fågelbär;Fågelbär;Prunus avium;Prunus;Rosaceae;Rosales;;NO_MATCH;;;Prunus avium;MATCH;4747;Prunus;MATCH;960;Rosaceae;MATCH;154;Rosales;MATCH;22
+Får;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Fårlort;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Fårtand;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+ört;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+granbarr;Gran;Picea abies;Picea;Pinaceae;Pinales;gran;MATCH;2782;3591;Picea abies;AMBIGUOUS;3590|18070;Picea;MATCH;763;Pinaceae;MATCH;137;Pinales;MATCH;33
+rottrådar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Get;Get;Capra hircus;Capra;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Getapel;Getapel;Rhamnus cathartica;Rhamnus;Rhamnaceae;Rosales;getapel;MATCH;3477;4560;;NO_MATCH;;Rhamnus;MATCH;935;Rhamnaceae;MATCH;153;Rosales;MATCH;22
+Gnagare;Gnagare;;;;Rodentia;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;
+Gran;Gran;Picea abies;Picea;Pinaceae;Pinales;gran;MATCH;2782;3591;Picea abies;AMBIGUOUS;3590|18070;Picea;MATCH;763;Pinaceae;MATCH;137;Pinales;MATCH;33
+Granbar;Gran;Picea abies;Picea;Pinaceae;Pinales;gran;MATCH;2782;3591;Picea abies;AMBIGUOUS;3590|18070;Picea;MATCH;763;Pinaceae;MATCH;137;Pinales;MATCH;33
+Granbarr;Gran;Picea abies;Picea;Pinaceae;Pinales;gran;MATCH;2782;3591;Picea abies;AMBIGUOUS;3590|18070;Picea;MATCH;763;Pinaceae;MATCH;137;Pinales;MATCH;33
+Gris;Gris;Sus scrofa domesticus;Sus;Suidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Gråsäl;Gråsäl;Halichoerus grypus;Halichoerus;Phocidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Gråärt;Gråärt;Pisum sativum;Pisum;Fabaceae;Fabales;;NO_MATCH;;;Pisum sativum;AMBIGUOUS;2495|18045;Pisum;MATCH;538;Fabaceae;MATCH;75;Fabales;MATCH;36
+Gräs;Gräs;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Grässtrå;Gräs;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Grässtrån;Gräs;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Gräsätare;Gräsätare;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Grönlandssäl;Grönlandssäl;Pagophilus groenlandicus;Pagophilus;Phocidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Gröt;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Gåsört;Gåsört;Potentilla anserina;Potentilla;Rosaceae;Rosales;gåsört;MATCH;3523;4611;;NO_MATCH;;Potentilla;MATCH;959;Rosaceae;MATCH;154;Rosales;MATCH;22
+Gädda;Gädda;Esox lucius;Esox;Esocidae;Esociformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Hagtorn;Hagtorn;;Crataegus;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;Crataegus;MATCH;947;Rosaceae;MATCH;154;Rosales;MATCH;22
+Hallon;Hallon;Rubus idaeus;Rubus;Rosaceae;Rosales;hallon;MATCH;3711;4867;Rubus idaeus;AMBIGUOUS;4867|18191;Rubus;MATCH;964;Rosaceae;MATCH;154;Rosales;MATCH;22
+Halm;;;;Poaceae;Poales;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Halmstrå;;;;Poaceae;Poales;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Hampa;Hampa;Cannabis sativa;Cannabis;Cannabaceae;Rosales;hampa;MATCH;1118;1387;Cannabis sativa;MATCH;1387;Cannabis;MATCH;361;Cannabaceae;MATCH;44;Rosales;MATCH;22
+Harts;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Harts;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Hasel;Hassel;Corylus avellana;Corylus;Betulaceae;Fagales;hassel;MATCH;1458;1825;Corylus avellana;MATCH;1825;Corylus;MATCH;432;Betulaceae;MATCH;32;Fagales;MATCH;19
+Hassel;Hassel;Corylus avellana;Corylus;Betulaceae;Fagales;hassel;MATCH;1458;1825;Corylus avellana;MATCH;1825;Corylus;MATCH;432;Betulaceae;MATCH;32;Fagales;MATCH;19
+Hasselnöt;Hassel;Corylus avellana;Corylus;Betulaceae;Fagales;hassel;MATCH;1458;1825;Corylus avellana;MATCH;1825;Corylus;MATCH;432;Betulaceae;MATCH;32;Fagales;MATCH;19
+Hasselskal;Hassel;Corylus avellana;Corylus;Betulaceae;Fagales;hassel;MATCH;1458;1825;Corylus avellana;MATCH;1825;Corylus;MATCH;432;Betulaceae;MATCH;32;Fagales;MATCH;19
+Haver;Havre;Avena sativa;Avena;Poaceae;Poales;havre;MATCH;2882;3743;Avena sativa;AMBIGUOUS;3742|18023;Avena;MATCH;786;Poaceae;MATCH;141;Poales;MATCH;34
+Havre;Havre;Avena sativa;Avena;Poaceae;Poales;havre;MATCH;2882;3743;Avena sativa;AMBIGUOUS;3742|18023;Avena;MATCH;786;Poaceae;MATCH;141;Poales;MATCH;34
+Hirs;Hirs;Panicum miliaceum;Panicum;Poaceae;Poales;hirs;MATCH;3088;4013;Panicum miliaceum;MATCH;4013;Panicum;MATCH;845;Poaceae;MATCH;141;Poales;MATCH;34
+Hjort;Hjort;;;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;
+Hjortdjur;Hjortdjur;;;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;
+Hjorthår;Hjort;;;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;
+Hjortron;Hjortron;Rubus chamaemorus;Rubus;Rosaceae;Rosales;hjortron;MATCH;3692;4847;Rubus chamaemorus;MATCH;4847;Rubus;MATCH;964;Rosaceae;MATCH;154;Rosales;MATCH;22
+Hjärnsubstans;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+nötkreatur;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Horn;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Hovdjur;Hovdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Humle;Humle;Humulus lupulus;Humulus;Cannabaceae;Rosales;humle;MATCH;1120;1389;Humulus lupulus;AMBIGUOUS;1389|18210;Humulus;MATCH;362;Cannabaceae;MATCH;44;Rosales;MATCH;22
+Hund;Hund;Canis lupus familiaris;Canis;Canidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Hår;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Hägg;Hägg;Prunus padus;Prunus;Rosaceae;Rosales;hägg;MATCH;3634;4761;Prunus padus;AMBIGUOUS;4759|18127;Prunus;MATCH;960;Rosaceae;MATCH;154;Rosales;MATCH;22
+Häst;Häst;Equus caballus;Equus;Equidae;Perissodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Häst;Häst;Equus caballus;Equus;Equidae;Perissodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Hästböna;Hästböna;Vicia faba;Vicia;Fabaceae;Fabales;;NO_MATCH;;;Vicia faba;MATCH;2575;Vicia;MATCH;548;Fabaceae;MATCH;75;Fabales;MATCH;36
+Hästsko;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Hästspillning;Häst;Equus caballus;Equus;Equidae;Perissodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Hästtand;Häst;Equus caballus;Equus;Equidae;Perissodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Höna;Höna;Gallus gallus domesticus;Gallus;Phasianidae;Galliformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Idegran;Idegran;Taxus baccata;Taxus;Taxaceae;Pinales;idegran;MATCH;4155;5483;Taxus baccata;MATCH;5483;Taxus;MATCH;1045;Taxaceae;MATCH;172;Pinales;MATCH;33
+Idisslare;Idisslare;;;;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;
+Igelknopp;Igelknopp;;Sparganium;Typhaceae;Poales;igelknopp;MATCH;4176;5510;;NO_VALUE;;Sparganium;MATCH;1059;Typhaceae;MATCH;181;Poales;MATCH;34
+Indet;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Iris;Iris;;Iris;Iridaceae;Asparagales;;NO_MATCH;;;;NO_VALUE;;Iris;MATCH;597;Iridaceae;MATCH;93;Asparagales;MATCH;7
+Jlvträd;Lövträd;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Jurpa;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Kalkbruk;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Kalv;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Katt;Katt;Felis catus;Felis;Felidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Knopp;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Knylhavre;Knylhavre;Arrhenatherum elatius;Arrhenatherum;Poaceae;Poales;knylhavre;MATCH;2877;3737;Arrhenatherum elatius;AMBIGUOUS;3735|18122;Arrhenatherum;MATCH;785;Poaceae;MATCH;141;Poales;MATCH;34
+Ko;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Koprolit;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Korgblommiga;Korgblommiga;;;Asteraceae;Asterales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Asteraceae;MATCH;27;Asterales;MATCH;15
+Korn;Korn;Hordeum vulgare;Hordeum;Poaceae;Poales;;NO_MATCH;;;Hordeum vulgare;AMBIGUOUS;3970|18010;Hordeum;MATCH;830;Poaceae;MATCH;141;Poales;MATCH;34
+Kornell;Kornell;;Cornus;Cornaceae;Cornales;;NO_MATCH;;;;NO_VALUE;;Cornus;MATCH;430;Cornaceae;MATCH;58;Cornales;MATCH;31
+Kornhalm;Korn;Hordeum vulgare;Hordeum;Poaceae;Poales;;NO_MATCH;;;Hordeum vulgare;AMBIGUOUS;3970|18010;Hordeum;MATCH;830;Poaceae;MATCH;141;Poales;MATCH;34
+Kotefjjäl;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Kottefjäll;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Kronhjort;Kronhjort;Cervus elaphus;Cervus;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Kråkbär;Kråkbär;Empetrum nigrum;Empetrum;Ericaceae;Ericales;kråkbär;MATCH;1740;2256;Empetrum nigrum;AMBIGUOUS;2254|18039;Empetrum;MATCH;490;Ericaceae;MATCH;73;Ericales;MATCH;4
+Kubbvete;Kubbvete;Triticum compactum;Triticum;Poaceae;Poales;;NO_MATCH;;;;NO_MATCH;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Kvist;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Kärrsköldpadda;Kärrsköldpadda;Emys orbicularis;Emys;Emydidae;Testudines;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Lager;Lager;Laurus nobilis;Laurus;Lauraceae;Laurales;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;Lauraceae;MATCH;101;Laurales;MATCH;40
+Lamm;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Lid;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Lin;Lin;Linum usitatissimum;Linum;Linaceae;Malpighiales;lin;MATCH;2453;3112;Linum usitatissimum;MATCH;3112;Linum;MATCH;657;Linaceae;MATCH;106;Malpighiales;MATCH;28
+Lind;Lind;Tilia cordata;Tilia;Malvaceae;Malvales;lind;MATCH;4164;5492;Tilia cordata;MATCH;5492;Tilia;MATCH;1052;Malvaceae;MATCH;111;Malvales;MATCH;27
+Lindbast;Lind;Tilia cordata;Tilia;Malvaceae;Malvales;lind;MATCH;4164;5492;Tilia cordata;MATCH;5492;Tilia;MATCH;1052;Malvaceae;MATCH;111;Malvales;MATCH;27
+Linfiber;Lin;Linum usitatissimum;Linum;Linaceae;Malpighiales;lin;MATCH;2453;3112;Linum usitatissimum;MATCH;3112;Linum;MATCH;657;Linaceae;MATCH;106;Malpighiales;MATCH;28
+Linfrö;Lin;Linum usitatissimum;Linum;Linaceae;Malpighiales;lin;MATCH;2453;3112;Linum usitatissimum;MATCH;3112;Linum;MATCH;657;Linaceae;MATCH;106;Malpighiales;MATCH;28
+däggdjur;Däggdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ljung;Ljung;Calluna vulgaris;Calluna;Ericaceae;Ericales;ljung;MATCH;1734;2249;Calluna vulgaris;MATCH;2249;Calluna;MATCH;486;Ericaceae;MATCH;73;Ericales;MATCH;4
+Läder;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Löbträd;Lövträd;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Lönn;Lönn;Acer platanoides;Acer;Sapindaceae;Sapindales;lönn;MATCH;5;5;Acer platanoides;MATCH;5;Acer;MATCH;3;Sapindaceae;MATCH;161;Sapindales;MATCH;2
+Lövträ;Lövträd;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Lövträd;Lövträd;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Makrofossil;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Maloidea;Kärnfruktväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Maloideae;Kärnfruktväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Maloidear;Kärnfruktväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Matskopa;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Matskorpa;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Matskorpa;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Mjölon;Mjölon;Arctostaphylos uva-ursi;Arctostaphylos;Ericaceae;Ericales;mjölon;MATCH;1733;2248;Arctostaphylos uva-ursi;MATCH;2248;Arctostaphylos;MATCH;485;Ericaceae;MATCH;73;Ericales;MATCH;4
+Mossa;Mossa;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Murgröna;Murgröna;Hedera helix;Hedera;Araliaceae;Apiales;murgröna;MATCH;243;276;Hedera helix;MATCH;276;Hedera;MATCH;98;Araliaceae;MATCH;20;Apiales;MATCH;10
+Måra;Måra;;Galium;Rubiaceae;Gentianales;;NO_MATCH;;;;NO_VALUE;;Galium;MATCH;975;Rubiaceae;MATCH;155;Gentianales;MATCH;11
+Männinska;Människa;Homo sapiens;Homo;Hominidae;Primates;;NO_MATCH;;;;NO_MATCH;;Homo;MATCH;16751;Hominidae;MATCH;1992;Primates;MATCH;140
+Människa;Människa;Homo sapiens;Homo;Hominidae;Primates;;NO_MATCH;;;;NO_MATCH;;Homo;MATCH;16751;Hominidae;MATCH;1992;Primates;MATCH;140
+Männska;Människa;Homo sapiens;Homo;Hominidae;Primates;;NO_MATCH;;;;NO_MATCH;;Homo;MATCH;16751;Hominidae;MATCH;1992;Primates;MATCH;140
+Mört;Mört;Rutilus rutilus;Rutilus;Cyprinidae;Cypriniformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+korn;Korn;Hordeum vulgare;Hordeum;Poaceae;Poales;;NO_MATCH;;;Hordeum vulgare;AMBIGUOUS;3970|18010;Hordeum;MATCH;830;Poaceae;MATCH;141;Poales;MATCH;34
+kor;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+korn;Korn;Hordeum vulgare;Hordeum;Poaceae;Poales;;NO_MATCH;;;Hordeum vulgare;AMBIGUOUS;3970|18010;Hordeum;MATCH;830;Poaceae;MATCH;141;Poales;MATCH;34
+Nate;Nate;;Potamogeton;Potamogetonaceae;Alismatales;;NO_MATCH;;;;NO_VALUE;;Potamogeton;MATCH;905;Potamogetonaceae;MATCH;148;Alismatales;MATCH;3
+Näver;Björk;;Betula;Betulaceae;Fagales;;NO_MATCH;;;;NO_VALUE;;Betula;MATCH;264;Betulaceae;MATCH;32;Fagales;MATCH;19
+Nörkreatur;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nöt;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nötboskap;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nötfiber;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nöthår;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nötkreatur;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Nötkrestur;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+hasselnöt;Hassel;Corylus avellana;Corylus;Betulaceae;Fagales;hassel;MATCH;1458;1825;Corylus avellana;MATCH;1825;Corylus;MATCH;432;Betulaceae;MATCH;32;Fagales;MATCH;19
+Oförkolnat;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ogräs;Ogräs;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Oid;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Okänt;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Olvon;Olvon;Viburnum opulus;Viburnum;Adoxaceae;Dipsacales;olvon;MATCH;23;25;Viburnum opulus;MATCH;25;Viburnum;MATCH;10;Adoxaceae;MATCH;6;Dipsacales;MATCH;25
+Ostron;Ostron;Ostrea edulis;Ostrea;Ostreidae;Ostreida;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Oxel;Oxel;Sorbus intermedia;Sorbus;Rosaceae;Rosales;oxel;MATCH;3775;4943;Sorbus intermedia;MATCH;4943;Sorbus;MATCH;969;Rosaceae;MATCH;154;Rosales;MATCH;22
+Palsternacka;Palsternacka;Pastinaca sativa;Pastinaca;Apiaceae;Apiales;palsternacka;MATCH;194;220;Pastinaca sativa;MATCH;219;Pastinaca;MATCH;73;Apiaceae;MATCH;16;Apiales;MATCH;10
+Pollen;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Pomoidea;Kärnfruktväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Pomoideae;Kärnfruktväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Pärlhavre;Pärlhavre;Arrhenatherum elatius;Arrhenatherum;Poaceae;Poales;pärlhavre;MATCH;2876;3736;Arrhenatherum elatius;AMBIGUOUS;3735|18122;Arrhenatherum;MATCH;785;Poaceae;MATCH;141;Poales;MATCH;34
+Ramslök;Ramslök;Allium ursinum;Allium;Amaryllidaceae;Asparagales;ramslök;MATCH;68;77;Allium ursinum;MATCH;77;Allium;MATCH;20;Amaryllidaceae;MATCH;13;Asparagales;MATCH;7
+ran;Ren;Rangifer tarandus;Rangifer;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Ren;Ren;Rangifer tarandus;Rangifer;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Renhår;Ren;Rangifer tarandus;Rangifer;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Rhizom;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ros;Ros;;Rosa;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;Rosa;MATCH;963;Rosaceae;MATCH;154;Rosales;MATCH;22
+Rosoideae;Rosväxter;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Rosväxt;Rosväxt;;;Rosaceae;Rosales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Rot;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Rotfilt;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Rottråd;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Rottrådar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Rotttrådar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Rådjur;Rådjur;Capreolus capreolus;Capreolus;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Råg;Råg;Secale cereale;Secale;Poaceae;Poales;råg;MATCH;3151;4106;Secale cereale;MATCH;4106;Secale;MATCH;863;Poaceae;MATCH;141;Poales;MATCH;34
+Råglosta;Råglosta;Bromus secalinus;Bromus;Poaceae;Poales;råglosta;MATCH;2915;3782;Bromus secalinus;AMBIGUOUS;3782|18208;Bromus;MATCH;791;Poaceae;MATCH;141;Poales;MATCH;34
+Räv;Räv;Vulpes vulpes;Vulpes;Canidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Rönn;Rönn;Sorbus aucuparia;Sorbus;Rosaceae;Rosales;rönn;MATCH;3771;4937;Sorbus aucuparia;AMBIGUOUS;4933|18093;Sorbus;MATCH;969;Rosaceae;MATCH;154;Rosales;MATCH;22
+Sik;Sik;Coregonus lavaretus;Coregonus;Salmonidae;Salmoniformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Skalkorn;Korn;Hordeum vulgare;Hordeum;Poaceae;Poales;;NO_MATCH;;;Hordeum vulgare;AMBIGUOUS;3970|18010;Hordeum;MATCH;830;Poaceae;MATCH;141;Poales;MATCH;34
+Skalvete;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Skogskornell;Skogskornell;Cornus sanguinea;Cornus;Cornaceae;Cornales;skogskornell;MATCH;1455;1822;Cornus sanguinea;MATCH;1822;Cornus;MATCH;430;Cornaceae;MATCH;58;Cornales;MATCH;31
+Skogsolvon;Skogsolvon;Viburnum lantana;Viburnum;Adoxaceae;Dipsacales;;NO_MATCH;;;;NO_MATCH;;Viburnum;MATCH;10;Adoxaceae;MATCH;6;Dipsacales;MATCH;25
+Smidesloppor;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Småsnärja;Småsnärja;;Galium;Rubiaceae;Gentianales;;NO_MATCH;;;;NO_VALUE;;Galium;MATCH;975;Rubiaceae;MATCH;155;Gentianales;MATCH;11
+Smörblomma;Smörblomma;Ranunculus acris;Ranunculus;Ranunculaceae;Ranunculales;smörblomma;MATCH;3413;4481;Ranunculus acris;AMBIGUOUS;4480|18138;Ranunculus;MATCH;929;Ranunculaceae;MATCH;151;Ranunculales;MATCH;18
+Snärjmåra;Snärjmåra;Galium aparine;Galium;Rubiaceae;Gentianales;snärjmåra;MATCH;3816;4986;Galium aparine;AMBIGUOUS;4985|18052;Galium;MATCH;975;Rubiaceae;MATCH;155;Gentianales;MATCH;11
+emmervete;Emmer;Triticum dicoccum;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum dicoccum;MATCH;18050;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Sot;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Sotig;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Spel;Spelt;Triticum spelta;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum spelta;AMBIGUOUS;4145|18227;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Spelt;Spelt;Triticum spelta;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum spelta;AMBIGUOUS;4145|18227;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Spelt-;Spelt;Triticum spelta;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum spelta;AMBIGUOUS;4145|18227;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Speltvete;Spelt;Triticum spelta;Triticum;Poaceae;Poales;;NO_MATCH;;;Triticum spelta;AMBIGUOUS;4145|18227;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Staeefrukter;;;;Rosaceae;Rosales;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;Rosaceae;MATCH;154;Rosales;MATCH;22
+Stamdelar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Starr;Starr;;Carex;Cyperaceae;Poales;;NO_MATCH;;;;NO_VALUE;;Carex;MATCH;454;Cyperaceae;MATCH;63;Poales;MATCH;34
+Starr;Starr;;Carex;Cyperaceae;Poales;;NO_MATCH;;;;NO_VALUE;;Carex;MATCH;454;Cyperaceae;MATCH;63;Poales;MATCH;34
+Starrfrukt;Starr;;Carex;Cyperaceae;Poales;;NO_MATCH;;;;NO_VALUE;;Carex;MATCH;454;Cyperaceae;MATCH;63;Poales;MATCH;34
+Starrfrukter;Starr;;Carex;Cyperaceae;Poales;;NO_MATCH;;;;NO_VALUE;;Carex;MATCH;454;Cyperaceae;MATCH;63;Poales;MATCH;34
+Stenbär;Stenbär;Rubus saxatilis;Rubus;Rosaceae;Rosales;stenbär;MATCH;3741;4901;Rubus saxatilis;MATCH;4901;Rubus;MATCH;964;Rosaceae;MATCH;154;Rosales;MATCH;22
+gräsätare;Gräsätare;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Igelknopp;Igelknopp;;Sparganium;Typhaceae;Poales;igelknopp;MATCH;4176;5510;;NO_VALUE;;Sparganium;MATCH;1059;Typhaceae;MATCH;181;Poales;MATCH;34
+hovdjur;Hovdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Strå;;;;Poaceae;Poales;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Strå;;;;Poaceae;Poales;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Stål;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+däggdjur;Däggdjur;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Svalört;Svalört;Ficaria verna;Ficaria;Ranunculaceae;Ranunculales;svalört;MATCH;3428;4501;;NO_MATCH;;;NO_MATCH;;Ranunculaceae;MATCH;151;Ranunculales;MATCH;18
+Svalörtsrot;Svalört;Ficaria verna;Ficaria;Ranunculaceae;Ranunculales;svalört;MATCH;3428;4501;;NO_MATCH;;;NO_MATCH;;Ranunculaceae;MATCH;151;Ranunculales;MATCH;18
+Svin;Svin;;Sus;Suidae;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Svinbete;Svin;;Sus;Suidae;Artiodactyla;;NO_MATCH;;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Svinmålla;Svinmålla;Chenopodium album;Chenopodium;Amaranthaceae;Caryophyllales;svinmålla;MATCH;1339;1678;Chenopodium album;AMBIGUOUS;1676|18011;Chenopodium;MATCH;404;Amaranthaceae;MATCH;12;Caryophyllales;MATCH;8
+Syska;Syska;;Stachys;Lamiaceae;Lamiales;;NO_MATCH;;;;NO_VALUE;;Stachys;MATCH;640;Lamiaceae;MATCH;99;Lamiales;MATCH;1
+Säd;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Sädeskorn;Säd;;;Poaceae;Poales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;Poaceae;MATCH;141;Poales;MATCH;34
+Säl;Säl;;;Phocidae;Carnivora;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;;;NO_MATCH;
+Sälg;Sälg;Salix caprea;Salix;Salicaceae;Malpighiales;sälg;MATCH;3893;5110;Salix caprea;MATCH;5107;Salix;MATCH;984;Salicaceae;MATCH;158;Malpighiales;MATCH;28
+Tagel;Häst;Equus caballus;Equus;Equidae;Perissodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Tall;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Tallbark;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Tallbarr;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Tallkotte;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Tallkottefjäll;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Talll;Tall;Pinus sylvestris;Pinus;Pinaceae;Pinales;tall;MATCH;2797;3613;Pinus sylvestris;AMBIGUOUS;3611|18083;Pinus;MATCH;764;Pinaceae;MATCH;137;Pinales;MATCH;33
+Tamsvin;Tamsvin;Sus scrofa domesticus;Sus;Suidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Tandrot;Tandrot;Cardamine bulbifera;Cardamine;Brassicaceae;Brassicales;tandrot;MATCH;925;1146;Cardamine bulbifera;MATCH;1146;Cardamine;MATCH;305;Brassicaceae;MATCH;36;Brassicales;MATCH;20
+Textil;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Textilfragment;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Tibast;Tibast;Daphne mezereum;Daphne;Thymelaeaceae;Malvales;tibast;MATCH;4161;5489;Daphne mezereum;MATCH;5489;Daphne;MATCH;1050;Thymelaeaceae;MATCH;175;Malvales;MATCH;27
+Ticka;Ticka;;;;Polyporales;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_MATCH;
+Tiggarranunkel;Tiggarranunkel;Ranunculus sceleratus;Ranunculus;Ranunculaceae;Ranunculales;tiggarranunkel;MATCH;3455;4534;;NO_MATCH;;Ranunculus;MATCH;929;Ranunculaceae;MATCH;151;Ranunculales;MATCH;18
+Torne;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Torsk;Torsk;Gadus morhua;Gadus;Gadidae;Gadiformes;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Trampört;Trampört;Polygonum aviculare;Polygonum;Polygonaceae;Caryophyllales;;NO_MATCH;;;Polygonum aviculare;AMBIGUOUS;4228|18021;Polygonum;MATCH;895;Polygonaceae;MATCH;144;Caryophyllales;MATCH;8
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Triticum;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Try;Try;Lonicera xylosteum;Lonicera;Caprifoliaceae;Dipsacales;;NO_MATCH;;;Lonicera xylosteum;MATCH;1409;Lonicera;MATCH;365;Caprifoliaceae;MATCH;47;Dipsacales;MATCH;25
+Träkol;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Tuvull;Tuvull;Eriophorum vaginatum;Eriophorum;Cyperaceae;Poales;tuvull;MATCH;1664;2165;Eriophorum vaginatum;MATCH;2165;Eriophorum;MATCH;458;Cyperaceae;MATCH;63;Poales;MATCH;34
+Tågvirke;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Ull;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Ulltextil;Får;Ovis aries;Ovis;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Uroxe;Uroxe;Bos primigenius;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Vaccinium;Blåbärssläktet;;Vaccinium;Ericaceae;Ericales;;NO_MATCH;;;;NO_VALUE;;Vaccinium;MATCH;500;Ericaceae;MATCH;73;Ericales;MATCH;4
+Vattenstäkra;Vattenstäkra;Oenanthe aquatica;Oenanthe;Apiaceae;Apiales;vattenstäkra;MATCH;189;214;Oenanthe aquatica;MATCH;214;Oenanthe;MATCH;71;Apiaceae;MATCH;16;Apiales;MATCH;10
+Vete;Vete;;Triticum;Poaceae;Poales;vete;MATCH;3180;4143;;NO_VALUE;;Triticum;MATCH;875;Poaceae;MATCH;141;Poales;MATCH;34
+Vicker;Vicker;;Vicia;Fabaceae;Fabales;;NO_MATCH;;;;NO_VALUE;;Vicia;MATCH;548;Fabaceae;MATCH;75;Fabales;MATCH;36
+Vikare;Vikare;Pusa hispida;Pusa;Phocidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Vikaresäl;Vikare;Pusa hispida;Pusa;Phocidae;Carnivora;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Vildapel;Vildapel;Malus sylvestris;Malus;Rosaceae;Rosales;vildapel;MATCH;3592;4692;Malus sylvestris;MATCH;4692;Malus;MATCH;957;Rosaceae;MATCH;154;Rosales;MATCH;22
+Vildsvin;Vildsvin;Sus scrofa;Sus;Suidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Vindruvskärna;Vindruva;Vitis vinifera;Vitis;Vitaceae;Vitales;;NO_MATCH;;;Vitis vinifera;MATCH;5642;Vitis;MATCH;1073;Vitaceae;MATCH;188;;NO_MATCH;
+Växtdelar;;;;;;;NO_VALUE;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Åkerkrassling;Åkerkrassling;Lepidium campestre;Lepidium;Brassicaceae;Brassicales;;NO_MATCH;;;Lepidium campestre;MATCH;1249;Lepidium;MATCH;330;Brassicaceae;MATCH;36;Brassicales;MATCH;20
+Åkerpilört;Åkerpilört;Persicaria maculosa;Persicaria;Polygonaceae;Caryophyllales;åkerpilört;MATCH;3242;4217;Persicaria maculosa;MATCH;4216;Persicaria;MATCH;894;Polygonaceae;MATCH;144;Caryophyllales;MATCH;8
+Älg;Älg;Alces alces;Alces;Cervidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;
+Äppelkärna;Äpple;Malus domestica;Malus;Rosaceae;Rosales;;NO_MATCH;;;Malus domestica;MATCH;4691;Malus;MATCH;957;Rosaceae;MATCH;154;Rosales;MATCH;22
+Äpple;Äpple;Malus domestica;Malus;Rosaceae;Rosales;;NO_MATCH;;;Malus domestica;MATCH;4691;Malus;MATCH;957;Rosaceae;MATCH;154;Rosales;MATCH;22
+Ärta;Ärta;Pisum sativum;Pisum;Fabaceae;Fabales;;NO_MATCH;;;Pisum sativum;AMBIGUOUS;2495|18045;Pisum;MATCH;538;Fabaceae;MATCH;75;Fabales;MATCH;36
+ört;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtdelar;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtfragment;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtstam;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtstam;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtstjälk;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+Örtstjälkar;Ört;;;;;;NO_MATCH;;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;;;NO_VALUE;
+ötkreatur;Nötkreatur;Bos taurus;Bos;Bovidae;Artiodactyla;;NO_MATCH;;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;;;NO_MATCH;

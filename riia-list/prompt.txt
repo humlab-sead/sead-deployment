@@ -1,0 +1,36 @@
+I need you to read list.csv in the "riia-list" directory and construe/infer the species from each line/string. These are all swedish words and terms for things where there often will be species in the word in one way or another. For example "Aborrskinn" should be inferred to refer to "Aborre" which is a fish (bass). And "Björknäver" should be inferred to be "Björk" which is Birch.
+
+Your job is to infer the species and then figure out:
+1. What the swedish common name for it is.
+
+2. what the latin name for it is. Try to figure out the Species, Genus, Family, Order. Some things will be specifiable to a higher degree than other, and some not at all.
+
+I want you to write down your findings in a file called output.csv.
+
+I also want you to try and match the common names to the common names in the database (tbl_taxa_common_names) . And then also try to match all the latin names for species, genus and family. The tables in the database for these are: tbl_taxa_tree_master (species), tbl_taxa_tree_genera, tbl_taxa_tree_families, tbl_taxa_tree_order
+
+Also add the taxon_id column from tbl_taxa_tree_master (species), genus_id from tbl_taxa_tree_genera, family_id from tbl_taxa_tree_families, and order_id from tbl_taxa_tree_orders. Add them as columns.
+
+
+So in the output, I want these columns:
+
+1. Original term
+2. Inferred meaning
+3. Common name
+4. Species
+5. Genus
+6. Family
+7. Common name match
+8. Common name id
+9. Species match
+10. Genus match
+11. Family match
+12. Order match
+13. Taxon_id
+14. Genus_id
+15. Family_id
+16. Order_id
+
+Be meticulous about this task and don't stop until all words are done.
+
+Use DATABASE_READ_ONLY_USER and DATABASE_READ_ONLY_PASSWORD specified in .env to query the database via "podman compose exec postgresql psql sead_staging"
