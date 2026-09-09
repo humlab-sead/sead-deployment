@@ -5,8 +5,13 @@ import SeadAgent from './SeadAgent.class.js';
 const PORT = parseInt(process.env.SEAD_AGENT_PORT) || 8585;
 
 const app = express();
-//The browser reaches us through the nginx router, which is what sets X-Forwarded-For
-app.set('trust proxy', true);
+//The browser reaches us through the nginx router, which appends to X-Forwarded-For rather
+//than replacing it. Trusting the header outright would mean trusting the part of it the
+//client wrote, so express is told how many proxies of ours are actually in front - the
+//same count SeadAgent counts its client addresses back from.
+const TRUSTED_PROXY_COUNT = Number.isInteger(parseInt(process.env.SEAD_AGENT_TRUSTED_PROXY_COUNT))
+    ? parseInt(process.env.SEAD_AGENT_TRUSTED_PROXY_COUNT) : 1;
+app.set('trust proxy', TRUSTED_PROXY_COUNT);
 app.use(cors());
 //A chat message is the only thing we ever accept, so the body stays small
 app.use(express.json({ limit: '64kb' }));

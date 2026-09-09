@@ -67,9 +67,53 @@ is serving and uses that.
 
 ## Safety
 
-The endpoint is unauthenticated and every request occupies the GPU behind the local model,
-so message size, per-IP request rate, parallel turns and remembered conversations are all
-capped (see the `SEAD_AGENT_MAX_*` and `SEAD_AGENT_RATE_LIMIT_*` settings).
+The endpoint is unauthenticated and public, so it is worth being explicit about the two
+different things that can go wrong with it: someone using it as a **free model server**,
+and someone using it as a **general-purpose assistant** that happens to be hosted by a
+university.
+
+### Against being used as a model server
+
+Every request occupies the GPU behind the local model, so message size, reply length,
+request rate, parallel turns and remembered conversations are all capped - see the
+`SEAD_AGENT_MAX_*` and `SEAD_AGENT_RATE_LIMIT_*` settings. There are two rate windows: a
+short one that catches a burst, and an hourly one that catches the traffic a burst limit
+by itself lets through.
+
+Those caps are per visitor, which makes the address they are counted against load-bearing.
+The router *appends* to `X-Forwarded-For` rather than replacing it, so the left of that
+header is whatever the client chose to send and only the right of it is ours. The agent
+counts `SEAD_AGENT_TRUSTED_PROXY_COUNT` entries back from the end; set it to the number of
+proxies actually in front of the service (1 for the router alone). Setting it too low
+hands every visitor an unlimited quota - they need only send a header of their own.
+
+`SEAD_AGENT_ALLOWED_ORIGINS` refuses browser requests from sites that are not ours. It is
+a fence, not a wall: a script sends no `Origin` at all, and is held by the rate limits
+instead. Empty (any origin) is a sound default for a public database.
+
+### Against being used as a general assistant
+
+The agent's operating limits - it answers about SEAD and its data, it does not take on
+other personas, it does not reproduce its own prompt - live in `SeadAgent.class.js` rather
+than in `instructions.md`, and are prepended to whatever `SEAD_AGENT_INSTRUCTIONS_FILE`
+supplies. Pointing that at a context document of your own therefore cannot drop them, and
+they are repeated after the training documents, which are long enough on their own to
+leave the top of the prompt far behind.
+
+The user's message and the browser's state summary each arrive in the prompt inside a
+block of their own, and anything in either that looks like one of those tags is defanged
+on the way in - so neither a message nor a site name typed into a filter search box can
+close its block and continue as though it were part of the system prompt.
+
+This is model-enforced, and model-enforced limits are not guarantees. What is guaranteed
+is the part above it: the caps hold whatever the model decides to say.
+
+### Against reaching anything it shouldn't
+
+The agent has no database credentials and no filesystem of its own to speak of. Its tools
+do not run here at all - each one hands a named command to the browser that asked the
+question, and the client refuses anything outside that vocabulary (`clientTools.js`). No
+model-written JavaScript is ever evaluated, on either side.
 
 pi's builtin file and shell tools are switched off by default. When enabled with
 `SEAD_AGENT_ENABLE_SANDBOX_TOOLS=true` they only ever reach a throwaway in-memory sandbox
