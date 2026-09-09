@@ -159,6 +159,9 @@ DEFAULT_SEAD_QUERY_API_RELEASE="main"
 DB_IMPORT_TARGET_DB="sead_staging"
 DB_IMPORT_USER="sead_master"
 DB_IMPORT_SERVICE="postgresql"
+# GADM boundary data. Fetched on demand into a mounted directory, never vendored.
+GADM_IMPORT_SCRIPT="/sead_change_control/bin/import_gadm_data.sh"
+GADM_DATA_DIR="/var/lib/gadm"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Environment helpers
@@ -1143,6 +1146,10 @@ cmd_install() {
     # Preload JSON API Server MongoDB cache in the background so install can finish immediately.
     start_preload_jas_background
 
+    # Boundary data last, also detached. The database it loads into was just recreated, so
+    # this has to run after the import rather than before it.
+    start_gadm_import_background
+
     # Re-load env to get fresh DOMAIN / WEB_PORT values
     load_env
     echo
@@ -1382,6 +1389,38 @@ cmd_import_db() {
     run_database_import "$deploy_tag"
 }
 
+# Loads GADM administrative boundaries into the gadm schema, inside the postgresql
+# container (which carries ogr2ogr for exactly this). The archive is fetched on first run
+# and cached in the mounted data directory, so later runs re-use it.
+run_gadm_import() {
+    $COMPOSE_CMD exec -T \
+        -e "GADM_DATA_DIR=${GADM_DATA_DIR}" \
+        -e "PGPASSWORD=${DATABASE_PASSWORD}" \
+        "$DB_IMPORT_SERVICE" bash -c \
+        "${GADM_IMPORT_SCRIPT} --host postgresql --port 5432 --user ${DB_IMPORT_USER} --database ${DB_IMPORT_TARGET_DB} --drop"
+}
+
+# The fetch is over a gigabyte and the dissolve is the heaviest database work in the whole
+# install, so this runs detached: everything else can finish and be seen to have worked,
+# and this carries on in the background with its own log.
+start_gadm_import_background() {
+    local gadm_log_dir="$SCRIPT_DIR/logs"
+    local gadm_log_file="${gadm_log_dir}/gadm_import_$(date +%Y%m%d_%H%M%S).log"
+    mkdir -p "$gadm_log_dir"
+
+    info "Starting GADM boundary import in background..."
+    nohup $COMPOSE_CMD exec -T \
+        -e "GADM_DATA_DIR=${GADM_DATA_DIR}" \
+        -e "PGPASSWORD=${DATABASE_PASSWORD}" \
+        "$DB_IMPORT_SERVICE" bash -c \
+        "${GADM_IMPORT_SCRIPT} --host postgresql --port 5432 --user ${DB_IMPORT_USER} --database ${DB_IMPORT_TARGET_DB} --drop" \
+        >"$gadm_log_file" 2>&1 < /dev/null &
+    local gadm_pid=$!
+    success "GADM import started in background (PID: ${gadm_pid})."
+    info "It downloads ~1.4 GB on first run and then loads levels 0-2; expect it to take a while."
+    info "Follow progress with: tail -f ${gadm_log_file}"
+}
+
 start_preload_jas_background() {
     local preload_log_dir="$SCRIPT_DIR/logs"
     local preload_log_file="${preload_log_dir}/preload_jas_$(date +%Y%m%d_%H%M%S).log"
@@ -1392,6 +1431,13 @@ start_preload_jas_background() {
     local preload_pid=$!
     success "JAS cache preload started in background (PID: ${preload_pid})."
     info "Follow progress with: tail -f ${preload_log_file}"
+}
+
+cmd_import_gadm() {
+    [[ $# -eq 0 ]] || die "Usage: $0 import-gadm"
+    info "Importing GADM boundary data..."
+    run_gadm_import
+    success "GADM import complete."
 }
 
 cmd_preload_jas() {
@@ -1540,6 +1586,8 @@ Commands:
   shell <service>      Open an interactive shell inside a running container.
 
   import-db [tag]      Re-import the PostgreSQL database via sead_change_control.
+  import-gadm          Fetch and load GADM administrative boundaries into the gadm
+                       schema. Runs in the foreground; install/import-db run it detached.
                        Prompts for a deploy tag (default: @2026.04) and tries
                        to list available tags from GitHub releases:
                        https://github.com/humlab-sead/sead_change_control
@@ -1599,6 +1647,7 @@ case "$command" in
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
     import-db)    cmd_import_db "${1:-}" ;;
+    import-gadm)  shift 2>/dev/null || true; cmd_import_gadm "$@" ;;
     preload-jas)  cmd_preload_jas "$@" ;;
     flush-cache)  cmd_flush_cache ;;
     vanna-train)  cmd_vanna_train "${1:-}" ;;

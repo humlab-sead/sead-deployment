@@ -9,6 +9,8 @@ mongodb/mounts
 nginx/mounts/logs
 postgresql/mounts/pg-data-volume
 postgresql/mounts/logs
+postgresql/mounts/gadm/*
+!postgresql/mounts/gadm/.gitkeep
 postgrest/mounts
 redis/mounts
 sead_query_api/mounts

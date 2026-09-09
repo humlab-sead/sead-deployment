@@ -36,6 +36,9 @@ services:
     volumes:
       - ./postgresql/mounts/pg-data-volume:/pgdata:Z
       - ./postgresql/mounts/init-scripts:/docker-entrypoint-initdb.d
+      #GADM boundary data is fetched on demand rather than vendored - 1.4 GB must never
+      #reach git. Mounted so the download survives container rebuilds and re-imports.
+      - ./postgresql/mounts/gadm:/var/lib/gadm:Z
       #- ./postgresql/mounts/logs:/pgdata/log
       #- ./postgresql/mounts/postgresql.conf:/pgdata/postgresql.conf
       #- ./postgresql/mounts/pg_hba.conf:/pgdata/pg_hba.conf
@@ -271,8 +274,15 @@ services:
       SEAD_AGENT_ENABLE_SANDBOX_TOOLS: ${SEAD_AGENT_ENABLE_SANDBOX_TOOLS:-false}
       SEAD_AGENT_TIMEOUT_MS: ${SEAD_AGENT_TIMEOUT_MS:-120000}
       SEAD_AGENT_MAX_INPUT_LENGTH: ${SEAD_AGENT_MAX_INPUT_LENGTH:-4000}
+      SEAD_AGENT_MAX_OUTPUT_TOKENS: ${SEAD_AGENT_MAX_OUTPUT_TOKENS:-4096}
       SEAD_AGENT_RATE_LIMIT_WINDOW_MS: ${SEAD_AGENT_RATE_LIMIT_WINDOW_MS:-60000}
       SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS: ${SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS:-10}
+      SEAD_AGENT_RATE_LIMIT_LONG_WINDOW_MS: ${SEAD_AGENT_RATE_LIMIT_LONG_WINDOW_MS:-3600000}
+      SEAD_AGENT_RATE_LIMIT_LONG_MAX_REQUESTS: ${SEAD_AGENT_RATE_LIMIT_LONG_MAX_REQUESTS:-60}
+      #Which X-Forwarded-For entry the per-visitor limits are counted against - it must
+      #match the number of proxies in front of the agent, or the limits count nothing
+      SEAD_AGENT_TRUSTED_PROXY_COUNT: ${SEAD_AGENT_TRUSTED_PROXY_COUNT:-1}
+      SEAD_AGENT_ALLOWED_ORIGINS: ${SEAD_AGENT_ALLOWED_ORIGINS:-}
       SEAD_AGENT_MAX_CONCURRENT_TURNS: ${SEAD_AGENT_MAX_CONCURRENT_TURNS:-2}
       SEAD_AGENT_MAX_SESSIONS: ${SEAD_AGENT_MAX_SESSIONS:-20}
       SEAD_AGENT_SESSION_TTL_MS: ${SEAD_AGENT_SESSION_TTL_MS:-900000}
