@@ -1,4 +1,4 @@
-FROM docker.io/debian:bullseye-slim
+FROM docker.io/debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y curl software-properties-common git
 
