@@ -15,7 +15,13 @@ services:
       - ./sead_query_api:/workspace:Z
 
   client:
-    command: npm run dev -- --port 80
+    #The dev server's "dev" script hardcodes --allowed-hosts localhost, so it answers
+    #403 "Invalid Host header" to anything the router forwards under the real domain.
+    #Repeated flags append, leaving ['localhost', $DOMAIN] - both hosts stay allowed.
+    #The dev server would otherwise tell the browser to reach HMR on its own listen
+    #port, giving wss://$DOMAIN:80/ws - but the browser arrives over the https front
+    #door on 443, so the handshake never lands. Name the public URL explicitly.
+    command: npm run dev -- --port 80 --allowed-hosts ${DOMAIN} --client-web-socket-url wss://${DOMAIN}:443/ws
     volumes:
       - ./sead_browser_client:/sead_browser_client:Z
 
