@@ -11,16 +11,13 @@
 #   down                 Stop and remove all containers
 #   restart [service]    Restart all (or one) service
 #   status               Show running status of all containers
+#   versions             Report the versions of everything installed and running
 #   logs [service]       Tail logs (all services or specific one)
 #   shell <service>      Open an interactive shell inside a container
 #   import-db            Re-import the PostgreSQL database
 #   preload-jas [--background]
 #                         Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
-#   vanna-train [mode]   Run Vanna training workflow (baseline|schema-refresh|apply)
-#   vanna-train-ops      Save ad-hoc operational training note to Vanna memory
-#   vanna-memory-export  Export Vanna Chroma memory snapshot
-#   vanna-memory-import  Import Vanna Chroma memory snapshot
 #   generate-env         Generate .env from .env-example
 #   rotate-secrets       Overwrite ALL secrets in .env with fresh random values
 
@@ -1115,7 +1112,7 @@ cmd_install() {
 
     # Build all images
     info "Building Docker images (this may take several minutes)..."
-    $COMPOSE_CMD build
+    compose_build
     success "All images built."
 
     # Start services
@@ -1367,9 +1364,123 @@ cmd_logs() {
     $COMPOSE_CMD logs --tail=100 -f "$@"
 }
 
+# Compose builds every buildable service in parallel and interleaves their output into
+# one stream, so a failing step is printed without saying which Dockerfile it came from.
+# These helpers turn that back into an actionable message: name the image, explain the
+# failure where its shape is recognisable, and retry only when a retry can actually help.
+
+# How many Dockerfiles contain the failing step. 1 means the image is pinpointed;
+# anything else means the step text is not unique and only a serial rebuild can say
+# which service it was.
+FAILING_DOCKERFILE_MATCHES=0
+
+# The step text in "building at STEP ..." (podman) or "ERROR ... RUN ..." (docker) is
+# copied verbatim from the Dockerfile, so it can be grepped back to the file it came
+# from. That is the mapping the interleaved output loses.
+identify_failing_dockerfile() {
+    local log="$1" step needle file matches=""
+    FAILING_DOCKERFILE_MATCHES=0
+    step="$(sed -n 's/.*building at STEP "\(.*\)".*/\1/p' "$log" | tail -n1)"
+    [[ -n "$step" ]] || step="$(sed -n 's|.*process "/bin/sh -c \(.*\)" did not complete.*|RUN \1|p' "$log" | tail -n1)"
+    [[ -n "$step" ]] || return 1
+
+    info "Failing build step: ${step}"
+
+    # Both engines flatten a multi-line RUN onto one line before printing it, so the
+    # step text never matches the Dockerfile literally. Normalise both sides - drop
+    # line continuations, collapse runs of whitespace - and compare those.
+    needle="$(printf '%s' "${step#RUN }" | tr -s '[:space:]' ' ')"
+    while IFS= read -r file; do
+        if tr '\n' ' ' <"$file" | sed 's/\\ / /g' | tr -s '[:space:]' ' ' | grep -qF "$needle"; then
+            matches+="  ${file#$SCRIPT_DIR/}"$'\n'
+            FAILING_DOCKERFILE_MATCHES=$((FAILING_DOCKERFILE_MATCHES + 1))
+        fi
+    done < <(find "$SCRIPT_DIR" -name 'Dockerfile*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null)
+
+    if [[ "$FAILING_DOCKERFILE_MATCHES" -gt 1 ]]; then
+        info "That step is not unique - it appears in:"
+        printf '%s' "$matches" | while IFS= read -r m; do info "$m"; done
+    elif [[ -n "$matches" ]]; then
+        info "That step comes from:"
+        printf '%s' "$matches" | while IFS= read -r m; do info "$m"; done
+    else
+        warn "No Dockerfile in this checkout contains that step - the image may be built"
+        warn "from a source directory cloned during deployment."
+    fi
+}
+
+# Distinguishes the two apt failures that look alike in the log but need opposite
+# responses. A stale package index is worth one cache-free retry; a base image whose
+# release has left Debian support is not - no amount of rebuilding brings the archive
+# back, and only a newer FROM fixes it.
+classify_build_failure() {
+    local log="$1"
+    if grep -qE "Release file .* (is not valid yet|expired)|Repository .* changed its|no longer has a Release file" "$log"; then
+        echo "eol-base-image"
+    elif grep -qE "404 +Not Found|Failed to fetch|has no installation candidate|Unable to locate package" "$log"; then
+        echo "stale-apt-index"
+    else
+        echo "other"
+    fi
+}
+
+compose_build() {
+    local log_dir="$SCRIPT_DIR/logs"
+    local log_file="${log_dir}/build_$(date +%Y%m%d_%H%M%S).log"
+    mkdir -p "$log_dir"
+
+    if $COMPOSE_CMD build "$@" 2>&1 | tee "$log_file"; then
+        rm -f "$log_file"
+        return 0
+    fi
+
+    echo
+    warn "Build failed. Full output: ${log_file}"
+    identify_failing_dockerfile "$log_file" || \
+        warn "Could not read the failing step from the build output."
+
+    case "$(classify_build_failure "$log_file")" in
+        stale-apt-index)
+            # apt asked for a package version the mirror no longer carries, which means
+            # the index it read is older than the archive. That happens when 'apt-get
+            # update' sits in its own layer: the layer is reused while the archive moves
+            # on. Discarding the cache re-runs the update against today's archive.
+            warn "This looks like a stale apt index (a cached 'apt-get update' layer)."
+            warn "Retrying without the build cache. This rebuilds every layer and is slow."
+            COMPOSE_PARALLEL_LIMIT=1 $COMPOSE_CMD build --no-cache "$@" 2>&1 | tee "$log_file" && {
+                rm -f "$log_file"
+                warn "The retry succeeded, but the Dockerfile above still has the bug that"
+                warn "caused this: put 'apt-get update' and 'apt-get install' in one RUN."
+                return 0
+            }
+            die "Build still failed without the cache. See ${log_file}"
+            ;;
+        eol-base-image)
+            error "The base image's Debian release is out of support: its archive is gone,"
+            error "so this build cannot succeed as written. Rebuilding will not help."
+            if [[ "$FAILING_DOCKERFILE_MATCHES" -ne 1 ]]; then
+                # The step text appears in several Dockerfiles, so it does not say which
+                # image failed. A serial rebuild fails again on the same step, but under
+                # one service's name; cached layers make getting there quick.
+                warn "Rebuilding serially to name the service - this will fail again."
+                COMPOSE_PARALLEL_LIMIT=1 $COMPOSE_CMD build "$@" 2>&1 | tee "$log_file" || true
+            fi
+            die "Update the FROM line in the Dockerfile above, then build again. See ${log_file}"
+            ;;
+        *)
+            # Nothing recognisable, so rebuild serially rather than guessing. Cached
+            # layers make that near-instant for the images that already succeeded, and
+            # the error then lands at the end of a single service's output.
+            warn "Rebuilding one service at a time so the failure can be attributed..."
+            COMPOSE_PARALLEL_LIMIT=1 $COMPOSE_CMD build "$@" 2>&1 | tee "$log_file" \
+                || die "Build failed. See ${log_file}"
+            ;;
+    esac
+}
+
 cmd_build() {
     info "Building images..."
-    $COMPOSE_CMD build "$@"
+    compose_build "$@"
     success "Build complete."
 }
 
@@ -1464,74 +1575,225 @@ cmd_flush_cache() {
     bash flush_jas_graph_cache.sh
 }
 
-cmd_vanna_train() {
-    local mode="${1:-apply}"
-    case "$mode" in
-        baseline|schema-refresh|apply) ;;
-        *)
-            die "Usage: $0 vanna-train [baseline|schema-refresh|apply]"
-            ;;
+# ──────────────────────────────────────────────────────────────────────────────
+# Version reporting
+# ──────────────────────────────────────────────────────────────────────────────
+# "Version" means something different for each part of the stack, so each part is
+# reported in its own terms: a git description for the services built from our own
+# repositories, the applied sqitch tag for the database, and whatever the program
+# itself reports for everything pulled ready-made.
+#
+# Checkout and container are shown side by side because they drift apart. In dev the
+# source directories are bind-mounted, so the running code *is* the checkout; in prod
+# it is baked into the image, and an image built before the last update runs an older
+# release than the checkout suggests. That difference is the usual explanation for a
+# deployment that behaves like a version nobody has any more.
+
+# service | source directory in this repo | where that source sits in the container
+SEAD_SERVICE_SPECS=(
+    "client|sead_browser_client|/sead_browser_client"
+    "json_api_server|json_api_server|/json_api_server"
+    "sead_query_api|sead_query_api|/workspace"
+    "sead_agent|sead_agent|/sead_agent"
+    "postgresql_mcp|postgres_mcp|/app"
+)
+
+SUPPORTING_SERVICES=(router postgrest mongo redis_cache maria-db matomo mongo-express)
+
+version_row()     { printf "  %-20s %-38s %s\n" "$1" "$2" "$3" | sed 's/[[:space:]]*$//'; }
+version_heading() { echo; echo -e "${CYAN}$1${NC}"; }
+
+compose_project_name() { echo "${COMPOSE_PROJECT_NAME:-$(basename "$SCRIPT_DIR")}"; }
+
+# The container currently running a compose service; empty when the service is down.
+# Looked up by compose label rather than by name, which every compose implementation
+# spells differently.
+service_container() {
+    $CONTAINER_TOOL ps \
+        --filter "label=com.docker.compose.project=$(compose_project_name)" \
+        --filter "label=com.docker.compose.service=$1" \
+        --format '{{.Names}}' 2>/dev/null | head -n1
+}
+
+# Runs a command inside a service's container. Takes argv rather than a shell line
+# because some images (postgrest) carry no shell at all; pass `sh -c '...'` explicitly
+# where a pipeline is needed.
+service_exec() {
+    local service="$1"; shift
+    local container
+    container="$(service_container "$service" || true)"
+    [[ -n "$container" ]] || return 1
+    $CONTAINER_TOOL exec "$container" "$@" 2>/dev/null
+}
+
+# The image reference a service is running, and the day that image was built.
+service_image() {
+    $CONTAINER_TOOL ps \
+        --filter "label=com.docker.compose.project=$(compose_project_name)" \
+        --filter "label=com.docker.compose.service=$1" \
+        --format '{{.Image}}' 2>/dev/null | head -n1
+}
+
+image_build_date() {
+    local image="$1"
+    [[ -n "$image" ]] || return 0
+    $CONTAINER_TOOL image inspect "$image" --format '{{.Created}}' 2>/dev/null | cut -c1-10
+}
+
+short_image_name() { echo "${1#docker.io/}" | sed 's|^library/||'; }
+
+# True when a host directory of this deployment is mounted into the service's
+# container, i.e. the container runs the checkout live instead of a copy in the image.
+service_mounts_source() {
+    local container
+    container="$(service_container "$1" || true)"
+    [[ -n "$container" ]] || return 1
+    $CONTAINER_TOOL inspect "$container" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' 2>/dev/null \
+        | grep -qx "${SCRIPT_DIR}/$2"
+}
+
+# git describe of a checkout, with a * when the working tree has uncommitted changes.
+git_version() {
+    local dir="$1" desc branch
+    [[ -d "$dir/.git" ]] || return 1
+    desc="$(git -C "$dir" describe --tags --always --dirty='*' 2>/dev/null || true)"
+    [[ -n "$desc" ]] || return 1
+    branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    [[ "$branch" == "HEAD" ]] && branch="detached"
+    echo "${desc} (${branch})"
+}
+
+# The `version` field of a package.json, without assuming node or jq is available.
+read_pkg_version() {
+    sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1" 2>/dev/null | head -n1
+}
+
+# What a checkout in this repo calls itself: its git description when it is a
+# repository of its own, otherwise the version in its package.json.
+source_version() {
+    local dir="$1" version
+    [[ -d "$dir" ]] || { echo "not present"; return; }
+    version="$(git_version "$dir" || true)"
+    [[ -n "$version" ]] || version="$(read_pkg_version "${dir}/package.json" || true)"
+    echo "${version:-unknown}"
+}
+
+# The same question asked of the running container, which in prod holds a copy made
+# when the image was built.
+container_version() {
+    local service="$1" path="$2" version
+    version="$(service_exec "$service" sh -c "git -C '${path}' describe --tags --always --dirty='*' 2>/dev/null" || true)"
+    [[ -n "$version" ]] || version="$(service_exec "$service" sh -c \
+        "sed -n 's/.*\"version\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p' '${path}/package.json' 2>/dev/null | head -n1" || true)"
+    echo "$version"
+}
+
+# Version of a third-party service, asked of the program itself rather than read off
+# the image tag - the tags in compose.yml are deliberately loose (mongo:4.4, matomo:5).
+supporting_version() {
+    case "$1" in
+        router)        service_exec router sh -c 'nginx -v 2>&1' | sed -n 's|.*nginx/||p' ;;
+        postgrest)     service_exec postgrest postgrest --version | sed -n 's/PostgREST //p' ;;
+        mongo)         service_exec mongo mongod --version | sed -n 's/^db version v\{0,1\}//p' | head -n1 ;;
+        redis_cache)   service_exec redis_cache redis-server --version | sed -n 's/.*v=\([0-9.]*\).*/\1/p' ;;
+        maria-db)      service_exec maria-db sh -c 'mariadbd --version 2>/dev/null || mysqld --version' \
+                           | sed -n 's/.*Ver \([0-9][^ ]*\).*/\1/p' | cut -d- -f1 ;;
+        matomo)        service_exec matomo sh -c "sed -n \"s/.*VERSION = '\([^']*\)'.*/\1/p\" core/Version.php | head -n1" ;;
+        mongo-express) service_exec mongo-express sh -c \
+                           'sed -n "s/.*\"version\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" /app/package.json | head -n1' ;;
     esac
-
-    info "Ensuring vanna service is running..."
-    $COMPOSE_CMD up -d vanna
-
-    info "Running vanna training mode: ${mode}"
-    $COMPOSE_CMD exec -T vanna python /app/scripts/train.py "$mode"
-    success "Vanna training completed (${mode})."
 }
 
-cmd_vanna_train_ops() {
-    [[ $# -ge 1 ]] || die "Usage: $0 vanna-train-ops <file-path|text>"
-
-    local note=""
-    if [[ $# -eq 1 && -f "$1" ]]; then
-        note="$(cat "$1")"
-        [[ -n "$note" ]] || die "Provided file '$1' is empty."
-        info "Loaded Vanna ops note from file: $1"
-    else
-        note="$*"
-    fi
-
-    info "Ensuring vanna service is running..."
-    $COMPOSE_CMD up -d vanna
-
-    info "Saving operational note to Vanna memory..."
-    $COMPOSE_CMD exec -T vanna python /app/scripts/train.py ops-note --text "$note"
-    success "Operational note saved to Vanna memory."
+# Reads one value from the database. Fails quietly when postgresql is down.
+psql_value() {
+    service_exec postgresql psql -U "$DB_IMPORT_USER" -d "${DATABASE_NAME:-$DB_IMPORT_TARGET_DB}" -tAc "$1"
 }
 
-cmd_vanna_memory_export() {
-    local snapshot_name="${1:-}"
-    info "Ensuring vanna service is running..."
-    $COMPOSE_CMD up -d vanna
+cmd_versions() {
+    local engine_version compose_version image built version checked_out running note
 
-    if [[ -n "$snapshot_name" ]]; then
-        info "Exporting Vanna memory snapshot: ${snapshot_name}"
-        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py export "$snapshot_name"
+    echo
+    echo -e "${GREEN}SEAD deployment versions${NC}"
+
+    # ── This deployment ──────────────────────────────────────────────────────
+    version_heading "Deployment"
+    version_row "sead-deployment" "$(source_version .)" \
+        "project $(compose_project_name), ${DEPLOY_MODE:-dev} mode"
+    engine_version="$($CONTAINER_TOOL --version 2>/dev/null | head -n1 || true)"
+    compose_version="$($COMPOSE_CMD version --short 2>/dev/null | head -n1 || true)"
+    version_row "container engine" "${engine_version:-unknown}" \
+        "${compose_version:+compose ${compose_version}}"
+
+    # ── Services built from our own repositories ─────────────────────────────
+    version_heading "SEAD services"
+    version_row "" "checked out" "running"
+    local spec service dir path
+    for spec in "${SEAD_SERVICE_SPECS[@]}"; do
+        IFS='|' read -r service dir path <<< "$spec"
+        checked_out="$(source_version "$dir")"
+
+        if [[ -z "$(service_container "$service" || true)" ]]; then
+            running="not running"
+        elif service_mounts_source "$service" "$dir"; then
+            # The container reads the checkout directly, so there is no second version
+            # to report - only the reminder that a rebuild is not what updates it.
+            running="live from checkout (bind mount)"
+        else
+            version="$(container_version "$service" "$path")"
+            image="$(service_image "$service" || true)"
+            built="$(image_build_date "$image" || true)"
+            running="${version:-unknown}${built:+, image built ${built}}"
+        fi
+
+        version_row "$service" "$checked_out" "$running"
+    done
+
+    # ── The database and what has been loaded into it ────────────────────────
+    version_heading "Database"
+    if ! psql_value 'select 1' >/dev/null 2>&1; then
+        version_row "PostgreSQL" "not running" ""
     else
-        info "Exporting Vanna memory snapshot with generated name..."
-        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py export
+        version="$(psql_value "select split_part(current_setting('server_version'), ' ', 1)" || true)"
+        image="$(service_image postgresql || true)"
+        built="$(image_build_date "$image" || true)"
+        version_row "PostgreSQL" "${version:-unknown}" \
+            "${DATABASE_NAME:-$DB_IMPORT_TARGET_DB}${built:+, image built ${built}}"
+
+        # The schema's own version is the last sqitch tag applied by sead_change_control.
+        if [[ "$(psql_value "select to_regclass('sqitch.tags') is not null" || true)" == "t" ]]; then
+            version="$(psql_value 'select tag from sqitch.tags order by committed_at desc limit 1' || true)"
+            note="$(psql_value "select to_char(max(committed_at), 'YYYY-MM-DD') from sqitch.changes" || true)"
+            version_row "schema" "${version:-untagged}" "${note:+deployed ${note}}"
+        else
+            version_row "schema" "not deployed" "no sqitch registry in this database"
+        fi
+
+        if [[ "$(psql_value "select to_regclass('gadm.adm_0') is not null" || true)" == "t" ]]; then
+            note="$(psql_value "select (select count(*) from gadm.adm_0)||' countries, '
+                || (select count(*) from gadm.adm_1)||' adm1, '
+                || (select count(*) from gadm.adm_2)||' adm2'" || true)"
+            version_row "GADM boundaries" "loaded" "$note"
+        else
+            version_row "GADM boundaries" "not loaded" "./deploy.sh import-gadm"
+        fi
     fi
-    success "Vanna memory export completed."
-}
+    version_row "sead_change_control" "$(source_version sead_change_control)" "checkout used for imports"
 
-cmd_vanna_memory_import() {
-    local snapshot_name="${1:-}"
-    local force_flag="${2:-}"
-    [[ -n "$snapshot_name" ]] || die "Usage: $0 vanna-memory-import <snapshot-name> [--force]"
-    [[ -z "$force_flag" || "$force_flag" == "--force" ]] || die "Usage: $0 vanna-memory-import <snapshot-name> [--force]"
-
-    info "Ensuring vanna service is running..."
-    $COMPOSE_CMD up -d vanna
-
-    info "Importing Vanna memory snapshot: ${snapshot_name}"
-    if [[ "$force_flag" == "--force" ]]; then
-        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py import "$snapshot_name" --force
-    else
-        $COMPOSE_CMD exec -T vanna python /app/scripts/memory_snapshot.py import "$snapshot_name"
-    fi
-    success "Vanna memory import completed."
+    # ── Everything pulled ready-made ─────────────────────────────────────────
+    version_heading "Supporting services"
+    for service in "${SUPPORTING_SERVICES[@]}"; do
+        if [[ -z "$(service_container "$service" || true)" ]]; then
+            version_row "$service" "not running" ""
+            continue
+        fi
+        version="$(supporting_version "$service" || true)"
+        image="$(service_image "$service" || true)"
+        built="$(image_build_date "$image" || true)"
+        note="$(short_image_name "$image")"
+        [[ "$image" == *"/sead-"* || "$image" == *"sead_"* ]] && note="${note}${built:+, built ${built}}"
+        version_row "$service" "${version:-unknown}" "$note"
+    done
+    echo
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1582,6 +1844,10 @@ Commands:
   down                 Stop and remove all containers.
   restart [service]    Restart all services, or just one named service.
   status               Show running status of all containers.
+  versions             Report what is installed and running, and at which version:
+                       the checked-out SEAD repositories, the version each running
+                       container reports, the schema tag applied to the database,
+                       and the third-party services behind it.
   logs [service]       Tail logs (100 lines) from all services or a specific one.
   shell <service>      Open an interactive shell inside a running container.
 
@@ -1596,20 +1862,6 @@ Commands:
                        Use --background (or -b) to start it detached and return
                        immediately, writing logs under ./logs/.
   flush-cache          Flush the JAS graph cache via the REST API.
-  vanna-train [mode]   Run Vanna training workflow inside the vanna service.
-                       Modes:
-                         baseline       Load curated training assets
-                         schema-refresh Regenerate schema snapshot and load memory
-                         apply          Run baseline + schema-refresh (default)
-  vanna-train-ops <file-or-text>
-                       Save an ad-hoc operational note into Vanna memory.
-                       If one argument is a file path, file content is used.
-  vanna-memory-export [snapshot-name]
-                       Export Vanna Chroma memory to ./vanna/mounts/snapshots.
-                       If snapshot name is omitted, a timestamped name is used.
-  vanna-memory-import <snapshot-name> [--force]
-                       Import a Vanna memory snapshot from ./vanna/mounts/snapshots.
-                       Use --force to replace existing memory files.
 
   generate-env         Generate .env (and sead_authority_service/.env) from
                        the example files, optionally importing matching values
@@ -1644,16 +1896,13 @@ case "$command" in
     down)         cmd_down "$@" ;;
     restart)      cmd_restart "${1:-}" ;;
     status)       cmd_status ;;
+    versions)     cmd_versions ;;
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
     import-db)    cmd_import_db "${1:-}" ;;
     import-gadm)  shift 2>/dev/null || true; cmd_import_gadm "$@" ;;
     preload-jas)  cmd_preload_jas "$@" ;;
     flush-cache)  cmd_flush_cache ;;
-    vanna-train)  cmd_vanna_train "${1:-}" ;;
-    vanna-train-ops) cmd_vanna_train_ops "$@" ;;
-    vanna-memory-export) cmd_vanna_memory_export "${1:-}" ;;
-    vanna-memory-import) cmd_vanna_memory_import "${1:-}" "${2:-}" ;;
     generate-env)    cmd_generate_env ;;
     rotate-secrets)  cmd_rotate_secrets ;;
     help|--help|-h)  usage ;;
