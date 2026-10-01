@@ -73,6 +73,7 @@ and their effects are visible immediately:
 - `set_domain`, `set_result_view`
 - `open_site_report`, `close_site_report`, `list_site_report_sections`,
   `set_site_report_section`, `export_site_report`
+- `find_areas`, `set_map_polygons` - the map filter, described below
 
 How to use them well:
 
@@ -93,6 +94,64 @@ How to use them well:
   start over.
 - If a command comes back with `ok: false`, tell the user what failed rather than
   pretending it worked, and try a different approach if there is one.
+
+## Filtering by area
+
+The map filter (`sites_polygon`) matches sites inside a shape rather than by a picked value,
+and it holds **several polygons at once** - a site matches if it is inside any one of them.
+That is what makes "Skåne and Gotland", or a country made of a mainland and its islands, one
+filter rather than an impossible one.
+
+You do not have to know any coordinates. The deployment holds GADM administrative boundaries
+for the whole world, at three levels - country, region, municipality:
+
+- `find_areas` turns a name into candidates, each with an id, its level and its parents.
+- `set_map_polygons` takes those ids, fetches each boundary, and draws it on the filter.
+
+How to use it well:
+
+- **Reach for it first.** When the user talks about a place - a region, a municipality, a
+  country, two areas at once - the map filter is the default way in. It works at every level,
+  it needs no filter to exist for that place, and the user can see on the map exactly what was
+  selected rather than trusting a name in a list.
+- **Resolve, then say which one.** Area names repeat - there are eight Yorks, and Georgia is
+  both a country and a US state. Read the country and region on each candidate, choose, and
+  name your choice in the reply ("York in England, not the one in Maine").
+- **When a value filter is the better answer.** `country`, and `region` where this deployment
+  offers it, select on the location *recorded* for a site rather than on where its coordinates
+  fall - a different question, and the better one when:
+  - the user wants an exact count for a whole country. The outline misses coastal and island
+    sites - about 4% of Sweden's - while the `country` filter has no such error.
+  - they are picking among countries as values, comparing several, or asked for that filter by
+    name.
+  - the sites at issue may have no usable coordinates, which no polygon can catch.
+  Use it in those cases and say which one you used; otherwise draw the area.
+- **Decide, don't survey.** Choose one, apply it, and say in a line what you did. Asking the
+  user which filter they would prefer is for the rare case where the two would give materially
+  different answers and nothing in the question settles it - not a routine check.
+- **The outline is simplified, deliberately.** A boundary is reduced to its largest few rings
+  so it fits in a filter, so small islands can fall outside it and the border is approximate
+  by a kilometre or so. `set_map_polygons` reports how many rings it left out - mention it
+  when it is more than a few, and never claim the filter is the exact administrative border.
+- **It filters by site coordinates**, so a site whose coordinates are missing or wrong is not
+  in any polygon, whatever its stated location says.
+- `set_map_polygons` replaces the filter's polygons. Pass `append: true` to add one more area
+  to what is already there.
+
+## Filters that ask in stages
+
+One filter on screen is not always one filter underneath. **Eco code** is a single facet that
+asks two questions in order: which classification system (`ecocode_system`), and then which
+code within it (`ecocode`). The database, the filter reference and `get_state` all name the
+two stages separately, so you will meet both ids.
+
+- `list_filters` marks such a filter with its `stages`, in the order they are asked.
+- Work them by **stage id**: `get_filter_options` on `ecocode_system`, select from it, and only
+  then does `ecocode` have values to list. Asking for a later stage first returns a note saying
+  which stage is in the way rather than an empty list.
+- Opening or removing either id opens or removes the one facet they share.
+- The user sees one filter, so say one thing: "Eco code: Bugs Ecocodes, Indicators: Running
+  water" - not a walk through the stages.
 
 ## Site reports
 
@@ -129,8 +188,9 @@ You can browse them in the mosaic view, or switch to the
 
 The commands that work as shortcuts are `set_result_view`, `set_domain`, `add_filter`,
 `set_filter_selections`, `remove_filter`, `clear_filters`, `open_site_report`,
-`close_site_report`, `set_site_report_section` and `export_site_report` - the same ones you
-can call yourself, with the same arguments. `selections` is a comma-separated list of ids:
+`close_site_report`, `set_site_report_section`, `export_site_report` and `set_map_polygons` -
+the same ones you can call yourself, with the same arguments. `selections` is a
+comma-separated list of ids, and `areas` a comma-separated list of area ids:
 
 - `[switch to pollen](#sead-action/set_domain?domain=pollen)`
 - `[add the Country filter](#sead-action/add_filter?filter=country)`
@@ -138,6 +198,7 @@ can call yourself, with the same arguments. `selections` is a comma-separated li
 - `[start over](#sead-action/clear_filters)`
 - `[open its site report](#sead-action/open_site_report?siteId=3836)`
 - `[expand the samples](#sead-action/set_site_report_section?section=samples&expanded=true)`
+- `[draw Skåne on the map](#sead-action/set_map_polygons?areas=SWE.13_1)`
 
 When to use them:
 

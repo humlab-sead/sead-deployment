@@ -40,11 +40,11 @@ export function createClientTools(runCommand) {
         }),
 
         get_filter_options: tool({
-            description: "List the values that can be selected in one discrete filter, as {id, name} pairs. This is how you turn a name the user said ('pollen', 'Sweden', 'oak') into the id that a selection needs. Results are capped, so pass 'search' to narrow them.",
+            description: "List the values that can be selected in one discrete filter, as {id, name} pairs. This is how you turn a name the user said ('pollen', 'Sweden', 'oak') into the id that a selection needs. Results are capped, so pass 'search' to narrow them. For a filter that list_filters marks with `stages`, pass a stage id rather than the filter id - a later stage has no values until the stage before it has a selection, and the reply says which one is in the way.",
             inputSchema: jsonSchema({
                 type: "object",
                 properties: {
-                    filter: { type: "string", description: "The filter id, as given by list_filters." },
+                    filter: { type: "string", description: "The filter id, as given by list_filters - or one of its stage ids, for a filter that has stages." },
                     search: { type: "string", description: "Optional case-insensitive substring to match against option names." }
                 },
                 required: ["filter"],
@@ -54,7 +54,7 @@ export function createClientTools(runCommand) {
         }),
 
         add_filter: tool({
-            description: "Open a filter in the client, optionally with values already selected. This is what the user means by 'add', 'apply', 'deploy' or 'show me' a filter. Adding a filter with no selections is useful on its own - it shows the user the available values.",
+            description: "Open a filter in the client, optionally with values already selected. This is what the user means by 'add', 'apply', 'deploy' or 'show me' a filter. Adding a filter with no selections is useful on its own - it shows the user the available values. A stage id opens the one facet its stages share.",
             inputSchema: jsonSchema({
                 type: "object",
                 properties: {
@@ -68,7 +68,7 @@ export function createClientTools(runCommand) {
         }),
 
         set_filter_selections: tool({
-            description: "Replace what is selected in a filter that is already open. Use this rather than removing and re-adding a filter.",
+            description: "Replace what is selected in a filter that is already open. Use this rather than removing and re-adding a filter. For a staged filter (see `stages` in list_filters) pass the stage id, e.g. `ecocode_system` to pick the classification system and then `ecocode` to pick codes within it - the filter id alone cannot say which stage you mean.",
             inputSchema: jsonSchema({
                 type: "object",
                 properties: {
@@ -175,6 +175,43 @@ export function createClientTools(runCommand) {
                 additionalProperties: false
             }),
             execute: async (args) => runCommand("set_result_view", args)
+        }),
+
+        find_areas: tool({
+            description: "Look up an administrative area - a country, region or municipality - by name, in the GADM boundary data held alongside SEAD. Returns candidates with the id that set_map_polygons takes. Names repeat all over the world (there are eight Yorks), so read the country and region on each candidate before choosing, and say which one you used. This is a lookup only: it does not change anything on screen.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    name: { type: "string", description: "The area name to look for, e.g. 'Skåne', 'Sweden', 'Umeå'. Matched case-insensitively anywhere in the name." },
+                    level: { type: "number", enum: [0, 1, 2], description: "Optional: 0 country, 1 region, 2 municipality. Omit to search all three." },
+                    country: { type: "string", description: "Optional country name to restrict the search to, e.g. 'Sweden'." }
+                },
+                required: ["name"],
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("find_areas", args)
+        }),
+
+        set_map_polygons: tool({
+            description: "Draw one or more polygons on the map filter, which then narrows the results to the sites inside them, and move the map so the user can see what was selected. This is the default way to filter by a place - any level, any number of areas at once, since a site matches if it falls within ANY of the polygons. Pass 'areas' with ids from find_areas - the boundary is fetched and simplified for you - or 'polygons' with explicit rings for a shape that is not an administrative area. This replaces whatever the filter held unless you pass append. The boundary is a simplified outline: small islands may be left out, and the reply says how many rings were omitted, so prefer the country filter when an exact whole-country count is what is being asked for.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    areas: {
+                        type: "array",
+                        description: "Area ids from find_areas, e.g. ['SWE.13_1']. At most 6.",
+                        items: { type: "string" }
+                    },
+                    polygons: {
+                        type: "array",
+                        description: "Explicit polygons, each a list of [latitude, longitude] pairs in order around the shape. At least 3 points per polygon; do not repeat the first point at the end.",
+                        items: { type: "array", items: { type: "array", items: { type: "number" } } }
+                    },
+                    append: { type: "boolean", description: "Add to the polygons already on the filter instead of replacing them. Defaults to false." }
+                },
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("set_map_polygons", args)
         })
     };
 }
@@ -183,5 +220,6 @@ export const CLIENT_COMMANDS = [
     "list_filters", "get_state", "get_filter_options", "add_filter",
     "set_filter_selections", "remove_filter", "clear_filters", "set_domain", "set_result_view",
     "open_site_report", "close_site_report", "list_site_report_sections",
-    "set_site_report_section", "export_site_report"
+    "set_site_report_section", "export_site_report",
+    "find_areas", "set_map_polygons"
 ];

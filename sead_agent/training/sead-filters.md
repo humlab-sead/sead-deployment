@@ -1,6 +1,6 @@
 # SEAD filters (facets) available in this client
 
-Generated from `https://sead.local/query/api/facets` on 2026-09-08. This is the authoritative list of what the
+Generated from `https://sead.local/query/api/facets` on 2026-09-10. This is the authoritative list of what the
 `add_filter`, `set_filter_selections` and `remove_filter` tools accept: the **filter id**
 column is the exact string those tools want. Filter ids are not guessable from the title,
 and the titles users say out loud rarely match them.
@@ -59,13 +59,14 @@ you need exists inside it.
 **Eco code** - filter id `ecocode`
 
 : Ecological category (trait) or cultural relevance of organisms based on a classification system
-: Type `discrete` - selections are array of integer ids (use get_filter_options to resolve names).
+: Type `multistage` - one facet in the client, picked in order: `ecocode_system` then `ecocode`.
+: Use the **stage id** with `get_filter_options` and `set_filter_selections`; a later stage has no values until the one before it is picked.
 : Domains: `general`, `palaeoentomology`, `archaeobotany`, `pollen`.
 
 **Eco code system** - filter id `ecocode_system`
 
 : Ecological or cultural organism classification system (which groups items in the ecological/cultural category filter)
-: Type `discrete` - selections are array of integer ids (use get_filter_options to resolve names).
+: Type `discrete` - a **stage of the `ecocode` filter**, not a filter of its own. Opening it opens `ecocode`; selections go to this stage by its own id.
 : Domains: `general`, `palaeoentomology`, `archaeobotany`, `pollen`.
 
 
@@ -254,7 +255,7 @@ you need exists inside it.
 **Sites (map)** - filter id `sites_polygon`
 
 : General name for the excavation or sampling location
-: Type `geopolygon` - selections are polygon coordinates - not settable by the agent.
+: Type `geopolygon` - selections are one or more polygons, set with set_map_polygons (by area name, or as [latitude, longitude] rings).
 : Domains: `general`, `palaeoentomology`, `archaeobotany`, `pollen`, `geoarchaeology`, `dendrochronology`, `ceramic`, `isotope`.
 
 **Time periods** - filter id `relative_age_name`

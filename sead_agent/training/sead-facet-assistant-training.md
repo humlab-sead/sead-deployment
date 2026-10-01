@@ -42,6 +42,33 @@ Approximate live volumes: 3.5k sites, 6.5k sample groups, 43k physical samples,
 A site belongs to a domain only because it has a linked dataset in that domain, reached
 via `site → sample_group → physical_sample → analysis_entity → dataset → method_id`.
 
+### 1.1 What the user's words mean
+
+Users say very few of these names the way the database spells them. The mappings that
+come up constantly:
+
+| What they say | What they mean |
+|---|---|
+| site, sites, locality, place | an archaeological site record — `tbl_sites`, the `sites` filter. **Never a website, web page, URL or internet domain**, unless they explicitly say so |
+| sample, samples | a physical sample (`tbl_physical_samples`) — not a sample group, and not an analysis entity |
+| group, context group, profile, trench, core | a sample group (`tbl_sample_groups`, the `sample_groups` filter) |
+| analysis, analyses | usually an analysis entity: one sample analysed by one dataset. It is also the unit the result counts are in (§8) |
+| measurement, measurements, observation, value | a measured value (`tbl_measured_values`) — read in a site report, or narrowed with the geoarchaeology measured-value filters (§3.3) |
+| species, taxon, taxa, and any bug, plant or pollen name | the `species` filter (taxa actually observed in abundances), narrowed by `family` and `genus` |
+| period, era, age, "the Bronze Age" | normally a named period in `relative_age_name`, not one of the numeric age filters |
+| proxy, proxy type, kind of data | `record_types` or `data_types` — though what they usually want is a domain (§2) |
+
+Two words worth resolving rather than guessing at:
+
+- **"location"** — either the site itself or the administrative place it sits in. When
+  they name a country or a region, it is the latter (`country`, `region`).
+- **"dataset"** — in ordinary speech usually "the data I would get from these sites",
+  not a row in `tbl_datasets`. Only reach for the `datasets` filter when they mean one
+  particular dataset.
+
+Answer in their vocabulary, not the schema's: say sites and samples, and keep `tbl_*`
+names out of the reply unless the question was about the database itself.
+
 ---
 
 ## 2. Domains
@@ -115,7 +142,7 @@ see what the user's current domain actually offers.
 | `region` | Region | discrete | G | same view, `location_type_id IN (2,7,14,16,18)` — admin regions, aggregate regions, historical units, geographical areas, islands |
 | `location_types` | Location type | discrete | A | `tbl_location_types` — the admin level itself |
 | `sites` | Site | discrete | A | `tbl_sites.site_id` (label `site_name`) |
-| `sites_polygon` | Sites (map) | geopolygon | A | draw a polygon on the map; filters sites by lat/long |
+| `sites_polygon` | Sites (map) | geopolygon | A | one or more polygons over site lat/long. Several are OR:ed - a site inside any one matches. `set_map_polygons` fills it from GADM boundaries (§3.5) |
 | `sample_groups` | Sample groups | discrete | A | `tbl_sample_groups` (label = `site_name + ' ' + sample_group_name`) |
 | `datasets` | Datasets | discrete | A | `tbl_datasets.dataset_id` |
 | `dataset_methods` | Dataset methods | discrete | G | `tbl_methods.method_id` — the analysis method |
@@ -139,8 +166,8 @@ see what the user's current domain actually offers.
 
 | Code | Title | Type | Dom | Filters on |
 |---|---|---|---|---|
-| `ecocode_system` | Eco code system | discrete | palaeoent., archaeobot., pollen | `tbl_ecocode_systems` — pick the system first |
-| `ecocode` | Eco code | discrete | same | `tbl_ecocode_definitions` — ecological/cultural trait of the organism |
+| `ecocode_system` | Eco code system | discrete | palaeoent., archaeobot., pollen | `tbl_ecocode_systems` — **stage 1 of the client's Eco code filter**, not a filter of its own |
+| `ecocode` | Eco code | discrete | same | `tbl_ecocode_definitions` — ecological/cultural trait of the organism. **Stage 2**: no values until a system is picked |
 | `abundances_all` | Abundances | range | same | `facet.view_abundance.abundance` — count per record |
 | `abundance_classification` | Abundance classification | discrete | G | quantification scheme (presence/absence, classes, counts) |
 
@@ -201,6 +228,42 @@ Three age filters, three different number scales:
 Never hand-compute bounds. Load the facet with no picks first and read the returned
 `Extent` / outer bounds, then pick inside them.
 
+### 3.5 The map filter and administrative boundaries
+
+`sites_polygon` is the only filter that selects by shape instead of by value, and since the
+multi-polygon change it holds **a list of polygons rather than one**. A site matches if its
+coordinates fall inside any of them, so "Skåne and Gotland" is one filter, and so is a country
+whose islands are separate rings.
+
+**On the wire.** A facet config for it accepts three forms, all equivalent for one polygon:
+
+```jsonc
+"picks":  [{"pickValue": "63.87"}, {"pickValue": "20.09"}, ...]   // flat, latitude first
+"coordinates": [[63.87, 20.09], [63.94, 20.50], ...]              // one polygon
+"polygons": [ [[63.87, 20.09], ...], [[55.60, 12.90], ...] ]      // several
+```
+
+Coordinates are **[latitude, longitude]** — the reverse of GeoJSON — and rings need not be
+closed; the API closes them. Replies echo the picks back grouped under `Polygons`, with a
+`PolygonIndex` on each pick saying which ring it belongs to. Multi-polygon needs the query API
+from the `feature/multi-polygon-geofacet` work; an older build ignores `polygons` silently and
+returns everything, so a filter that suddenly matches every site is the symptom to recognise.
+
+**Where the shapes come from.** The deployment loads GADM administrative boundaries into the
+`gadm` schema (levels 0/1/2: country, region, municipality; roughly 263, 3.6k and 47k areas).
+They are not reachable through PostgREST, which exposes `public` only, and the raw geometry is
+far too detailed for a filter anyway — Sweden alone is 3338 rings and 14k points. The JSON API
+server serves them ready for use instead:
+
+| Endpoint | Returns |
+|---|---|
+| `GET /jsonapi/gadm/areas?q=<name>[&level=][&country=]` | candidates: `gid`, level, name, region, country |
+| `GET /jsonapi/gadm/area/<gid>/polygons` | `polygons` as [latitude, longitude] rings, plus a count of rings omitted |
+
+Each boundary is cut to its largest few rings and simplified to a point budget, so what you get
+is a recognisable outline, not the legal border: small islands drop out, and the edge is off by
+around a kilometre. The `find_areas` and `set_map_polygons` tools wrap these two endpoints.
+
 ---
 
 ## 4. How a facet configuration becomes SQL
@@ -216,7 +279,9 @@ Never hand-compute bounds. Load the facet with no picks first and read the retur
      which is why counts stay visible for unselected options), else `expr IN (...)`.
    - **range** — `BETWEEN lo AND hi`; with no picks, the facet's permanent clause is used.
    - **rangesintersect** — range-overlap; requires ≥2 pick values.
-   - **geopolygon** — point-in-polygon on the site coordinates.
+   - **geopolygon** — point-in-polygon on the site coordinates. A config can carry several
+     polygons, in which case the `ST_Within` expressions are OR:ed inside one parenthesised
+     criterion; one polygon compiles exactly as it always did.
 4. Union the tables required by every involved facet (`facet.facet_table`) plus any tables
    needed by the requested result fields.
 5. **Shortest-path over `facet.table_relation`** from the target facet's table to every
@@ -463,6 +528,19 @@ picks `[1700, 1799]` (calendar AD, no offset). Note `genus`/`species` are blackl
 the dendrochronology UI in the shipped config — if so, use the dendro tree-species
 mosaic tile instead of a filter.
 
+### "Sites in Skåne" / "anything from Umeå municipality"
+
+1. `find_areas` with the name; read the candidates and pick by country and level - name
+   collisions are the norm, not the exception.
+2. `set_map_polygons` with that area's id. Several areas in one call are OR:ed together.
+3. `get_state` for the resulting site count.
+
+This is the default route for any place, at any level. The `country` filter is the exception
+worth taking: it selects on the location recorded for a site rather than on its coordinates,
+so it is exact where an outline is not - measured against full-resolution boundaries, the
+Skåne outline matches its 301 sites exactly, while Sweden's gets 1913 of 1990 because the rest
+sit on islands too small to keep. Use it for a whole-country count; draw the area otherwise.
+
 ### "Which sites have phosphate measurements above X?"
 
 Domain `geoarchaeology` → `tbl_denormalized_measured_values_37` (Phosphates), a range
@@ -484,6 +562,12 @@ filter. Load with no picks to get the real value range before suggesting a thres
   archaeobotany queries. Verify with a search or facet load before saying SEAD lacks
   something, and say which domain you checked.
 - **Counts are analysis entities**, not sites. Say which unit you are quoting.
-- The assistant cannot drive the UI yet — give instructions, links, and view states.
+- **The assistant drives the UI.** The client tools apply filters, switch domain and view,
+  open site reports and draw map polygons in the user's own browser - so act rather than
+  describe the menu path (see the operating instructions at the top of the prompt).
+- **Map polygons are approximate outlines.** They are simplified administrative boundaries,
+  not the border itself, and they select on site coordinates only - a site with no coordinates
+  is in no polygon. Accurate enough to be the default way into a place; not the thing to quote
+  a whole-country total from.
 
 ---
