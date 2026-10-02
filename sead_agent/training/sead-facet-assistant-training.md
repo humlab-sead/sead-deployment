@@ -148,7 +148,7 @@ see what the user's current domain actually offers.
 | `dataset_methods` | Dataset methods | discrete | G | `tbl_methods.method_id` — the analysis method |
 | `dataset_provider` | Dataset provider | discrete | G | `tbl_dataset_masters` — contributing institution |
 | `relative_age_name` | Time periods | discrete | A | `tbl_relative_ages` — named cultural/geological periods (Bronze Age, Neolithic…) |
-| `analysis_entity_ages` | Analysis entity ages | rangesintersect | G (default on) | `tbl_analysis_entity_ages.age_range`. **See §3.4 — shifted scale** |
+| `analysis_entity_ages` | Analysis entity ages | rangesintersect | G (default on) | `tbl_analysis_entity_ages.age_range` — **years BP**, plain (§3.4) |
 | `dendro_age_contained_by` | Dendrochronology ages | rangesintersect | dendro, G | `tbl_dendro_dates.age_range` — **calendar AD years**, plain |
 | `geochronology` | Geochronology | range | all except dendro-blacklisted | `tbl_geochronology.age` — absolute dates in method years BP (e.g. uncalibrated ¹⁴C) |
 | `activeseason` | Insect activity seasons | discrete | palaeoent., archaeobot., pollen, adna | `tbl_seasons` |
@@ -216,11 +216,10 @@ narrow with `sites` instead.
 
 Three age filters, three different number scales:
 
-- **`analysis_entity_ages`** — category expression is
-  `int4range(lower(age_range) - 10000, upper(age_range) - 10000)`.
-  So **pick value = years BP − 10000**, i.e. `years_BP = pick + 10000`.
-  Verified: picks `[-9000, -8000]` → 1000–2000 BP; picks `[-2000, 0]` → 8000–10000 BP.
-  Counter-intuitively, *less negative = older*. Outer bounds run roughly −50000 … +50000.
+- **`analysis_entity_ages`** — category expression is plain `age_range`, so picks are
+  **conventional years BP** (positive = older), `[younger, older]`. 4000–6000 BP is
+  `[4000, 6000]`; the last 500 years is `[-76, 424]`, since "now" (2026) is −76 BP.
+  The lower number is the *more recent* end. This is also what the Timeline slider shows.
 - **`dendro_age_contained_by`** — plain **calendar AD years**. Picks `[1700, 1750]`
   mean AD 1700–1750. Verified: 95 sites.
 - **`geochronology`** — raw method years BP as measured (uncalibrated ¹⁴C etc.), no offset.
@@ -516,8 +515,8 @@ populate the `species` facet with those picks to list taxa with counts.
 
 ### "Show me pollen data between 4000 and 6000 BP"
 
-Domain `pollen` → `analysis_entity_ages` with picks `[-6000, -4000]`
-(because pick = BP − 10000). Load with no picks first to confirm the bounds. Warn that
+Domain `pollen` → `analysis_entity_ages` with picks `[4000, 6000]`
+(plain years BP). Load with no picks first to confirm the bounds. Warn that
 pollen is a small part of SEAD (~69 datasets).
 
 ### "Oak timbers felled in the 18th century"
@@ -549,7 +548,7 @@ filter. Load with no picks to get the real value range before suggesting a thres
 ---
 
 ## 8. Things to get right
-- **Age scales differ per filter** (§3.4). `analysis_entity_ages` is offset by −10000.
+- **Age scales differ per filter** (§3.4). `analysis_entity_ages` is plain years BP, `[younger, older]`.
 - **Filters never filter themselves**, so a facet's own counts reflect everything else
   in the chain but not its own selection.
 - **Chain order matters** — only preceding filters constrain a facet.
