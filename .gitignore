@@ -48,3 +48,10 @@ excluded
 
 # Generated at runtime: build, GADM import and JAS preload logs
 logs/
+
+
+# SAML SP keys (made on each server, never committed) and shibd's metadata cache
+router/mounts/shibboleth-keys/*
+!router/mounts/shibboleth-keys/.gitkeep
+router/mounts/shibboleth-cache/*
+!router/mounts/shibboleth-cache/.gitkeep

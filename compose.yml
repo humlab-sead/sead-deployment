@@ -11,9 +11,20 @@ services:
       - DOMAIN=${DOMAIN}
       - BASIC_AUTH_USER=${HTACCESS_USER}
       - BASIC_AUTH_PASS=${HTACCESS_PASSWORD}
+      #SAML Service Provider (shibd). See router/shibboleth/ and plans/sead-login-plan.md.
+      - DEPLOY_MODE=${DEPLOY_MODE:-}
+      - SAML_FEDERATION=${SAML_FEDERATION:-}
+      - SAML_DEV_IDP_HOST=${SAML_DEV_IDP_HOST:-}
+      - SEAD_SP_HANDOFF_SECRET=${SEAD_SP_HANDOFF_SECRET:-}
     volumes:
       - ./router/vhost.conf:/etc/nginx/templates/default.conf.template
       - ./router/logs:/var/log/nginx
+      - ./router/shibboleth:/etc/sead-shibboleth:ro
+      #Made on each server by router/scripts/generate-sp-keys.sh; never committed or copied
+      - ./router/mounts/shibboleth-keys:/etc/shibboleth/keys:ro
+      #shibd's backing copy of the federation metadata, so it starts when the federation's
+      #metadata service is unreachable
+      - ./router/mounts/shibboleth-cache:/var/cache/shibboleth
     networks:
       - sead_network
 
@@ -177,10 +188,14 @@ services:
         JAS_REF: ${JAS_RELEASE}
         MODE: "prod"
     restart: unless-stopped
+    #8485 is the SAML hand-off listener. It is reached only by the router, and must never be published.
     ports:
       - "${JAS_PORT}:8484"
     environment:
       API_PORT: 8484
+      HANDOFF_PORT: 8485
+      DOMAIN: ${DOMAIN}
+      DEPLOY_MODE: ${DEPLOY_MODE:-}
       POSTGRES_HOST: $JAS_POSTGRES_HOST
       POSTGRES_PORT: $JAS_POSTGRES_PORT
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
@@ -207,6 +222,11 @@ services:
       GITHUB_CLIENT_SECRET: $JAS_GITHUB_CLIENT_SECRET
       ORCID_CLIENT_ID: $JAS_ORCID_CLIENT_ID
       ORCID_CLIENT_SECRET: $JAS_ORCID_CLIENT_SECRET
+      ORCID_ISSUER: ${JAS_ORCID_ISSUER:-https://orcid.org}
+      AUTH_PROVIDERS: ${JAS_AUTH_PROVIDERS:-saml,orcid}
+      SAML_LOGIN_LABEL: ${JAS_SAML_LOGIN_LABEL:-SEAD login}
+      SEAD_SP_HANDOFF_SECRET: ${SEAD_SP_HANDOFF_SECRET:-}
+      JAS_AUTH_SALT: ${JAS_AUTH_SALT:-}
       ARTIFICIAL_LATENCY_MS: $JAS_ARTIFICIAL_LATENCY_MS
     depends_on:
       - mongo

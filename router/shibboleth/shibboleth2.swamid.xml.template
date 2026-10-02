@@ -1,0 +1,65 @@
+<!--
+    SAML SP for super.sead.se and browser.sead.se, against every SWAMID IdP.
+    Rendered by the router's entrypoint (SAML_FEDERATION=swamid) into /etc/shibboleth/shibboleth2.xml.
+    The two sites render this same file and differ only in ${DOMAIN} and their keys.
+    Keep in step with shibboleth2.local.xml.template: the two differ only in <SSO> and <MetadataProvider>.
+-->
+<SPConfig xmlns="urn:mace:shibboleth:3.0:native:sp:config"
+    xmlns:conf="urn:mace:shibboleth:3.0:native:sp:config"
+    clockSkew="180">
+
+    <!-- Only the hand-off path needs a session; shibauthorizer starts a login for it -->
+    <RequestMapper type="XML">
+        <RequestMap>
+            <Host name="${DOMAIN}">
+                <Path name="auth/saml/login" authType="shibboleth" requireSession="true"/>
+            </Host>
+        </RequestMap>
+    </RequestMapper>
+
+    <ApplicationDefaults entityID="https://${DOMAIN}/shibboleth"
+        REMOTE_USER="subject-id eppn"
+        cipherSuites="DEFAULT:!EXP:!LOW:!aNULL:!eNULL:!DES:!IDEA:!SEED:!RC4:!3DES:!kRSA:!SSLv2:!SSLv3:!TLSv1:!TLSv1.1">
+
+        <!-- The Shibboleth session only carries the hand-off to json_api_server, which
+             owns the SEAD session, so it is kept short -->
+        <Sessions lifetime="300" timeout="300" relayState="ss:mem"
+                  checkAddress="false" handlerSSL="true" cookieProps="https"
+                  redirectLimit="exact">
+
+            <!-- The user picks their institution at SeamlessAccess, which returns the
+                 IdP's entityID to /Shibboleth.sso/Login -->
+            <SSO discoveryProtocol="SAMLDS" discoveryURL="https://service.seamlessaccess.org/ds/">SAML2</SSO>
+
+            <Logout>Local</Logout>
+
+            <Handler type="MetadataGenerator" Location="/Metadata" signing="false"/>
+            <Handler type="Status" Location="/Status" acl="127.0.0.1 ::1"/>
+            <Handler type="Session" Location="/Session" showAttributeValues="${SHIB_SHOW_ATTRIBUTE_VALUES}"/>
+            <Handler type="DiscoveryFeed" Location="/DiscoFeed"/>
+        </Sessions>
+
+        <Errors supportContact="support@humlab.umu.se" helpLocation="/" styleSheet="/shibboleth-sp/main.css"/>
+
+        <!-- SWAMID's IdP aggregate, verified against SWAMID's metadata signer and refreshed
+             every 4 h. The backing copy (router/mounts/shibboleth-cache) lets shibd start
+             when mds.swamid.se is unreachable. -->
+        <MetadataProvider type="XML" validate="true"
+            url="https://mds.swamid.se/md/swamid-idp.xml"
+            backingFilePath="swamid-idp.xml" reloadInterval="14400">
+            <MetadataFilter type="Signature" certificate="md-signer2.crt" verifyBackup="false"/>
+            <MetadataFilter type="RequireValidUntil" maxValidityInterval="2419200"/>
+        </MetadataProvider>
+
+        <AttributeExtractor type="XML" validate="true" reloadChanges="false" path="attribute-map.xml"/>
+        <AttributeFilter type="XML" validate="true" path="attribute-policy.xml"/>
+
+        <CredentialResolver type="Chaining">
+            <CredentialResolver type="File" use="signing" key="keys/sp-signing-key.pem" certificate="keys/sp-signing-cert.pem"/>
+            <CredentialResolver type="File" use="encryption" key="keys/sp-encrypt-key.pem" certificate="keys/sp-encrypt-cert.pem"/>
+        </CredentialResolver>
+    </ApplicationDefaults>
+
+    <SecurityPolicyProvider type="XML" validate="true" path="security-policy.xml"/>
+    <ProtocolProvider type="XML" validate="true" reloadChanges="false" path="protocols.xml"/>
+</SPConfig>

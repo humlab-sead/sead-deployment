@@ -37,6 +37,24 @@ services:
     ports:
       - "27017:27017"
 
+  #The dev SAML IdP standing in for SWAMID (SimpleSAMLphp, local test accounts).
+  #Reached as https://${SAML_DEV_IDP_HOST} through the router; see sead_idp/README.md.
+  sead_idp:
+    build:
+      context: ./sead_idp
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      SAML_DEV_IDP_HOST: ${SAML_DEV_IDP_HOST:-sead-idp.local}
+      SAML_DEV_IDP_ADMIN_PASSWORD: ${SAML_DEV_IDP_ADMIN_PASSWORD:-}
+      SAML_DEV_IDP_SECRET_SALT: ${SAML_DEV_IDP_SECRET_SALT:-}
+    volumes:
+      #The IdP reads the SP's certificates from here, so the SP needs no manual registration
+      - ./router/mounts/shibboleth-keys:/var/simplesamlphp/sp-keys:ro
+    networks:
+      - sead_network
+
   postgresql_mcp:
     build:
       context: ./postgres_mcp

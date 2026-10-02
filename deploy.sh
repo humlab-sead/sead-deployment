@@ -380,6 +380,18 @@ cmd_generate_env() {
     fi
     info "DEPLOY_MODE=${DEPLOY_MODE} written to .env"
 
+    # SEAD login defaults: the dev IdP and the ORCID sandbox in dev, SWAMID and
+    # orcid.org online. Values imported from an old .env are kept.
+    if [[ "${DEPLOY_MODE}" == "prod" ]]; then
+        set_env_default .env SAML_FEDERATION swamid
+        set_env_default .env JAS_ORCID_ISSUER https://orcid.org
+    else
+        set_env_default .env SAML_FEDERATION local
+        set_env_default .env SAML_DEV_IDP_HOST sead-idp.local
+        set_env_default .env JAS_ORCID_ISSUER https://sandbox.orcid.org
+    fi
+    info "SAML_FEDERATION=$(get_env_var .env SAML_FEDERATION), JAS_ORCID_ISSUER=$(get_env_var .env JAS_ORCID_ISSUER)"
+
     # Keep QueryBuilder credentials in sync with the read-only DB user/password
     sync_linked_vars .env \
         DATABASE_READ_ONLY_USER     QueryBuilderSetting__Store__Username \
@@ -502,6 +514,14 @@ get_env_var() {
     local file="$1"
     local key="$2"
     grep -m1 -E "^${key}=" "$file" | cut -d= -f2- || true
+}
+
+# Set KEY=value only if the key is missing or empty.
+set_env_default() {
+    local file="$1"
+    local key="$2"
+    local value="$3"
+    [[ -n "$(get_env_var "$file" "$key")" ]] || set_env_var "$file" "$key" "$value"
 }
 
 is_valid_compose_project_name() {
@@ -1102,6 +1122,9 @@ cmd_install() {
     # Reload env so variables (DOMAIN, DATABASE_USER, etc.) are available in this shell
     load_env
 
+    # The SAML SP's keys are made for DOMAIN, so only once it is final
+    cmd_sp_keys
+
     echo
     warn "Please review .env now (especially manual API/OAuth credentials)."
     warn "Press ENTER to continue with the build, or Ctrl-C to abort."
@@ -1152,6 +1175,13 @@ cmd_install() {
     echo
     success "Installation complete!"
     info "The stack should now be available at http://${DOMAIN:-localhost}:${WEB_PORT:-80}"
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# sp-keys command — the SAML Service Provider's keys for this server
+# ──────────────────────────────────────────────────────────────────────────────
+cmd_sp_keys() {
+    DOMAIN="${DOMAIN:-}" "$SCRIPT_DIR/router/scripts/generate-sp-keys.sh" "$@"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1868,6 +1898,12 @@ Commands:
                        from an old .env path, then auto-filling passwords and
                        secrets that remain empty.
 
+  sp-keys [--force]    Generate the SAML Service Provider's signing and encryption
+                       keys for DOMAIN into router/mounts/shibboleth-keys/, unless
+                       they exist. Install runs this. Online, the certificates are
+                       part of the server's SWAMID registration: replacing them
+                       (--force) means updating the registration.
+
   rotate-secrets       Overwrite ALL passwords and secrets in the existing .env
                        with freshly generated cryptographically random values.
                        A timestamped backup (.env.bak.YYYYMMDD_HHMMSS) is saved
@@ -1905,6 +1941,7 @@ case "$command" in
     flush-cache)  cmd_flush_cache ;;
     generate-env)    cmd_generate_env ;;
     rotate-secrets)  cmd_rotate_secrets ;;
+    sp-keys)         cmd_sp_keys "$@" ;;
     help|--help|-h)  usage ;;
     "")           usage ;;
     *)            error "Unknown command: $command"; echo; usage; exit 1 ;;

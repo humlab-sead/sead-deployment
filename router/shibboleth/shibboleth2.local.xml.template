@@ -1,0 +1,58 @@
+<!--
+    SAML SP for sead.local, against the dev IdP (sead_idp).
+    Rendered by the router's entrypoint (SAML_FEDERATION=local) into /etc/shibboleth/shibboleth2.xml.
+    Keep in step with shibboleth2.swamid.xml.template: the two differ only in <SSO> and <MetadataProvider>.
+-->
+<SPConfig xmlns="urn:mace:shibboleth:3.0:native:sp:config"
+    xmlns:conf="urn:mace:shibboleth:3.0:native:sp:config"
+    clockSkew="180">
+
+    <!-- Only the hand-off path needs a session; shibauthorizer starts a login for it -->
+    <RequestMapper type="XML">
+        <RequestMap>
+            <Host name="${DOMAIN}">
+                <Path name="auth/saml/login" authType="shibboleth" requireSession="true"/>
+            </Host>
+        </RequestMap>
+    </RequestMapper>
+
+    <ApplicationDefaults entityID="https://${DOMAIN}/shibboleth"
+        REMOTE_USER="subject-id eppn"
+        cipherSuites="DEFAULT:!EXP:!LOW:!aNULL:!eNULL:!DES:!IDEA:!SEED:!RC4:!3DES:!kRSA:!SSLv2:!SSLv3:!TLSv1:!TLSv1.1">
+
+        <!-- The Shibboleth session only carries the hand-off to json_api_server, which
+             owns the SEAD session, so it is kept short -->
+        <Sessions lifetime="300" timeout="300" relayState="ss:mem"
+                  checkAddress="false" handlerSSL="true" cookieProps="https"
+                  redirectLimit="exact">
+
+            <!-- The one dev IdP; no discovery -->
+            <SSO entityID="https://${SAML_DEV_IDP_HOST}/simplesaml/module.php/saml/idp/metadata">SAML2</SSO>
+
+            <Logout>Local</Logout>
+
+            <Handler type="MetadataGenerator" Location="/Metadata" signing="false"/>
+            <Handler type="Status" Location="/Status" acl="127.0.0.1 ::1"/>
+            <Handler type="Session" Location="/Session" showAttributeValues="${SHIB_SHOW_ATTRIBUTE_VALUES}"/>
+            <Handler type="DiscoveryFeed" Location="/DiscoFeed"/>
+        </Sessions>
+
+        <Errors supportContact="support@humlab.umu.se" helpLocation="/" styleSheet="/shibboleth-sp/main.css"/>
+
+        <!-- The dev IdP's metadata, fetched over the compose network. It is unsigned. -->
+        <MetadataProvider type="XML" validate="true"
+            url="http://sead_idp/simplesaml/module.php/saml/idp/metadata"
+            backingFilePath="sead-idp-metadata.xml" maxRefreshDelay="300"/>
+
+        <AttributeExtractor type="XML" validate="true" reloadChanges="false" path="attribute-map.xml"/>
+        <AttributeFilter type="XML" validate="true" path="attribute-policy.xml"/>
+
+        <CredentialResolver type="Chaining">
+            <CredentialResolver type="File" use="signing" key="keys/sp-signing-key.pem" certificate="keys/sp-signing-cert.pem"/>
+            <CredentialResolver type="File" use="encryption" key="keys/sp-encrypt-key.pem" certificate="keys/sp-encrypt-cert.pem"/>
+        </CredentialResolver>
+    </ApplicationDefaults>
+
+    <SecurityPolicyProvider type="XML" validate="true" path="security-policy.xml"/>
+    <ProtocolProvider type="XML" validate="true" reloadChanges="false" path="protocols.xml"/>
+</SPConfig>
