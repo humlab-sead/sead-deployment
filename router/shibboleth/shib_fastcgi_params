@@ -1,0 +1,27 @@
+# FastCGI parameters for shibauthorizer and shibresponder.
+#
+# The router listens on plain http behind the TLS front door (host nginx on sead.local,
+# the servers' front proxies online), but shibd must believe it serves https://<domain>:
+# otherwise it builds http:// ACS URLs and handlerSSL refuses the POST. Every public
+# request to SEAD arrives over https, so HTTPS, the scheme and the port are fixed here.
+#
+# This replaces nginx's fastcgi_params rather than being added after it: a FastCGI
+# program reads the first of two same-named parameters, so a later override is ignored.
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  REQUEST_SCHEME     https;
+fastcgi_param  HTTPS              on;
+fastcgi_param  SERVER_PORT        443;
+fastcgi_param  SERVER_NAME        $host;

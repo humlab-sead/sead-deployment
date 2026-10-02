@@ -11,9 +11,20 @@ services:
       - DOMAIN=${DOMAIN}
       - BASIC_AUTH_USER=${HTACCESS_USER}
       - BASIC_AUTH_PASS=${HTACCESS_PASSWORD}
+      #SAML Service Provider (shibd). See router/shibboleth/ and plans/sead-login-plan.md.
+      - DEPLOY_MODE=${DEPLOY_MODE:-}
+      - SAML_FEDERATION=${SAML_FEDERATION:-}
+      - SAML_DEV_IDP_HOST=${SAML_DEV_IDP_HOST:-}
+      - SEAD_SP_HANDOFF_SECRET=${SEAD_SP_HANDOFF_SECRET:-}
     volumes:
       - ./router/vhost.conf:/etc/nginx/templates/default.conf.template
       - ./router/logs:/var/log/nginx
+      - ./router/shibboleth:/etc/sead-shibboleth:ro
+      #Made on each server by router/scripts/generate-sp-keys.sh; never committed or copied
+      - ./router/mounts/shibboleth-keys:/etc/shibboleth/keys:ro
+      #shibd's backing copy of the federation metadata, so it starts when the federation's
+      #metadata service is unreachable
+      - ./router/mounts/shibboleth-cache:/var/cache/shibboleth
     networks:
       - sead_network
 
@@ -36,6 +47,9 @@ services:
     volumes:
       - ./postgresql/mounts/pg-data-volume:/pgdata:Z
       - ./postgresql/mounts/init-scripts:/docker-entrypoint-initdb.d
+      #GADM boundary data is fetched on demand rather than vendored - 1.4 GB must never
+      #reach git. Mounted so the download survives container rebuilds and re-imports.
+      - ./postgresql/mounts/gadm:/var/lib/gadm:Z
       #- ./postgresql/mounts/logs:/pgdata/log
       #- ./postgresql/mounts/postgresql.conf:/pgdata/postgresql.conf
       #- ./postgresql/mounts/pg_hba.conf:/pgdata/pg_hba.conf
@@ -111,7 +125,11 @@ services:
       args:
         SBC_REF: ${SBC_RELEASE}
         DOMAIN: ${DOMAIN}
-        SBC_BUILD: ${SBC_BUILD}
+        SCHEME: ${SCHEME}
+        #The Dockerfile and prepare-config.js both key off MODE; SBC_BUILD is what the
+        #deployment calls it in .env. Passing it under the wrong name left MODE on its
+        #"dev" default, so a prod build still came up as a dev server.
+        MODE: ${SBC_BUILD}
     restart: unless-stopped
     volumes:
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
@@ -170,10 +188,14 @@ services:
         JAS_REF: ${JAS_RELEASE}
         MODE: "prod"
     restart: unless-stopped
+    #8485 is the SAML hand-off listener. It is reached only by the router, and must never be published.
     ports:
       - "${JAS_PORT}:8484"
     environment:
       API_PORT: 8484
+      HANDOFF_PORT: 8485
+      DOMAIN: ${DOMAIN}
+      DEPLOY_MODE: ${DEPLOY_MODE:-}
       POSTGRES_HOST: $JAS_POSTGRES_HOST
       POSTGRES_PORT: $JAS_POSTGRES_PORT
       POSTGRES_DATABASE: $JAS_POSTGRES_DATABASE
@@ -200,6 +222,11 @@ services:
       GITHUB_CLIENT_SECRET: $JAS_GITHUB_CLIENT_SECRET
       ORCID_CLIENT_ID: $JAS_ORCID_CLIENT_ID
       ORCID_CLIENT_SECRET: $JAS_ORCID_CLIENT_SECRET
+      ORCID_ISSUER: ${JAS_ORCID_ISSUER:-https://orcid.org}
+      AUTH_PROVIDERS: ${JAS_AUTH_PROVIDERS:-saml,orcid}
+      SAML_LOGIN_LABEL: ${JAS_SAML_LOGIN_LABEL:-SEAD login}
+      SEAD_SP_HANDOFF_SECRET: ${SEAD_SP_HANDOFF_SECRET:-}
+      JAS_AUTH_SALT: ${JAS_AUTH_SALT:-}
       ARTIFICIAL_LATENCY_MS: $JAS_ARTIFICIAL_LATENCY_MS
     depends_on:
       - mongo
@@ -207,42 +234,49 @@ services:
     networks:
       - sead_network
 
-  vanna:
+  sead_agent:
     build:
-      context: ./vanna
+      context: ./sead_agent
     restart: unless-stopped
-    depends_on:
-      - postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
+    ports:
+      - "${SEAD_AGENT_PORT}:8585"
+    #The LLM the agent talks to is served on the podman host itself (usually through an
+    #ssh tunnel), which is not "localhost" from inside this container. It is reached at
+    #llm-host, a host-only address on the seadllm0 dummy interface - see
+    #sead_agent/scripts/sead-llm-host.service. Binding the tunnel there instead of
+    #0.0.0.0 keeps the model off the LAN and off the VPN entirely.
+    extra_hosts:
+      - "llm-host:10.123.0.1"
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      VANNA_OPENAI_MODEL: ${VANNA_OPENAI_MODEL:-gpt-4o-mini}
-      VANNA_DB_HOST: postgresql
-      VANNA_DB_PORT: 5432
-      VANNA_DB_NAME: ${DATABASE_NAME}
-      VANNA_DB_USER: ${DATABASE_READ_ONLY_USER}
-      VANNA_DB_PASSWORD: ${DATABASE_READ_ONLY_PASSWORD}
-      VANNA_DB_SCHEMAS: ${VANNA_DB_SCHEMAS:-public}
-      VANNA_CHROMA_DIR: ${VANNA_CHROMA_DIR:-/var/lib/vanna/chroma}
-      VANNA_SNAPSHOT_DIR: ${VANNA_SNAPSHOT_DIR:-/var/lib/vanna/snapshots}
-      VANNA_TRAINING_DIR: ${VANNA_TRAINING_DIR:-/app/training}
-      VANNA_OPS_DIR: ${VANNA_OPS_DIR:-/var/lib/vanna/ops}
-      VANNA_CACHE_DIR: ${VANNA_CACHE_DIR:-/var/lib/vanna/cache}
-      VANNA_ADMIN_EMAILS: ${VANNA_ADMIN_EMAILS:-admin@local}
-      VANNA_EMAIL_COOKIE: ${VANNA_EMAIL_COOKIE:-vanna_email}
+      SEAD_AGENT_PORT: 8585
+      SEAD_AGENT_LLM_BASE_URL: ${SEAD_AGENT_LLM_BASE_URL:-}
+      SEAD_AGENT_LLM_API_KEY: ${SEAD_AGENT_LLM_API_KEY:-local}
+      SEAD_AGENT_LLM_MODEL: ${SEAD_AGENT_LLM_MODEL:-}
+      SEAD_AGENT_THINKING_LEVEL: ${SEAD_AGENT_THINKING_LEVEL:-low}
+      SEAD_AGENT_INSTRUCTIONS_FILE: ${SEAD_AGENT_INSTRUCTIONS_FILE:-}
+      SEAD_AGENT_ENABLE_SANDBOX_TOOLS: ${SEAD_AGENT_ENABLE_SANDBOX_TOOLS:-false}
+      SEAD_AGENT_TIMEOUT_MS: ${SEAD_AGENT_TIMEOUT_MS:-120000}
+      SEAD_AGENT_MAX_INPUT_LENGTH: ${SEAD_AGENT_MAX_INPUT_LENGTH:-4000}
+      SEAD_AGENT_MAX_OUTPUT_TOKENS: ${SEAD_AGENT_MAX_OUTPUT_TOKENS:-4096}
+      SEAD_AGENT_RATE_LIMIT_WINDOW_MS: ${SEAD_AGENT_RATE_LIMIT_WINDOW_MS:-60000}
+      SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS: ${SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS:-10}
+      SEAD_AGENT_RATE_LIMIT_LONG_WINDOW_MS: ${SEAD_AGENT_RATE_LIMIT_LONG_WINDOW_MS:-3600000}
+      SEAD_AGENT_RATE_LIMIT_LONG_MAX_REQUESTS: ${SEAD_AGENT_RATE_LIMIT_LONG_MAX_REQUESTS:-60}
+      #Which X-Forwarded-For entry the per-visitor limits are counted against - it must
+      #match the number of proxies in front of the agent, or the limits count nothing
+      SEAD_AGENT_TRUSTED_PROXY_COUNT: ${SEAD_AGENT_TRUSTED_PROXY_COUNT:-1}
+      SEAD_AGENT_ALLOWED_ORIGINS: ${SEAD_AGENT_ALLOWED_ORIGINS:-}
+      SEAD_AGENT_MAX_CONCURRENT_TURNS: ${SEAD_AGENT_MAX_CONCURRENT_TURNS:-2}
+      SEAD_AGENT_MAX_SESSIONS: ${SEAD_AGENT_MAX_SESSIONS:-20}
+      SEAD_AGENT_SESSION_TTL_MS: ${SEAD_AGENT_SESSION_TTL_MS:-900000}
+      SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS: ${SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS:-60000}
+      SEAD_AGENT_MAX_CLIENT_ACTIONS: ${SEAD_AGENT_MAX_CLIENT_ACTIONS:-20}
     volumes:
-      - ./vanna/app.py:/app/app.py:Z
-      - ./vanna/scripts:/app/scripts:Z
-      - ./vanna/mounts/chroma:/var/lib/vanna/chroma:Z
-      - ./vanna/mounts/snapshots:/var/lib/vanna/snapshots:Z
-      - ./vanna/mounts/ops:/var/lib/vanna/ops:Z
-      - ./vanna/mounts/cache:/var/lib/vanna/cache:Z
-      - ./vanna/training:/app/training:Z
+      #The training documents are appended to the system prompt. Mounted so they can be
+      #edited and reloaded with a restart instead of an image rebuild.
+      - ./sead_agent/training:/sead_agent/training:Z
     networks:
       - sead_network
 

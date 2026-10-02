@@ -1,0 +1,15 @@
+# shibd logs to the console, which supervisord passes on to the container's output
+log4j.rootCategory=INFO, console
+
+# Noisy categories, as in the stock shibd.logger
+log4j.category.XMLTooling.XMLObject=INFO
+log4j.category.XMLTooling.KeyInfoResolver=INFO
+log4j.category.Shibboleth.IPRange=INFO
+log4j.category.Shibboleth.PropertySet=INFO
+log4j.category.Shibboleth.AttributeExtractor.XML=WARN
+log4j.category.XMLTooling.Signature.Debug=INFO
+log4j.additivity.XMLTooling.Signature.Debug=false
+
+log4j.appender.console=org.apache.log4j.ConsoleAppender
+log4j.appender.console.layout=org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=shibd %d{%Y-%m-%d %H:%M:%S} %p %c %x: %m%n

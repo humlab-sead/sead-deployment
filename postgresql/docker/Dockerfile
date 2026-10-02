@@ -1,16 +1,17 @@
 #FROM debian:bookworm
-FROM docker.io/library/postgres:16-bookworm
+FROM docker.io/postgis/postgis:18-3.6
 
-# The postgis/postgis:16-* images are all built on Debian 11 (bullseye), whose security
-# archive has been retired from deb.debian.org, so their packages now 404. The postgres
-# image already has the PGDG apt repo configured, so PostGIS is installed from there,
-# which is what the postgis image does as well.
-#
 # 'apt-get update' has to share a layer with the installs. Split across two RUNs, the
 # update layer gets cached while the archive moves on, and the install then fails with a
 # 404 on a package version that no longer exists on the mirror.
+#
+# gdal-bin gives us ogr2ogr, for loading external geodata (GADM administrative
+# boundaries): the postgis image ships the PostGIS extension but none of GDAL's command
+# line tools. It is installed without recommends to keep the python bindings and docs out;
+# git/curl/sqitch keep theirs, since sqitch is Perl and relies on recommended modules.
 RUN apt-get update \
-    && apt-get install -y postgresql-16-postgis-3 postgresql-16-postgis-3-scripts git curl sqitch \
+    && apt-get install -y git curl sqitch \
+    && apt-get install -y --no-install-recommends gdal-bin unzip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /

@@ -9,6 +9,8 @@ mongodb/mounts
 nginx/mounts/logs
 postgresql/mounts/pg-data-volume
 postgresql/mounts/logs
+postgresql/mounts/gadm/*
+!postgresql/mounts/gadm/.gitkeep
 postgrest/mounts
 redis/mounts
 sead_query_api/mounts
@@ -26,8 +28,6 @@ run-mongo-express.sh
 mongodb
 sead_browser_client
 scripts
-!vanna/scripts/
-!vanna/scripts/*
 bugs_import_model.sql
 bugsdata.sql
 clearinghouse/
@@ -39,19 +39,19 @@ client_secret_*
 postgres_mcp/node_modules
 pygwalker
 router/logs
-vanna/mounts/chroma/*
-!vanna/mounts/chroma/.gitkeep
-vanna/mounts/snapshots/*
-!vanna/mounts/snapshots/.gitkeep
-vanna/mounts/ops/*
-!vanna/mounts/ops/.gitkeep
-vanna/mounts/cache/*
-!vanna/mounts/cache/.gitkeep
-vanna/training/generated/*
-!vanna/training/generated/.gitkeep
 plans
 .codex
 .vscode
 openconnect
 mcp.json
 excluded
+
+# Generated at runtime: build, GADM import and JAS preload logs
+logs/
+
+
+# SAML SP keys (made on each server, never committed) and shibd's metadata cache
+router/mounts/shibboleth-keys/*
+!router/mounts/shibboleth-keys/.gitkeep
+router/mounts/shibboleth-cache/*
+!router/mounts/shibboleth-cache/.gitkeep
