@@ -274,8 +274,9 @@ services:
       SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS: ${SEAD_AGENT_CLIENT_ACTION_TIMEOUT_MS:-60000}
       SEAD_AGENT_MAX_CLIENT_ACTIONS: ${SEAD_AGENT_MAX_CLIENT_ACTIONS:-20}
     volumes:
-      #The training documents are appended to the system prompt. Mounted so they can be
-      #edited and reloaded with a restart instead of an image rebuild.
+      #The training documents are the system prompt - operating limits, instructions and
+      #the rest. Mounted so they can be edited and reloaded with a restart instead of an
+      #image rebuild.
       - ./sead_agent/training:/sead_agent/training:Z
     networks:
       - sead_network

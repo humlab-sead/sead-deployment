@@ -33,6 +33,13 @@ services:
     volumes:
       - ./json_api_server:/json_api_server:Z
 
+  #The agent's source is baked into its image, and only training/ - the whole prompt - is
+  #mounted in compose.yml. Mounting src as well lets an edit to the code be tried with a
+  #restart rather than a rebuild.
+  sead_agent:
+    volumes:
+      - ./sead_agent/src:/sead_agent/src:Z
+
   mongo:
     ports:
       - "27017:27017"
