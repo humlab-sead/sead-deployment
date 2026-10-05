@@ -1,23 +1,23 @@
 # Release 2026-10.0 - manifest
 
-**Status:** planning (2026-10-05). All service changes are pushed, and the schema and
-sead_query_api are tagged; the client and json_api_server are not tagged yet.
+**Status:** cut (2026-10-05). Tag `2026-10.0` on this repository, at `9844433`, pins
+the versions below. Not deployed yet.
 **Target:** a dev release on super.sead.se. Production is not part of this release.
 
-This document lists the version of each service intended for 2026-10.0 and what
-has to happen before the release can be cut. When the release is cut,
-`sead-release.env` becomes the authoritative pin list, and the per-service notes
-go next to this file, as for [2026-06.0](../2026-06.0/).
+This document records the version of each service in 2026-10.0, the decisions
+behind them, and how to deploy it. Now that the release is cut, `sead-release.env`
+is the authoritative pin list. The per-service notes go next to this file, as for
+[2026-06.0](../2026-06.0/).
 
 ## Services
 
 | Service | Repository | 2026-06.0 pin | Planned for 2026-10.0 | State |
 | --- | --- | --- | --- | --- |
-| client | `humlab-sead/sead_browser_client` | `2026-04.2` | new tag from `master` (`2026-10.0`) | `master` pushed (`fc883e7`), not tagged |
-| json_api_server | `humlab-sead/json_api_server` | `v1.57.1` | new tag from `main` (`v1.58.0`) | `main` pushed (`cf7c5ce`), not tagged |
-| sead_query_api | `humlab-sead/sead_query_api` | `v1.4.0` | custom tag `v1.5.0-multi-polygon.2` on branch `feature/multi-polygon-geofacet` | tagged and pushed (`bc7bf09`); see [sead_query_api](#sead_query_api) |
-| database schema | `humlab-sead/sead_change_control` | `@2026.04` | sqitch tag `@2026.10` | tagged and pushed (`8c89103`) |
-| this repository | `humlab-sead/sead-deployment` | commit tagged `2026-06.0` | commit tagged `2026-10.0` | see [This repository](#this-repository) |
+| client | `humlab-sead/sead_browser_client` | `2026-04.2` | `2026-10.0` | released (`c9c5b6d`) |
+| json_api_server | `humlab-sead/json_api_server` | `v1.57.1` | `v1.59.0` | released (`cf7c5ce`) |
+| sead_query_api | `humlab-sead/sead_query_api` | `v1.4.0` | `v1.5.0-multi-polygon.2`, a custom tag on branch `feature/multi-polygon-geofacet` | tagged (`bc7bf09`); see [sead_query_api](#sead_query_api) |
+| database schema | `humlab-sead/sead_change_control` | `@2026.04` | `@2026.10` | tagged (`8c89103`) |
+| this repository | `humlab-sead/sead-deployment` | never tagged, see below | `2026-10.0` | tagged (`9844433`) |
 
 Third-party images are pinned by exact version in `compose.yml` and follow this
 repository's commit.
@@ -148,18 +148,23 @@ imported yet.
 ## Before the release can be cut
 
 - [x] **sead_query_api:** tag `bc7bf09` as `v1.5.0-multi-polygon.2` and push the tag
-- [x] **client:** push `master`
-- [ ] **client:** tag `master`
-- [x] **json_api_server:** push `main`
-- [ ] **json_api_server:** tag `main`
+- [x] **client:** push `master`, and release `2026-10.0`
+- [x] **json_api_server:** push `main`, and release `v1.59.0`
 - [x] **sead_change_control:** push `main`
 - [x] **sead_change_control:** add the sqitch tag `@2026.10`, covering only the
       timeline change
 - [x] **This repository:** commit the release tooling, merge `sead-agent` into
       `master`, and push `master`
-- [ ] **This repository:** tag `2026-06.0`, which `sead-release.env` names but which
-      doesn't exist yet
-- [ ] `./deploy.sh release cut 2026-10.0`, then write the per-service notes here
+- [x] `./deploy.sh release cut 2026-10.0`, and push the release commit and its tag
+- [ ] Write the per-service notes here
+
+`2026-06.0` stays untagged. Its pins (client `2026-04.2`, json_api_server `v1.57.1`,
+sead_query_api `v1.4.0`) predate the build-from-checkout Dockerfiles. Those older
+Dockerfiles clone from GitHub at a build argument that `compose.yml` no longer
+passes. Under the current tooling, a deploy would build the client from whatever
+`master` is at the time, build json_api_server from `main`, and fail on
+sead_query_api. As a release it would not be what it names, so `2026-10.0` is the
+first release, and nothing earlier exists to roll back to.
 
 ## Deploying on super.sead.se
 
