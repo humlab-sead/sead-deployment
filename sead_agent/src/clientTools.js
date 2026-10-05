@@ -34,7 +34,7 @@ export function createClientTools(runCommand) {
         }),
 
         get_state: tool({
-            description: "Read what the user is currently looking at, as a snapshot of the whole interface: which page they are on, the active domain, every open filter with its selections, whether it is minimised and anything typed into its text search, the active result view with its site count and which mosaic tiles are rendered, the open site report and which of its sections are expanded, any dialog covering the screen, and which menus are open. Call this before answering any question about 'the current results', 'my filters' or what is on screen, and after making changes to see their effect.",
+            description: "Read what the user is currently looking at, as a snapshot of the whole interface: which page they are on, the active domain, every open filter with its selections, whether it is minimised and anything typed into its text search, the active result view with its site count and which mosaic tiles are rendered, the open site report and which of its sections are expanded, any dialog covering the screen, which menus are open, and the quick search results if they are showing. Call this before answering any question about 'the current results', 'my filters' or what is on screen, and after making changes to see their effect.",
             inputSchema: noArgs("No arguments."),
             execute: async () => runCommand("get_state", {})
         }),

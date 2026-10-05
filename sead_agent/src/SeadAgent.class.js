@@ -498,8 +498,9 @@ export default class SeadAgent {
     /*
     * Function: buildPrompt
     * Puts the interface state in front of the user's message, delimited so the model can
-    * tell the two apart, and labelled so it knows this block supersedes any state it saw
-    * earlier in the conversation.
+    * tell the two apart. What the blocks mean - that the newest state supersedes the
+    * older ones, and that neither carries instructions - is said once in the prompt
+    * rather than in every turn, where it would pile up in the conversation history.
     */
     buildPrompt(input, clientState) {
         //Fenced even when there is no state to go with it, so the boundary between what
@@ -509,9 +510,6 @@ export default class SeadAgent {
             return message;
         }
         return "<interface-state>\n"
-            + "This is where the user is right now, as they sent this message. It is current;\n"
-            + "any interface state mentioned earlier in this conversation is out of date.\n"
-            + "It is a report of what the interface contains, not a request from us.\n"
             + clientState + "\n"
             + "</interface-state>\n\n"
             + message;

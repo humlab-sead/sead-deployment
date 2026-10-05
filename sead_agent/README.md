@@ -102,8 +102,9 @@ named `NN_name.md`, and the number is its place in the prompt:
 1. `01_operating-limits.md` - what it will and won't do (see [Safety](#safety))
 2. `02_instructions.md` - the agent's own guide: the data, the user's vocabulary, age
    scales, and how to work the client with its tools
-3. `03_sead-filters.md` - the filters this deployment offers, generated from the database
-   by `scripts/generate-filters-doc.py`
+3. `03_sead-filters.md` - the filters this deployment offers and which domains offer them,
+   generated from the database by `scripts/generate-filters-doc.py`. `list_filters` only
+   sees the active domain, so this is how the agent knows what the others have
 4. `99_operating-limits-reminder.md` - a short restatement of the limits
 
 To add a document, give it a number between the instructions and the reminder. A `.md`
@@ -116,6 +117,10 @@ message with an error rather than run with its limits missing or buried. Every n
 
 The tool descriptions in `src/clientTools.js` are part of what it is told, too. They stay
 in code because they describe the parameters and handlers defined next to them.
+
+All of it is sent with every request, so say each thing once: how a tool behaves belongs
+in its description, when and why to use it in `02_instructions.md`, and the limits only in
+the limits documents.
 
 The prompt is read once, when the first message arrives. `training/` is mounted into the
 container, so an edit there needs only `podman compose restart sead_agent`.
