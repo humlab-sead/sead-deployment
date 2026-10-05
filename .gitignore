@@ -1,6 +1,7 @@
 json_api_server
 sead_change_control/sead_change_control
 .env
+.env.bak*
 ssl-keys/*
 !ssl-keys/.gitkeep
 postgrest.conf
@@ -35,6 +36,7 @@ mariadb/
 matomo/
 sead_query_api/docker-compose-production.yml
 sead_query_api
+sead_change_control
 client_secret_*
 postgres_mcp/node_modules
 pygwalker
@@ -45,6 +47,7 @@ plans
 openconnect
 mcp.json
 excluded
+remote-targets.conf
 
 # Generated at runtime: build, GADM import and JAS preload logs
 logs/

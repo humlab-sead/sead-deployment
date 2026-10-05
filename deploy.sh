@@ -12,6 +12,7 @@
 #   restart [service]    Restart all (or one) service
 #   status               Show running status of all containers
 #   versions             Report the versions of everything installed and running
+#   release <command>    Cut, deploy or apply a SEAD release (see releases/README.md)
 #   logs [service]       Tail logs (all services or specific one)
 #   shell <service>      Open an interactive shell inside a container
 #   import-db            Re-import the PostgreSQL database
@@ -148,9 +149,20 @@ warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 die()     { error "$*"; exit 1; }
 
+# The SEAD release this checkout carries. See releases/README.md.
+RELEASE_MANIFEST="sead-release.env"
+
+# One value from the release manifest. Read rather than sourced: sourcing would export
+# the manifest's refs, and compose lets an exported variable beat .env - which has to
+# stay what the stack is really built from, so that a deviation from the release shows.
+manifest_value() {
+    sed -n "s/^${1}=//p" "$SCRIPT_DIR/$RELEASE_MANIFEST" 2>/dev/null | tail -n1
+}
+
 # Database import defaults
 SEAD_CHANGE_CONTROL_REPO="humlab-sead/sead_change_control"
-DEFAULT_DB_DEPLOY_TAG="@2026.04"
+DEFAULT_DB_DEPLOY_TAG="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
+DEFAULT_DB_DEPLOY_TAG="${DEFAULT_DB_DEPLOY_TAG:-@2026.04}"
 SEAD_QUERY_API_REPO="humlab-sead/sead_query_api"
 DEFAULT_SEAD_QUERY_API_RELEASE="main"
 DB_IMPORT_TARGET_DB="sead_staging"
@@ -483,6 +495,10 @@ clone_if_missing() {
     local url="$2"
     if [[ -d "$dir/.git" ]]; then
         info "Repository '$dir' already present — skipping clone."
+    elif [[ -d "$dir" && -n "$(ls -A "$dir")" ]]; then
+        # sead_query_api's build files used to be kept in this repository, so an older
+        # deployment can have the directory, with leftovers, but no clone in it.
+        die "${dir} exists but is not a clone of ${url}. Move it aside (mv ${dir} ${dir}.old) and run this again."
     else
         info "Cloning $url → $dir ..."
         git clone --recurse-submodules "$url" "$dir"
@@ -781,18 +797,22 @@ fetch_github_release_tags() {
 
 # Prompt the operator to choose a ref to deploy.
 # Includes the primary branch, the 5 newest GitHub release tags, and a manual ref option.
-# Usage: prompt_release_ref <service_name> <repo> <primary_branch>
+# Given a pinned tag, offers that tag in place of the branch, as the default: a SEAD
+# release pins tags only.
+# Usage: prompt_release_ref <service_name> <repo> <primary_branch> [pinned_tag]
 prompt_release_ref() {
     local service_name="$1"
     local repo="$2"
     local primary_branch="$3"
+    local pinned_tag="${4:-}"
 
     [[ -n "$service_name" && -n "$repo" && -n "$primary_branch" ]] || die "prompt_release_ref called with missing arguments."
 
     SELECTED_RELEASE_REF=""
 
     local manual_ref_option="[Enter another Git ref]"
-    local options=("$primary_branch")
+    local default_ref="${pinned_tag:-$primary_branch}"
+    local options=("$default_ref")
     local releases=()
 
     if mapfile -t releases < <(fetch_github_release_tags "$repo") && [[ ${#releases[@]} -gt 0 ]]; then
@@ -801,12 +821,13 @@ prompt_release_ref() {
         for tag in "${releases[@]}"; do
             [[ -z "$tag" ]] && continue
             [[ "$tag" =~ ^\[[A-Z]+\] ]] && continue
+            [[ "$tag" == "$default_ref" ]] && continue
             options+=("$tag")
             release_count=$((release_count + 1))
             [[ $release_count -ge 5 ]] && break
         done
     else
-        warn "Could not fetch release list from GitHub for ${repo}. Falling back to '${primary_branch}' only."
+        warn "Could not fetch release list from GitHub for ${repo}. Falling back to '${default_ref}' only."
     fi
 
     options+=("$manual_ref_option")
@@ -815,7 +836,9 @@ prompt_release_ref() {
     echo -e "${CYAN}Select ${service_name} release to deploy:${NC}"
     local idx
     for idx in "${!options[@]}"; do
-        if [[ "${options[$idx]}" == "$primary_branch" ]]; then
+        if [[ -n "$pinned_tag" && "${options[$idx]}" == "$pinned_tag" ]]; then
+            echo "  $((idx + 1))) ${options[$idx]} (pinned by the current release)"
+        elif [[ "${options[$idx]}" == "$primary_branch" ]]; then
             echo "  $((idx + 1))) ${options[$idx]} (branch)"
         elif [[ "${options[$idx]}" == "$manual_ref_option" ]]; then
             echo "  $((idx + 1))) ${options[$idx]}"
@@ -826,7 +849,7 @@ prompt_release_ref() {
 
     local choice selected
     while true; do
-        read -rp "Enter choice [1-${#options[@]}] (default: 1 ${primary_branch}): " choice
+        read -rp "Enter choice [1-${#options[@]}] (default: 1 ${default_ref}): " choice
         choice="${choice:-1}"
 
         if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
@@ -1104,6 +1127,7 @@ cmd_install() {
     # Clone application source repositories
     clone_if_missing sead_browser_client "https://github.com/humlab-sead/sead_browser_client"
     clone_if_missing json_api_server     "https://github.com/humlab-sead/json_api_server"
+    clone_if_missing sead_query_api      "https://github.com/${SEAD_QUERY_API_REPO}"
 
     # Generate .env if not already present
     cmd_generate_env
@@ -1114,10 +1138,22 @@ cmd_install() {
     set_env_var .env CONTAINER_TOOL "$CONTAINER_TOOL"
     prompt_unique_instance_settings .env
 
-    # Let the operator choose release refs for services that support release-based deploys.
-    select_and_apply_release_ref "client"
-    select_and_apply_release_ref "json_api_server"
-    select_and_apply_release_ref "sead_query_api"
+    # Install the SEAD release this checkout carries, unless the operator would rather pick
+    # each service's version by hand - a dev instance following main, for instance.
+    local release use_release=""
+    release="$(manifest_value SEAD_RELEASE)"
+    if [[ -n "$release" ]]; then
+        echo
+        read -rp "Install SEAD release ${release}? Answer n to pick each service's version instead. [Y/n]: " use_release
+    fi
+    if [[ -n "$release" && ! "$use_release" =~ ^[Nn] ]]; then
+        apply_release_refs
+        record_applied_release
+    else
+        select_and_apply_release_ref "client"
+        select_and_apply_release_ref "json_api_server"
+        select_and_apply_release_ref "sead_query_api"
+    fi
 
     # Reload env so variables (DOMAIN, DATABASE_USER, etc.) are available in this shell
     load_env
@@ -1347,12 +1383,298 @@ cmd_update() {
     fi
 
     info "Rebuilding image for $service (no cache)..."
+    export_source_versions
     $COMPOSE_CMD build --no-cache "$service"
     success "Image rebuilt for $service."
 
     info "Restarting $service ..."
     $COMPOSE_CMD up -d --force-recreate "$service"
     success "Service '$service' updated and restarted."
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# release command — one version number for the whole of SEAD
+# ──────────────────────────────────────────────────────────────────────────────
+# A SEAD release is a tag on this repository, named YYYY-MM.N. The commit it points at
+# pins everything kept here - compose.yml, router, sead_idp, the image tags - and its
+# sead-release.env pins the services built from repositories of their own.
+# See releases/README.md.
+RELEASE_NAME_PATTERN='^[0-9]{4}-[0-9]{2}\.[0-9]+$'
+
+# The services a release pins, by their compose names. set_release_selection_config
+# knows each one's repository and the .env variable holding its ref.
+RELEASE_SERVICES=(client json_api_server sead_query_api)
+
+# The manifest variable holding the commit a service's tag was released at.
+release_commit_var() { echo "${ENV_REF_VAR%_RELEASE}_COMMIT"; }
+
+# The commit a tag points at on GitHub, peeled through an annotated tag.
+# Prints nothing when the tag does not exist.
+remote_tag_commit() {
+    local repo="$1" tag="$2" refs line
+    refs="$(git ls-remote --tags "https://github.com/${repo}" "refs/tags/${tag}" "refs/tags/${tag}^{}")" || return 1
+    line="$(grep -m1 -F "refs/tags/${tag}^{}" <<< "$refs" || grep -m1 -F "refs/tags/${tag}" <<< "$refs" || true)"
+    echo "${line%%$'\t'*}"
+}
+
+# Brings every service the release pins to its pinned version: checks that each tag
+# still points where it did when the release was cut, syncs the local checkout the
+# image is built from to it, and records the refs in .env.
+apply_release_refs() {
+    [[ -f "$RELEASE_MANIFEST" ]] || die "No ${RELEASE_MANIFEST} in this checkout - there is no release to apply."
+    [[ -f .env ]] || die ".env not found. Install the stack first: $0 install"
+
+    local service ref commit actual src_dir
+
+    # Every tag is checked before any checkout is touched, so a moved tag stops the
+    # deploy with the stack still as it was.
+    for service in "${RELEASE_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        ref="$(manifest_value "$ENV_REF_VAR")"
+        commit="$(manifest_value "$(release_commit_var)")"
+        [[ -n "$ref" && -n "$commit" ]] \
+            || die "${RELEASE_MANIFEST} does not pin ${service} (${ENV_REF_VAR} and $(release_commit_var))."
+
+        info "Checking ${service} ${ref} on GitHub ..."
+        actual="$(remote_tag_commit "$RELEASE_REPO" "$ref")" \
+            || die "Could not reach https://github.com/${RELEASE_REPO} to check ${service} ${ref}."
+        [[ -n "$actual" ]] || die "${RELEASE_REPO} has no tag ${ref}, which this release pins ${service} to."
+        [[ "$actual" == "$commit" ]] \
+            || die "Tag ${ref} of ${RELEASE_REPO} points at ${actual:0:12}, but the release pins ${commit:0:12}. The tag has been moved since the release was cut; refusing to build something other than what was released."
+    done
+
+    for service in "${RELEASE_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        ref="$(manifest_value "$ENV_REF_VAR")"
+        commit="$(manifest_value "$(release_commit_var)")"
+        export "${ENV_REF_VAR}=${ref}"
+
+        src_dir="$(service_source_dir "$service")"
+        sync_local_repo_to_selected_ref "$service" "$src_dir" "$RELEASE_REPO" "$PRIMARY_BRANCH" "$ENV_REF_VAR"
+        [[ "$(git -C "$src_dir" rev-parse HEAD)" == "$commit" ]] \
+            || die "${src_dir} is at $(git -C "$src_dir" rev-parse --short HEAD) after checking out ${ref}, not at the released ${commit:0:12}."
+
+        set_env_var .env "$ENV_REF_VAR" "$ref"
+        success "${service} pinned to ${ref} (${commit:0:12})"
+    done
+}
+
+# Records in .env which release the stack now runs, and which it ran before - the
+# release to deploy again to roll back.
+record_applied_release() {
+    local release previous
+    release="$(manifest_value SEAD_RELEASE)"
+    previous="$(get_env_var .env SEAD_RELEASE)"
+    if [[ -n "$previous" && "$previous" != "$release" ]]; then
+        set_env_var .env SEAD_PREVIOUS_RELEASE "$previous"
+    fi
+    set_env_var .env SEAD_RELEASE "$release"
+    export SEAD_RELEASE="$release"
+}
+
+# A release never changes the database by itself: import-db recreates it from scratch.
+# This only says so when the schema is not the one the release pins.
+check_release_schema() {
+    local pinned applied retries=12
+    pinned="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
+    [[ -n "$pinned" ]] || return 0
+
+    until psql_value 'select 1' >/dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [[ $retries -le 0 ]]; then
+            warn "Could not reach PostgreSQL to compare the database schema with the release (${pinned})."
+            return 0
+        fi
+        sleep 5
+    done
+
+    applied="$(psql_value 'select tag from sqitch.tags order by committed_at desc limit 1' 2>/dev/null || true)"
+    if [[ "$applied" == "$pinned" ]]; then
+        success "Database schema is at ${pinned}, as the release pins."
+        return 0
+    fi
+    warn "The database schema is at ${applied:-no sqitch tag}, but the release pins ${pinned}."
+    warn "Deploying a release never touches the database. To rebuild it at ${pinned}:"
+    warn "  $0 import-db '${pinned}'   (recreates ${DB_IMPORT_TARGET_DB} from scratch)"
+}
+
+# Builds and starts the release this checkout carries. Run by 'release deploy' once it
+# has checked out the release's tag, or by hand on a checkout already there.
+cmd_release_apply() {
+    local release at_tag
+    release="$(manifest_value SEAD_RELEASE)"
+    [[ -n "$release" ]] || die "No SEAD_RELEASE in ${RELEASE_MANIFEST} - there is no release to apply."
+
+    at_tag="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"
+    if [[ "$at_tag" != "$release" ]]; then
+        warn "This checkout is not at the tag ${release}, so what is kept in this repository"
+        warn "(compose.yml, router, ...) may differ from the release. To deploy exactly ${release}:"
+        warn "  $0 release deploy ${release}"
+    fi
+
+    info "Applying SEAD release ${release}"
+    apply_release_refs
+    record_applied_release
+    load_env
+
+    pull_non_build_images
+    info "Building images..."
+    compose_build
+    info "Starting services..."
+    $COMPOSE_CMD up -d
+    success "Services started."
+
+    check_release_schema
+    success "SEAD ${release} deployed."
+    info "Check it with: $0 versions"
+}
+
+# Checks out a release's tag of this repository and applies it.
+cmd_release_deploy() {
+    local release="${1:-}"
+    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release deploy <YYYY-MM.N>, e.g. $0 release deploy 2026-10.0"
+
+    info "Fetching SEAD release tags ..."
+    git fetch --quiet --tags origin
+    git rev-parse -q --verify "refs/tags/${release}^{commit}" >/dev/null \
+        || die "There is no SEAD release ${release}: no such tag here or on origin."
+
+    # In prod mode the override file sits renamed to .disabled, which git sees as a
+    # tracked file deleted. Put it back for the checkout, and away again after.
+    local override_parked=0
+    if [[ ! -f compose.override.yml && -f compose.override.yml.disabled ]]; then
+        mv compose.override.yml.disabled compose.override.yml
+        override_parked=1
+    fi
+    if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+        git status --short --untracked-files=no
+        (( override_parked )) && mv compose.override.yml compose.override.yml.disabled
+        die "This checkout has uncommitted changes (above). A release deploys what was committed - commit or stash them first."
+    fi
+
+    info "Checking out SEAD release ${release} ..."
+    git checkout --quiet --detach "refs/tags/${release}"
+    (( override_parked )) && mv compose.override.yml compose.override.yml.disabled
+
+    # The release's own deploy.sh applies it - that is the one that knows what it needs.
+    # Bash keeps reading this script through the file it opened, which git has replaced
+    # rather than rewritten, so this copy is not disturbed on its way here.
+    exec "$SCRIPT_DIR/deploy.sh" release apply
+}
+
+# Writes the release manifest. Its format is what manifest_value reads: one KEY=value
+# per line, no quotes.
+write_release_manifest() {
+    local release="$1" service
+    {
+        cat <<EOF
+# SEAD release manifest - written by './deploy.sh release cut'. See releases/README.md.
+#
+# Pins every SEAD service built from a repository of its own to a tag, and the commit
+# that tag pointed at when the release was cut. Everything kept in this repository is
+# pinned by the commit this file is in, which carries the tag ${release}.
+
+SEAD_RELEASE=${release}
+EOF
+        for service in "${RELEASE_SERVICES[@]}"; do
+            set_release_selection_config "$service"
+            echo
+            echo "# ${service} - https://github.com/${RELEASE_REPO}"
+            echo "${ENV_REF_VAR}=${CUT_REFS[$service]}"
+            echo "$(release_commit_var)=${CUT_COMMITS[$service]}"
+        done
+        cat <<EOF
+
+# The sqitch tag the database schema is deployed to (sead_change_control).
+# A release never changes the database by itself; see './deploy.sh import-db'.
+SEAD_CHANGE_CONTROL_RELEASE=${CUT_SCHEMA_TAG}
+EOF
+    } > "$RELEASE_MANIFEST"
+}
+
+# Asks which tag of each service a new release pins, writes the manifest, and commits
+# and tags it. Pushing is left to the operator.
+cmd_release_cut() {
+    local release="${1:-}"
+    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release cut <YYYY-MM.N>, e.g. $0 release cut 2026-10.0"
+    [[ -t 0 ]] || die "'release cut' asks which tag of each service to pin; run it in a terminal."
+
+    git rev-parse -q --verify "refs/tags/${release}" >/dev/null && die "Release ${release} already exists (tag ${release})."
+    [[ -z "$(git ls-remote --tags origin "refs/tags/${release}")" ]] || die "Release ${release} already exists on origin."
+
+    declare -gA CUT_REFS=() CUT_COMMITS=()
+    local service ref commit
+    for service in "${RELEASE_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        while true; do
+            prompt_release_ref "$service" "$RELEASE_REPO" "$PRIMARY_BRANCH" "$(manifest_value "$ENV_REF_VAR")"
+            ref="$SELECTED_RELEASE_REF"
+            commit="$(remote_tag_commit "$RELEASE_REPO" "$ref" || true)"
+            [[ -n "$commit" ]] && break
+            warn "'${ref}' is not a tag of ${RELEASE_REPO}. A release pins tags only, since branches move - tag ${service} first, or pick a tag."
+        done
+        CUT_REFS[$service]="$ref"
+        CUT_COMMITS[$service]="$commit"
+    done
+
+    prompt_db_deploy_tag
+    CUT_SCHEMA_TAG="$SELECTED_DB_DEPLOY_TAG"
+
+    write_release_manifest "$release"
+
+    echo
+    info "SEAD ${release}:"
+    for service in "${RELEASE_SERVICES[@]}"; do
+        printf '  %-20s %-14s %s\n' "$service" "${CUT_REFS[$service]}" "${CUT_COMMITS[$service]:0:12}"
+    done
+    printf '  %-20s %s\n' "database schema" "$CUT_SCHEMA_TAG"
+
+    if [[ -n "$(git status --porcelain --untracked-files=no -- . ":(exclude)${RELEASE_MANIFEST}")" ]]; then
+        echo
+        warn "This checkout has other uncommitted changes. They will not be part of ${release} -"
+        warn "the release is the commit made here, on top of $(git rev-parse --short HEAD)."
+    fi
+
+    echo
+    local answer
+    read -rp "Commit ${RELEASE_MANIFEST} and tag it ${release}? [y/N]: " answer
+    if [[ ! "$answer" =~ ^[Yy] ]]; then
+        info "Left ${RELEASE_MANIFEST} written but uncommitted."
+        return 0
+    fi
+
+    git add "$RELEASE_MANIFEST"
+    git commit --quiet -m "Release SEAD ${release}" -- "$RELEASE_MANIFEST"
+    git tag -a "$release" -m "SEAD ${release}"
+    success "Committed and tagged ${release}."
+    info "Write the release notes in releases/${release}/, then publish the release with:"
+    info "  git push origin HEAD refs/tags/${release}"
+}
+
+cmd_release() {
+    local subcommand="${1:-}"
+    shift || true
+
+    case "$subcommand" in
+        cut)    cmd_release_cut "$@" ;;
+        deploy) cmd_release_deploy "$@" ;;
+        apply)  cmd_release_apply ;;
+        ""|help|--help|-h)
+            cat <<EOF
+Usage: $0 release <command> [args...]
+
+Commands:
+  cut <YYYY-MM.N>     Make a new SEAD release: pick the tag of each service it
+                      pins, write ${RELEASE_MANIFEST}, then commit and tag it.
+  deploy <YYYY-MM.N>  Check out that release's tag of this repository, then build
+                      and start it. Never touches the database.
+  apply               Build and start the release this checkout carries.
+
+See releases/README.md.
+EOF
+            ;;
+        *) die "Unknown release command: ${subcommand}" ;;
+    esac
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1392,6 +1714,19 @@ cmd_status() {
 
 cmd_logs() {
     $COMPOSE_CMD logs --tail=100 -f "$@"
+}
+
+# The SEAD services are built from their checkouts here. Each image records which
+# version of its checkout it was built from, passed in as <PREFIX>_SOURCE_VERSION
+# (SBC_SOURCE_VERSION, ...), which compose.yml hands to the build as SOURCE_VERSION.
+export_source_versions() {
+    local service src_dir
+    for service in "${RELEASE_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        src_dir="$(service_source_dir "$service")"
+        [[ -d "$src_dir/.git" ]] || continue
+        export "${ENV_REF_VAR%_RELEASE}_SOURCE_VERSION=$(git -C "$src_dir" describe --tags --always --dirty='*')"
+    done
 }
 
 # Compose builds every buildable service in parallel and interleaves their output into
@@ -1458,6 +1793,7 @@ compose_build() {
     local log_dir="$SCRIPT_DIR/logs"
     local log_file="${log_dir}/build_$(date +%Y%m%d_%H%M%S).log"
     mkdir -p "$log_dir"
+    export_source_versions
 
     if $COMPOSE_CMD build "$@" 2>&1 | tee "$log_file"; then
         rm -f "$log_file"
@@ -1712,14 +2048,18 @@ source_version() {
 # when the image was built.
 container_version() {
     local service="$1" path="$2" version
-    version="$(service_exec "$service" sh -c "git -C '${path}' describe --tags --always --dirty='*' 2>/dev/null" || true)"
+    # Baked in at build time by export_source_versions; images copy their source
+    # without .git, so there is nothing to describe inside them
+    version="$(service_exec "$service" printenv SOURCE_VERSION || true)"
+    [[ -n "$version" ]] || version="$(service_exec "$service" sh -c "git -C '${path}' describe --tags --always --dirty='*' 2>/dev/null" || true)"
     [[ -n "$version" ]] || version="$(service_exec "$service" sh -c \
         "sed -n 's/.*\"version\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p' '${path}/package.json' 2>/dev/null | head -n1" || true)"
     echo "$version"
 }
 
 # Version of a third-party service, asked of the program itself rather than read off
-# the image tag - the tags in compose.yml are deliberately loose (mongo:4.4, matomo:5).
+# the image tag - compose.yml pins exact tags, but router's nginx comes from its own build
+# and an image already present may be one a looser tag pulled.
 supporting_version() {
     case "$1" in
         router)        service_exec router sh -c 'nginx -v 2>&1' | sed -n 's|.*nginx/||p' ;;
@@ -1754,10 +2094,34 @@ cmd_versions() {
     version_row "container engine" "${engine_version:-unknown}" \
         "${compose_version:+compose ${compose_version}}"
 
+    # ── The SEAD release, and anything running other than what it pins ───────
+    version_heading "SEAD release"
+    local release at_tag pinned ref_var service
+    release="$(manifest_value SEAD_RELEASE)"
+    if [[ -z "$release" ]]; then
+        version_row "this checkout" "no release" "no ${RELEASE_MANIFEST}"
+    else
+        at_tag="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"
+        version_row "this checkout" "$release" \
+            "$([[ "$at_tag" == "$release" ]] && echo "at its tag" || echo "not at tag ${release}")"
+        version_row "applied" "${SEAD_RELEASE:-none}" \
+            "${SEAD_PREVIOUS_RELEASE:+previous ${SEAD_PREVIOUS_RELEASE}}"
+        for service in "${RELEASE_SERVICES[@]}"; do
+            set_release_selection_config "$service"
+            ref_var="$ENV_REF_VAR"
+            pinned="$(manifest_value "$ref_var")"
+            if [[ "${!ref_var:-}" == "$pinned" ]]; then
+                version_row "$service" "$pinned" "as released"
+            else
+                version_row "$service" "${!ref_var:-unset}" "not as released: ${release} pins ${pinned}"
+            fi
+        done
+    fi
+
     # ── Services built from our own repositories ─────────────────────────────
     version_heading "SEAD services"
     version_row "" "checked out" "running"
-    local spec service dir path
+    local spec dir path
     for spec in "${SEAD_SERVICE_SPECS[@]}"; do
         IFS='|' read -r service dir path <<< "$spec"
         checked_out="$(source_version "$dir")"
@@ -1793,7 +2157,13 @@ cmd_versions() {
         if [[ "$(psql_value "select to_regclass('sqitch.tags') is not null" || true)" == "t" ]]; then
             version="$(psql_value 'select tag from sqitch.tags order by committed_at desc limit 1' || true)"
             note="$(psql_value "select to_char(max(committed_at), 'YYYY-MM-DD') from sqitch.changes" || true)"
-            version_row "schema" "${version:-untagged}" "${note:+deployed ${note}}"
+            pinned="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
+            if [[ -n "$pinned" && "$version" != "$pinned" ]]; then
+                note="${note:+deployed ${note}, }not as released: pins ${pinned}"
+            else
+                note="${note:+deployed ${note}}"
+            fi
+            version_row "schema" "${version:-untagged}" "$note"
         else
             version_row "schema" "not deployed" "no sqitch registry in this database"
         fi
@@ -1827,6 +2197,268 @@ cmd_versions() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Remote targets — SSH identities for per-instance deployments
+# ──────────────────────────────────────────────────────────────────────────────
+remote_config_file() {
+    echo "${SEAD_REMOTE_TARGETS_FILE:-${HOME}/.config/sead-deployment/targets.conf}"
+}
+
+expand_home_path() {
+    local path="$1"
+    if [[ "$path" == "~" ]]; then
+        echo "$HOME"
+    elif [[ "$path" == "~/"* ]]; then
+        echo "${HOME}/${path#~/}"
+    else
+        echo "$path"
+    fi
+}
+
+shell_quote() {
+    printf '%q' "$1"
+}
+
+require_remote_config() {
+    local config
+    config="$(remote_config_file)"
+    [[ -f "$config" ]] || die "Remote target config not found: ${config}. Run '$0 remote init-config' first."
+}
+
+remote_target_sections() {
+    local config
+    config="$(remote_config_file)"
+    [[ -f "$config" ]] || return 0
+    awk '
+        /^[[:space:]]*(#|;|$)/ { next }
+        /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
+            section=$0
+            sub(/^[[:space:]]*\[/, "", section)
+            sub(/\][[:space:]]*$/, "", section)
+            print section
+        }
+    ' "$config"
+}
+
+remote_target_value() {
+    local target="$1"
+    local key="$2"
+    local config
+    config="$(remote_config_file)"
+    [[ -f "$config" ]] || return 0
+
+    awk -v target="$target" -v wanted="$key" '
+        function trim(value) {
+            gsub(/^[[:space:]]+/, "", value)
+            gsub(/[[:space:]]+$/, "", value)
+            return value
+        }
+        /^[[:space:]]*(#|;|$)/ { next }
+        /^[[:space:]]*\[[^]]+\][[:space:]]*$/ {
+            section=$0
+            sub(/^[[:space:]]*\[/, "", section)
+            sub(/\][[:space:]]*$/, "", section)
+            next
+        }
+        section == target {
+            equals=index($0, "=")
+            if (equals == 0) {
+                next
+            }
+            key=trim(substr($0, 1, equals - 1))
+            value=trim(substr($0, equals + 1))
+            if (key == wanted) {
+                print value
+                exit
+            }
+        }
+    ' "$config"
+}
+
+remote_target_required_value() {
+    local target="$1"
+    local key="$2"
+    local value
+    value="$(remote_target_value "$target" "$key")"
+    [[ -n "$value" ]] || die "Target '${target}' is missing required '${key}' in $(remote_config_file)."
+    echo "$value"
+}
+
+remote_ssh_destination() {
+    local target="$1"
+    local ssh_host host user
+    ssh_host="$(remote_target_value "$target" ssh_host)"
+    if [[ -n "$ssh_host" ]]; then
+        echo "$ssh_host"
+        return
+    fi
+
+    host="$(remote_target_required_value "$target" host)"
+    user="$(remote_target_value "$target" user)"
+    if [[ -n "$user" && "$host" != *@* ]]; then
+        echo "${user}@${host}"
+    else
+        echo "$host"
+    fi
+}
+
+remote_ssh() {
+    local target="$1"
+    shift
+
+    require_remote_config
+    command -v ssh &>/dev/null || die "ssh is required for remote commands."
+
+    local dest identity port
+    dest="$(remote_ssh_destination "$target")"
+    identity="$(remote_target_value "$target" identity_file)"
+    port="$(remote_target_value "$target" port)"
+
+    local ssh_opts=(-o BatchMode=yes)
+    if [[ -n "$identity" ]]; then
+        identity="$(expand_home_path "$identity")"
+        [[ -f "$identity" ]] || die "Identity file for target '${target}' does not exist: ${identity}"
+        ssh_opts+=(-i "$identity" -o IdentitiesOnly=yes)
+    fi
+    if [[ -n "$port" ]]; then
+        ssh_opts+=(-p "$port")
+    fi
+
+    ssh "${ssh_opts[@]}" "$dest" "$@"
+}
+
+remote_deploy_command() {
+    local target="$1"
+    shift
+
+    local path quoted_path remote_cmd arg
+    path="$(remote_target_required_value "$target" path)"
+    quoted_path="$(shell_quote "$path")"
+    remote_cmd="cd ${quoted_path} && ./deploy.sh"
+    for arg in "$@"; do
+        remote_cmd+=" $(shell_quote "$arg")"
+    done
+
+    remote_ssh "$target" "$remote_cmd"
+}
+
+cmd_remote_init_config() {
+    local config config_dir
+    config="$(remote_config_file)"
+    config_dir="$(dirname "$config")"
+
+    if [[ -f "$config" ]]; then
+        warn "Remote target config already exists: ${config}"
+        return 0
+    fi
+
+    if [[ ! -d "$config_dir" ]]; then
+        install -d -m 700 "$config_dir"
+    fi
+    umask 077
+    cat > "$config" <<'EOF'
+# SEAD remote deployment targets.
+#
+# Keep secrets and private keys out of this file. Prefer ssh_host aliases from
+# ~/.ssh/config. If you do not use aliases, set host, user, and identity_file.
+
+[prod]
+name=browser.sead.se
+role=stable production
+ssh_host=sead-prod
+path=/home/sead-browser/sead-deployment
+domain=browser.sead.se
+
+[super]
+name=super.sead.se
+role=next stable
+ssh_host=sead-super
+path=/home/sead-super/sead-deployment
+domain=super.sead.se
+
+[staging]
+name=staging.sead.se
+role=testing
+ssh_host=sead-staging
+path=/home/sead-staging/sead-deployment
+domain=staging.sead.se
+EOF
+    chmod 600 "$config"
+    success "Created ${config}"
+    warn "Edit it to match the real SSH host aliases, Unix users, and checkout paths."
+}
+
+cmd_remote_targets() {
+    require_remote_config
+
+    local target name role domain dest path
+    printf '%-10s %-18s %-18s %-24s %s\n' "TARGET" "NAME" "ROLE" "SSH" "PATH"
+    while IFS= read -r target; do
+        [[ -n "$target" ]] || continue
+        name="$(remote_target_value "$target" name)"
+        role="$(remote_target_value "$target" role)"
+        domain="$(remote_target_value "$target" domain)"
+        dest="$(remote_ssh_destination "$target")"
+        path="$(remote_target_value "$target" path)"
+        printf '%-10s %-18s %-18s %-24s %s\n' "$target" "${name:-$domain}" "$role" "$dest" "$path"
+    done < <(remote_target_sections)
+}
+
+cmd_remote_check() {
+    local target="${1:-}"
+    [[ -n "$target" ]] || die "Usage: $0 remote check <target>"
+
+    require_remote_config
+
+    local path quoted_path domain
+    path="$(remote_target_required_value "$target" path)"
+    quoted_path="$(shell_quote "$path")"
+    domain="$(remote_target_value "$target" domain)"
+
+    info "Checking SSH access and deployment checkout for target '${target}'${domain:+ (${domain})}..."
+    remote_ssh "$target" "set -e; echo \"remote-host=\$(hostname)\"; cd ${quoted_path}; echo \"deploy-path=\$(pwd)\"; test -x ./deploy.sh; ./deploy.sh versions"
+}
+
+cmd_remote() {
+    local subcommand="${1:-}"
+    shift || true
+
+    case "$subcommand" in
+        init-config) cmd_remote_init_config ;;
+        targets|list) cmd_remote_targets ;;
+        check) cmd_remote_check "$@" ;;
+        status)
+            [[ -n "${1:-}" ]] || die "Usage: $0 remote status <target>"
+            remote_deploy_command "$1" status
+            ;;
+        versions)
+            [[ -n "${1:-}" ]] || die "Usage: $0 remote versions <target>"
+            remote_deploy_command "$1" versions
+            ;;
+        deploy)
+            [[ -n "${1:-}" && -n "${2:-}" ]] || die "Usage: $0 remote deploy <target> <release>"
+            remote_deploy_command "$1" release deploy "$2"
+            ;;
+        ""|help|--help|-h)
+            cat <<EOF
+Usage: $0 remote <command> [args...]
+
+Commands:
+  init-config       Create $(remote_config_file) with prod/super/staging targets.
+  targets           List configured remote targets.
+  check <target>    Test SSH access, checkout path, and remote deploy.sh versions.
+  status <target>   Run './deploy.sh status' on the target.
+  versions <target> Run './deploy.sh versions' on the target.
+  deploy <target> <release>
+                    Run './deploy.sh release deploy <release>' on the target.
+
+Targets are read from $(remote_config_file).
+EOF
+            ;;
+        *) die "Unknown remote command: ${subcommand}" ;;
+    esac
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Help
 # ──────────────────────────────────────────────────────────────────────────────
 usage() {
@@ -1842,7 +2474,8 @@ Commands:
                        Prompts for unique per-instance values
                        (COMPOSE_PROJECT_NAME, DOMAIN, and published host ports)
                        so multiple stacks can safely share one host.
-                       During install, you'll be prompted for release refs for
+                       Installs the SEAD release in sead-release.env, or, if
+                       you decline it, prompts for release refs for
                        'client' (SBC_RELEASE) and 'json_api_server'
                        (JAS_RELEASE), and 'sead_query_api'
                        (SEAD_QUERY_API_RELEASE).
@@ -1878,13 +2511,24 @@ Commands:
                        the checked-out SEAD repositories, the version each running
                        container reports, the schema tag applied to the database,
                        and the third-party services behind it.
+  release cut <YYYY-MM.N>
+                       Make a new SEAD release: pick the tag each service is pinned
+                       to, write sead-release.env, then commit and tag it.
+  release deploy <YYYY-MM.N>
+                       Check out that release of this repository, verify every
+                       pinned tag, then build and start it. Never touches the
+                       database; warns if its schema is not the one pinned.
+  release apply        Build and start the release this checkout carries.
+                       See releases/README.md.
+
   logs [service]       Tail logs (100 lines) from all services or a specific one.
   shell <service>      Open an interactive shell inside a running container.
 
   import-db [tag]      Re-import the PostgreSQL database via sead_change_control.
   import-gadm          Fetch and load GADM administrative boundaries into the gadm
                        schema. Runs in the foreground; install/import-db run it detached.
-                       Prompts for a deploy tag (default: @2026.04) and tries
+                       Prompts for a deploy tag (default: the release's, now
+                       ${DEFAULT_DB_DEPLOY_TAG}) and tries
                        to list available tags from GitHub releases:
                        https://github.com/humlab-sead/sead_change_control
   preload-jas [--background]
@@ -1910,9 +2554,17 @@ Commands:
                        first. You will be prompted to confirm before any changes
                        are made.
 
+  remote <command>     Manage remote SEAD targets over SSH. Start with:
+                         $0 remote init-config
+                         $0 remote targets
+                         $0 remote check super
+
 Environment variables:
   CONTAINER_TOOL       Override the container engine (podman | docker).
                        Default: podman if available, otherwise docker.
+  SEAD_REMOTE_TARGETS_FILE
+                       Override the remote target config path.
+                       Default: ~/.config/sead-deployment/targets.conf
 EOF
 }
 
@@ -1933,6 +2585,7 @@ case "$command" in
     restart)      cmd_restart "${1:-}" ;;
     status)       cmd_status ;;
     versions)     cmd_versions ;;
+    release)      cmd_release "$@" ;;
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
     import-db)    cmd_import_db "${1:-}" ;;
@@ -1942,6 +2595,7 @@ case "$command" in
     generate-env)    cmd_generate_env ;;
     rotate-secrets)  cmd_rotate_secrets ;;
     sp-keys)         cmd_sp_keys "$@" ;;
+    remote)          cmd_remote "$@" ;;
     help|--help|-h)  usage ;;
     "")           usage ;;
     *)            error "Unknown command: $command"; echo; usage; exit 1 ;;

@@ -1,11 +1,22 @@
 # SEAD DEPLOYMENT
 
+## Releases
+
+A SEAD release, such as `2026-10.0`, pins one version of every service. Deploy one with
+`./deploy.sh release deploy 2026-10.0`; see [releases/README.md](releases/README.md).
+
 ## Installation
+
+The SEAD services (client, json_api_server, sead_query_api) are built from their checkouts
+in this directory: the images copy the source in and carry their own build tools, so the
+host needs only git and podman. In dev mode `compose.override.yml` mounts the checkouts
+over that copy, so edits are picked up live.
 
 1. `git clone https://github.com/humlab-sead/sead-deployment.git`
 1. `cd sead-deployment`
 1. `git clone --recurse-submodules https://github.com/humlab-sead/sead_browser_client`
 1. `git clone --recurse-submodules https://github.com/humlab-sead/json_api_server`
+1. `git clone https://github.com/humlab-sead/sead_query_api`
 1. `git clone --recurse-submodules https://github.com/humlab-sead/sead_shape_shifter`
 1. `./generate_env.sh` to copy .env-example to .env and fill it out with auto-generated passwords.
 1. Edit `.env`. Check COMPOSE_PROJECT_NAME is not colliding with any other project. Set DOMAIN to whatever you want, but we use sead.local here.

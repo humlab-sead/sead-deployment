@@ -1,6 +1,9 @@
 networks:
   sead_network: {}
 
+#Every image is pinned to an exact version, never a floating tag like mongo:4.4 or latest:
+#a SEAD release is a tag on this repository, and has to mean the same images wherever it
+#is deployed. See releases/README.md.
 services:
   router:
     build: ./router/docker
@@ -83,7 +86,7 @@ services:
       - sead_network
 
   mongo:
-    image: docker.io/mongo:4.4
+    image: docker.io/mongo:4.4.30
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "mongo --eval 'db.adminCommand(\"ping\")' -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin || exit 1"]
@@ -102,7 +105,7 @@ services:
       - sead_network
 
   mongo-express:
-    image: docker.io/mongo-express
+    image: docker.io/mongo-express:1.0.2
     restart: unless-stopped
     ports:
       - "${MONGO_EXPRESS_PORT}:8081"
@@ -119,17 +122,22 @@ services:
     networks:
       - sead_network
 
+  #The SEAD services are built from their checkouts in this directory, which deploy.sh
+  #puts at the version the release pins (SBC_RELEASE and so on). The images copy the
+  #source in and carry their own build tools; nothing is cloned during a build.
   client:
     build:
-      context: ./sead_browser_client/docker
+      context: ./sead_browser_client
+      dockerfile: docker/Dockerfile
       args:
-        SBC_REF: ${SBC_RELEASE}
         DOMAIN: ${DOMAIN}
         SCHEME: ${SCHEME}
         #The Dockerfile and prepare-config.js both key off MODE; SBC_BUILD is what the
         #deployment calls it in .env. Passing it under the wrong name left MODE on its
         #"dev" default, so a prod build still came up as a dev server.
         MODE: ${SBC_BUILD}
+        #git describe of the checkout, set by deploy.sh; reported by 'deploy.sh versions'
+        SOURCE_VERSION: ${SBC_SOURCE_VERSION:-}
     restart: unless-stopped
     volumes:
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
@@ -148,9 +156,10 @@ services:
     restart: unless-stopped
     #image: sead_query_api:2024.05.RC1
     build:
-      context: ./sead_query_api/docker
+      context: ./sead_query_api
+      dockerfile: docker/Dockerfile
       args:
-        BRANCH: ${SEAD_QUERY_API_RELEASE}
+        SOURCE_VERSION: ${SEAD_QUERY_API_SOURCE_VERSION:-}
     depends_on:
       - redis_cache
     environment:
@@ -159,13 +168,14 @@ services:
       QueryBuilderSetting__Store__Username: ${DATABASE_USER}
       QueryBuilderSetting__Store__Password: ${DATABASE_PASSWORD}
     volumes:
-      - ./sead_query_api/appsettings.json:/app/appsettings.json
+      #This deployment's settings - kept outside the checkout, which is the service's own repository
+      - ./sead_query_api-config/appsettings.json:/app/appsettings.json
     #env_file: .env #Hopefully this will no longer be needed since we provide the "QueryBuilderSetting__Store__" environment variables above
     networks:
       - sead_network
 
   redis_cache:
-    image: "docker.io/redis:5-alpine"
+    image: "docker.io/redis:5.0.14-alpine"
     command: ["redis-server", "--appendonly", "yes"]
     hostname: redis
     restart: unless-stopped
@@ -183,10 +193,11 @@ services:
 
   json_api_server:
     build:
-      context: ./json_api_server/docker
+      context: ./json_api_server
+      dockerfile: docker/Dockerfile
       args:
-        JAS_REF: ${JAS_RELEASE}
         MODE: "prod"
+        SOURCE_VERSION: ${JAS_SOURCE_VERSION:-}
     restart: unless-stopped
     #8485 is the SAML hand-off listener. It is reached only by the router, and must never be published.
     ports:
@@ -291,7 +302,7 @@ services:
   #    - ./clearinghouse/docker/.env
 
   maria-db:
-    image: docker.io/mariadb:10
+    image: docker.io/mariadb:10.11.19
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u ${MARIA_DB_USER} -p${MARIA_DB_PASSWORD} || exit 1"]
@@ -312,7 +323,7 @@ services:
       - sead_network
 
   matomo:
-    image: docker.io/matomo:5
+    image: docker.io/matomo:5.14.0
     restart: unless-stopped
     depends_on:
       - maria-db
