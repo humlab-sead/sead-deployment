@@ -1,0 +1,25 @@
+# Example ~/.ssh/config entries for SEAD remote deployments.
+#
+# Replace HostName with the real server name/IP, and adjust User values to the
+# Unix users that own each deployment checkout on the server.
+#
+# Private keys should be generated locally and kept in ~/.ssh with mode 600.
+# The matching public keys go into each server user's ~/.ssh/authorized_keys.
+
+Host sead-prod
+  HostName sead-server.example.org
+  User sead-browser
+  IdentityFile ~/.ssh/sead_prod_ed25519
+  IdentitiesOnly yes
+
+Host sead-super
+  HostName sead-server.example.org
+  User sead-super
+  IdentityFile ~/.ssh/sead_super_ed25519
+  IdentitiesOnly yes
+
+Host sead-staging
+  HostName sead-server.example.org
+  User sead-staging
+  IdentityFile ~/.ssh/sead_staging_ed25519
+  IdentitiesOnly yes

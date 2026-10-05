@@ -22,16 +22,34 @@ services:
     #port, giving wss://$DOMAIN:80/ws - but the browser arrives over the https front
     #door on 443, so the handshake never lands. Name the public URL explicitly.
     command: npm run dev -- --port 80 --allowed-hosts ${DOMAIN} --client-web-socket-url wss://${DOMAIN}:443/ws
+    #The node stage of the image: the dev server needs node, which the nginx stage lacks
+    build:
+      target: build
+    #The checkout is mounted over the image's copy of the source, so the dev server sees
+    #edits as they are saved. node_modules is kept from the image, which installed it -
+    #the host needs no npm. After a dependency change, rebuild and replace the volume:
+    #  podman compose build client && podman compose up -d -V client
     volumes:
       - ./sead_browser_client:/sead_browser_client:Z
+      - /sead_browser_client/node_modules
 
   json_api_server:
     environment:
       MODE: dev
     ports:
       - "${JAS_PORT}:8484"
+    #As for client: the checkout over the image's source, node_modules from the image.
+    #After a dependency change: podman compose build json_api_server && podman compose up -d -V json_api_server
     volumes:
       - ./json_api_server:/json_api_server:Z
+      - /json_api_server/node_modules
+
+  #The agent's source is baked into its image, and only training/ - the whole prompt - is
+  #mounted in compose.yml. Mounting src as well lets an edit to the code be tried with a
+  #restart rather than a rebuild.
+  sead_agent:
+    volumes:
+      - ./sead_agent/src:/sead_agent/src:Z
 
   mongo:
     ports:

@@ -1,5 +1,11 @@
 # SEAD Facet Assistant — System & Data Context
 
+> **Reference only - not loaded into the agent's prompt.** The agent reads `training/*.md`. This document was written for an earlier assistant that looked things up
+> over HTTP and reasoned in SQL; the SEAD agent works the user interface through its client
+> tools instead. It is kept for the database and API detail (§4, §5) a future tool that queries
+> PostgREST directly would need. The facts the UI agent needs have been moved into
+> `training/02_instructions.md`, and §6's description of the assistant surface is out of date.
+
 Context document for the in-app SEAD assistant. It covers what the data is, what the
 filters (facets) do, how they become SQL, and which HTTP APIs to call for lookups.
 

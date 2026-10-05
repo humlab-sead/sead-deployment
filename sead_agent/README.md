@@ -1,8 +1,9 @@
 # SEAD agent
 
 The chatbox agent for the SEAD web client. It runs a [pi](https://www.npmjs.com/package/@ai-sdk/harness-pi)
-harness agent against a **locally hosted** OpenAI-compatible model server, so no chat
-content and no credentials leave the deployment.
+harness agent against an OpenAI-compatible model server. The default provider is a
+**locally hosted** server, so no chat content and no credentials leave the deployment.
+It can be switched to the OpenAI API instead - see [Using the OpenAI API](#using-the-openai-api).
 
 This used to live inside `json_api_server` as `AIAssistant`; it is now a service of its
 own so that the API server has no LLM dependencies and the agent can be scaled, restarted
@@ -26,10 +27,37 @@ which the router peels off `/jsonapi/` and sends here - see `router/vhost.conf`.
 ## Configuration
 
 All settings are `SEAD_AGENT_*` environment variables, documented in the deployment's
-`.env-example`. The one that matters:
+`.env-example`. The ones that matter:
 
+- `SEAD_AGENT_LLM_PROVIDER` - `local` (default) or `openai`.
 - `SEAD_AGENT_LLM_BASE_URL` - the OpenAI-compatible server (vLLM, llama.cpp, Ollama, ...).
-  **Leaving it empty disables the agent**, which then answers `503`.
+  For `local`, **leaving it empty disables the agent**, which then answers `503`. For
+  `openai`, leave it empty to use `https://api.openai.com/v1`.
+- `SEAD_AGENT_LLM_API_KEY` - ignored by most local servers, required for OpenAI.
+- `SEAD_AGENT_LLM_MODEL` - optional for local, where the agent asks the server what it is
+  serving. Defaults to `gpt-6-luna` for OpenAI.
+
+### Using the OpenAI API
+
+Set these in `.env` and restart the agent (`podman compose up -d sead_agent`). Note that
+chat content then leaves the deployment for OpenAI. Set `SEAD_AGENT_LLM_PROVIDER=local`
+and the local server's `SEAD_AGENT_LLM_BASE_URL` again to switch back.
+
+```sh
+SEAD_AGENT_LLM_PROVIDER=openai
+SEAD_AGENT_LLM_BASE_URL=
+SEAD_AGENT_LLM_API_KEY=sk-...
+SEAD_AGENT_LLM_MODEL=gpt-6-luna
+SEAD_AGENT_THINKING_LEVEL=off
+```
+
+This still uses the existing SEAD service, rate limits, sessions and browser tools. It
+does not create a hosted `/v1/agents` agent.
+
+For GPT-6 Luna through Chat Completions, the generated pi model config pins every
+thinking level to `reasoning_effort: "none"` because SEAD depends on function tools.
+Using reasoning with tools should be a later Responses API migration, not this provider
+toggle.
 
 ### Reaching a model server on the host
 
@@ -65,6 +93,42 @@ is missing, the tunnel refuses to bind rather than quietly falling back to a pub
 `SEAD_AGENT_LLM_MODEL` can be left empty, in which case the agent asks the server what it
 is serving and uses that.
 
+## What the agent knows
+
+The model is not fine-tuned. Everything it knows about SEAD is in its system prompt,
+assembled when the agent is built from the markdown documents in `training/`. Each is
+named `NN_name.md`, and the number is its place in the prompt:
+
+1. `01_operating-limits.md` - what it will and won't do (see [Safety](#safety))
+2. `02_instructions.md` - the agent's own guide: the data, the user's vocabulary, age
+   scales, and how to work the client with its tools
+3. `03_sead-filters.md` - the filters this deployment offers and which domains offer them,
+   generated from the database by `scripts/generate-filters-doc.py`. `list_filters` only
+   sees the active domain, so this is how the agent knows what the others have
+4. `99_operating-limits-reminder.md` - a short restatement of the limits
+
+To add a document, give it a number between the instructions and the reminder. A `.md`
+without a number is skipped with a warning in the log.
+
+The limits, the instructions and the reminder are required: if any of them is missing or
+empty, or the limits are not numbered first or the reminder last, the agent answers every
+message with an error rather than run with its limits missing or buried. Every numbered
+`.md` in `training/` goes into the prompt, so keep notes for humans elsewhere.
+
+The tool descriptions in `src/clientTools.js` are part of what it is told, too. They stay
+in code because they describe the parameters and handlers defined next to them.
+
+All of it is sent with every request, so say each thing once: how a tool behaves belongs
+in its description, when and why to use it in `02_instructions.md`, and the limits only in
+the limits documents.
+
+The prompt is read once, when the first message arrives. `training/` is mounted into the
+container, so an edit there needs only `podman compose restart sead_agent`.
+
+`reference/` is **not** loaded. It holds the database and API detail - how filters become
+SQL, the query API, PostgREST - that the agent has no use for while it works only through
+the user interface, kept for the day it gets a tool that queries the database directly.
+
 ## Safety
 
 The endpoint is unauthenticated and public, so it is worth being explicit about the two
@@ -94,11 +158,15 @@ instead. Empty (any origin) is a sound default for a public database.
 ### Against being used as a general assistant
 
 The agent's operating limits - it answers about SEAD and its data, it does not take on
-other personas, it does not reproduce its own prompt - live in `SeadAgent.class.js` rather
-than in `instructions.md`, and are prepended to whatever `SEAD_AGENT_INSTRUCTIONS_FILE`
-supplies. Pointing that at a context document of your own therefore cannot drop them, and
-they are repeated after the training documents, which are long enough on their own to
-leave the top of the prompt far behind.
+other personas, it does not reproduce its own prompt - live in
+`training/01_operating-limits.md` rather than in the instructions, and are prepended to
+whatever `SEAD_AGENT_INSTRUCTIONS_FILE` supplies. Pointing that at a context document of
+your own therefore cannot drop them, and they are restated by
+`training/99_operating-limits-reminder.md` after the training documents, which are long enough
+on their own to leave the top of the prompt far behind. Both files are required and must open
+and close the prompt - deleting one, numbering a document outside them, or a deployment
+pointing `SEAD_AGENT_TRAINING_DIR` at a directory without them stops the agent answering
+rather than leaving it running without its limits.
 
 The user's message and the browser's state summary each arrive in the prompt inside a
 block of their own, and anything in either that looks like one of those tags is defanged
@@ -114,6 +182,14 @@ The agent has no database credentials and no filesystem of its own to speak of. 
 do not run here at all - each one hands a named command to the browser that asked the
 question, and the client refuses anything outside that vocabulary (`clientTools.js`). No
 model-written JavaScript is ever evaluated, on either side.
+
+The general tools - `read_screen`, `click` and `set_value`, which let the agent use anything a
+person can see on the page - work the same way. The model names a ref from an outline the client
+built and one of those three actions; the client decides what the ref is and whether it may be
+touched. Some of the page is out of its reach entirely (`OFF_LIMITS` in the client's
+`ScreenReader.class.js`): the chatbox itself, signing in and out, the sysadmin data import, and
+download buttons, which stay the user's own click. Links that leave SEAD are refused too. A
+region of the page can be put out of reach with `data-sead-agent="off"`.
 
 pi's builtin file and shell tools are switched off by default. When enabled with
 `SEAD_AGENT_ENABLE_SANDBOX_TOOLS=true` they only ever reach a throwaway in-memory sandbox

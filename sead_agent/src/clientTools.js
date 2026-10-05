@@ -34,7 +34,7 @@ export function createClientTools(runCommand) {
         }),
 
         get_state: tool({
-            description: "Read what the user is currently looking at, as a snapshot of the whole interface: which page they are on, the active domain, every open filter with its selections, whether it is minimised and anything typed into its text search, the active result view with its site count and which mosaic tiles are rendered, the open site report and which of its sections are expanded, any dialog covering the screen, and which menus are open. Call this before answering any question about 'the current results', 'my filters' or what is on screen, and after making changes to see their effect.",
+            description: "Read what the user is currently looking at, as a snapshot of the whole interface: which page they are on, the active domain, every open filter with its selections, whether it is minimised and anything typed into its text search, the active result view with its site count and which mosaic tiles are rendered, the open site report and which of its sections are expanded, any dialog covering the screen, which menus are open, and the quick search results if they are showing. Call this before answering any question about 'the current results', 'my filters' or what is on screen, and after making changes to see their effect.",
             inputSchema: noArgs("No arguments."),
             execute: async () => runCommand("get_state", {})
         }),
@@ -133,7 +133,7 @@ export function createClientTools(runCommand) {
         }),
 
         list_site_report_sections: tool({
-            description: "List the sections of the site report that is currently open - their id, title, whether they are expanded, and their subsections. Call this before expanding or collapsing anything, since section ids differ from site to site (each analysis method gets its own section).",
+            description: "List the sections of the site report that is currently open - their id, title, whether they are expanded, and their subsections. An expanded section also lists its expandableRows: table rows, such as sample groups, that open onto the rows inside them. Call this before expanding or collapsing anything, since section ids differ from site to site (each analysis method gets its own section).",
             inputSchema: noArgs("No arguments."),
             execute: async () => runCommand("list_site_report_sections", {})
         }),
@@ -150,6 +150,25 @@ export function createClientTools(runCommand) {
                 additionalProperties: false
             }),
             execute: async (args) => runCommand("set_site_report_section", args)
+        }),
+
+        set_site_report_rows: tool({
+            description: "Open or close rows inside a site report table - a sample group in the 'samples' section, to show its samples, say. This is what the user means by expanding or opening a sample group; set_site_report_section only opens whole sections. Row ids come from expandableRows in list_site_report_sections. The reply gives each row's state afterwards - report that, not what you asked for.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    section: { type: "string", description: "The id of the section the rows are in, as given by list_site_report_sections, e.g. 'samples'." },
+                    rows: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Row ids from expandableRows, e.g. sample group ids ['12724']."
+                    },
+                    expanded: { type: "boolean", description: "true to open the rows, false to close them." }
+                },
+                required: ["section", "rows", "expanded"],
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("set_site_report_rows", args)
         }),
 
         export_site_report: tool({
@@ -212,6 +231,50 @@ export function createClientTools(runCommand) {
                 additionalProperties: false
             }),
             execute: async (args) => runCommand("set_map_polygons", args)
+        }),
+
+        //The general layer: anything a person can see and use, for what the commands above
+        //don't cover. The model names a ref from the outline and one of these actions; the
+        //client decides what that ref is and whether it may be touched.
+        read_screen: tool({
+            description: "Read what is on screen as text: every visible element the user could click or fill in, each with a ref (e.g. 'e14'), a role, a label and its state (expanded, collapsed, checked, value, disabled), grouped under the dialog, site report section, filter or menu it is in. Use it for anything the dedicated tools don't cover - a button, a tab, a table row, an option in a dialog - and to see what a click changed. Narrow it with 'region' or 'section' when you know where to look; the whole page is long. Pass text: true to also get that part's visible text, when you need to read content rather than act on it.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    region: { type: "string", enum: ["all", "dialog", "site_report", "filters", "results", "menus", "page"], description: "Which part of the interface to read. Defaults to all." },
+                    section: { type: "string", description: "Optional site report section id (from list_site_report_sections) to read just that section." },
+                    text: { type: "boolean", description: "Also return the visible text of the region or section. Defaults to false." }
+                },
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("read_screen", args)
+        }),
+
+        click: tool({
+            description: "Click an element from read_screen, by its ref, exactly as the user would. The reply is the outline of the part of the screen it was in afterwards, plus any dialog it opened - read it to see what actually happened before telling the user. Refs stay valid while the element is on the page; if one is gone, read the screen again. Prefer the dedicated tools for filters, domains, views, site reports and the map when they do what is asked.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    ref: { type: "string", description: "The element's ref from read_screen, e.g. 'e14'." }
+                },
+                required: ["ref"],
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("click", args)
+        }),
+
+        set_value: tool({
+            description: "Fill in a text field, tick or untick a checkbox (true/false), or pick an option in a select (by its value or its text), by ref from read_screen. The reply is the outline of that part of the screen afterwards. For a filter's selections use set_filter_selections instead.",
+            inputSchema: jsonSchema({
+                type: "object",
+                properties: {
+                    ref: { type: "string", description: "The element's ref from read_screen." },
+                    value: { type: ["string", "number", "boolean"], description: "The text to enter, true/false for a checkbox, or the option to pick." }
+                },
+                required: ["ref", "value"],
+                additionalProperties: false
+            }),
+            execute: async (args) => runCommand("set_value", args)
         })
     };
 }
@@ -220,6 +283,7 @@ export const CLIENT_COMMANDS = [
     "list_filters", "get_state", "get_filter_options", "add_filter",
     "set_filter_selections", "remove_filter", "clear_filters", "set_domain", "set_result_view",
     "open_site_report", "close_site_report", "list_site_report_sections",
-    "set_site_report_section", "export_site_report",
-    "find_areas", "set_map_polygons"
+    "set_site_report_section", "set_site_report_rows", "export_site_report",
+    "find_areas", "set_map_polygons",
+    "read_screen", "click", "set_value"
 ];
