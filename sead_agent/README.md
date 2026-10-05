@@ -1,8 +1,9 @@
 # SEAD agent
 
 The chatbox agent for the SEAD web client. It runs a [pi](https://www.npmjs.com/package/@ai-sdk/harness-pi)
-harness agent against a **locally hosted** OpenAI-compatible model server, so no chat
-content and no credentials leave the deployment.
+harness agent against an OpenAI-compatible model server. The default provider is a
+**locally hosted** server, so no chat content and no credentials leave the deployment.
+It can be switched to the OpenAI API instead - see [Using the OpenAI API](#using-the-openai-api).
 
 This used to live inside `json_api_server` as `AIAssistant`; it is now a service of its
 own so that the API server has no LLM dependencies and the agent can be scaled, restarted
@@ -26,10 +27,37 @@ which the router peels off `/jsonapi/` and sends here - see `router/vhost.conf`.
 ## Configuration
 
 All settings are `SEAD_AGENT_*` environment variables, documented in the deployment's
-`.env-example`. The one that matters:
+`.env-example`. The ones that matter:
 
+- `SEAD_AGENT_LLM_PROVIDER` - `local` (default) or `openai`.
 - `SEAD_AGENT_LLM_BASE_URL` - the OpenAI-compatible server (vLLM, llama.cpp, Ollama, ...).
-  **Leaving it empty disables the agent**, which then answers `503`.
+  For `local`, **leaving it empty disables the agent**, which then answers `503`. For
+  `openai`, leave it empty to use `https://api.openai.com/v1`.
+- `SEAD_AGENT_LLM_API_KEY` - ignored by most local servers, required for OpenAI.
+- `SEAD_AGENT_LLM_MODEL` - optional for local, where the agent asks the server what it is
+  serving. Defaults to `gpt-6-luna` for OpenAI.
+
+### Using the OpenAI API
+
+Set these in `.env` and restart the agent (`podman compose up -d sead_agent`). Note that
+chat content then leaves the deployment for OpenAI. Set `SEAD_AGENT_LLM_PROVIDER=local`
+and the local server's `SEAD_AGENT_LLM_BASE_URL` again to switch back.
+
+```sh
+SEAD_AGENT_LLM_PROVIDER=openai
+SEAD_AGENT_LLM_BASE_URL=
+SEAD_AGENT_LLM_API_KEY=sk-...
+SEAD_AGENT_LLM_MODEL=gpt-6-luna
+SEAD_AGENT_THINKING_LEVEL=off
+```
+
+This still uses the existing SEAD service, rate limits, sessions and browser tools. It
+does not create a hosted `/v1/agents` agent.
+
+For GPT-6 Luna through Chat Completions, the generated pi model config pins every
+thinking level to `reasoning_effort: "none"` because SEAD depends on function tools.
+Using reasoning with tools should be a later Responses API migration, not this provider
+toggle.
 
 ### Reaching a model server on the host
 

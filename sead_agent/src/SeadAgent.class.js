@@ -8,22 +8,28 @@ import { createPi } from '@ai-sdk/harness-pi';
 import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
 import { createClientTools } from './clientTools.js';
 
-//The OpenAI-compatible server (vLLM, llama.cpp, Ollama, ...) serving the model.
-//Setting this is what enables the endpoint; leave it empty to turn the agent off.
-//Note that from inside the container "localhost" is the container itself - reach a model
-//server running on the podman host as host.containers.internal.
-const LLM_BASE_URL = (process.env.SEAD_AGENT_LLM_BASE_URL || "").replace(/\/+$/, "");
-//A local server usually ignores the key, but pi always sends one
-const LLM_API_KEY = process.env.SEAD_AGENT_LLM_API_KEY || "local";
-//Leave empty to use whatever model the server reports as served
-const LLM_MODEL = process.env.SEAD_AGENT_LLM_MODEL || "";
-const THINKING_LEVEL = process.env.SEAD_AGENT_THINKING_LEVEL || "low";
+const LLM_PROVIDER = (process.env.SEAD_AGENT_LLM_PROVIDER || "local").trim().toLowerCase();
+const USE_OPENAI = LLM_PROVIDER == "openai";
+if(!["local", "openai"].includes(LLM_PROVIDER)) {
+    throw new Error("Unsupported SEAD_AGENT_LLM_PROVIDER '"+LLM_PROVIDER+"'; use 'local' or 'openai'.");
+}
+
+//The OpenAI-compatible server serving the model. For local this is vLLM, llama.cpp,
+//Ollama, and friends. For OpenAI, leave this empty to use https://api.openai.com/v1.
+//Setting this is what enables the local endpoint; OpenAI also requires an API key.
+const LLM_BASE_URL = (process.env.SEAD_AGENT_LLM_BASE_URL || (USE_OPENAI ? "https://api.openai.com/v1" : "")).replace(/\/+$/, "");
+//A local server usually ignores the key, but pi always sends one. OpenAI must get a real key.
+const LLM_API_KEY = process.env.SEAD_AGENT_LLM_API_KEY || (USE_OPENAI ? "" : "local");
+//Local can leave this empty to use whatever the server reports. OpenAI defaults to Luna.
+const LLM_MODEL = process.env.SEAD_AGENT_LLM_MODEL || (USE_OPENAI ? "gpt-6-luna" : "");
+//GPT-6 Luna only supports Chat Completions function calling with reasoning disabled.
+const THINKING_LEVEL = process.env.SEAD_AGENT_THINKING_LEVEL || (USE_OPENAI ? "off" : "low");
 
 //Where pi keeps its agent config. Regenerated on every startup, so somewhere disposable
 const AGENT_DIR = process.env.SEAD_AGENT_DIR || path.join(os.tmpdir(), "sead-agent-pi");
-const PROVIDER_ID = "local";
+const PROVIDER_ID = USE_OPENAI ? "openai" : "local";
 //The model's own limits, only used as a fallback if the server doesn't report them
-const DEFAULT_CONTEXT_WINDOW = 262144;
+const DEFAULT_CONTEXT_WINDOW = USE_OPENAI ? 1050000 : 262144;
 //The answer goes in a chatbox, not into a document. Capping it keeps one request from
 //occupying the GPU for an essay, which is the cheapest way to abuse an open endpoint -
 //"write me a novel" costs the asker one line and costs us minutes of inference.
@@ -157,7 +163,7 @@ export default class SeadAgent {
                 this.sendJson(res, 200, {
                     status: "ok",
                     configured: false,
-                    model: { reachable: false, error: "No model server is configured for this deployment." }
+                    model: { reachable: false, error: "No language model is configured for this deployment." }
                 });
                 return;
             }
@@ -171,7 +177,7 @@ export default class SeadAgent {
                 return;
             }
             if(!this.isConfigured()) {
-                console.warn("SEAD agent request received but SEAD_AGENT_LLM_BASE_URL is not set");
+                console.warn("SEAD agent request received but no language model is configured");
                 this.sendJson(res, 503, { error: "The SEAD agent is not configured on this server." });
                 return;
             }
@@ -328,7 +334,7 @@ export default class SeadAgent {
     }
 
     isConfigured() {
-        return LLM_BASE_URL.length > 0;
+        return LLM_BASE_URL.length > 0 && (!USE_OPENAI || (LLM_API_KEY.length > 0 && LLM_API_KEY != "local"));
     }
 
     /*
@@ -345,7 +351,10 @@ export default class SeadAgent {
 
         let result;
         try {
-            const response = await fetch(LLM_BASE_URL+"/models", {
+            const modelsUrl = USE_OPENAI && LLM_MODEL
+                ? LLM_BASE_URL+"/models/"+encodeURIComponent(LLM_MODEL)
+                : LLM_BASE_URL+"/models";
+            const response = await fetch(modelsUrl, {
                 headers: { "Authorization": "Bearer "+LLM_API_KEY },
                 signal: AbortSignal.timeout(MODEL_PROBE_TIMEOUT_MS)
             });
@@ -353,7 +362,9 @@ export default class SeadAgent {
                 throw new Error("HTTP "+response.status);
             }
             const payload = await response.json();
-            const model = payload && Array.isArray(payload.data) ? payload.data[0] : null;
+            const model = payload && payload.id
+                ? payload
+                : (payload && Array.isArray(payload.data) ? payload.data[0] : null);
             if(!model || !model.id) {
                 throw new Error("the server reports no models");
             }
@@ -683,7 +694,7 @@ export default class SeadAgent {
         await this.writeModelsConfig(model);
         const instructions = await this.loadInstructions();
 
-        console.log("SEAD agent using model "+model.id+" at "+LLM_BASE_URL);
+        console.log("SEAD agent using "+LLM_PROVIDER+" model "+model.id+" at "+LLM_BASE_URL);
 
         return new HarnessAgent({
             harness: createPi({
@@ -743,7 +754,7 @@ export default class SeadAgent {
         const config = {
             providers: {
                 [PROVIDER_ID]: {
-                    name: "Local OpenAI-compatible server",
+                    name: USE_OPENAI ? "OpenAI API" : "Local OpenAI-compatible server",
                     baseUrl: LLM_BASE_URL,
                     apiKey: LLM_API_KEY,
                     api: "openai-completions",
@@ -757,18 +768,9 @@ export default class SeadAgent {
                             contextWindow: model.contextWindow,
                             maxTokens: Math.min(MAX_OUTPUT_TOKENS, model.contextWindow),
                             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                            //vLLM advertises only low/medium/xhigh reasoning efforts;
-                            //sending "high" or "minimal" verbatim is a 400
-                            thinkingLevelMap: {
-                                off: null,
-                                minimal: "low",
-                                low: "low",
-                                medium: "medium",
-                                high: "xhigh",
-                                xhigh: "xhigh"
-                            },
+                            thinkingLevelMap: this.thinkingLevelMap(),
                             compat: {
-                                maxTokensField: "max_tokens",
+                                maxTokensField: USE_OPENAI ? "max_completion_tokens" : "max_tokens",
                                 supportsReasoningEffort: true,
                                 supportsStore: false
                             }
@@ -780,6 +782,35 @@ export default class SeadAgent {
 
         await mkdir(AGENT_DIR, { recursive: true });
         await writeFile(path.join(AGENT_DIR, "models.json"), JSON.stringify(config, null, 2)+"\n");
+    }
+
+    thinkingLevelMap() {
+        if(USE_OPENAI) {
+            //GPT-6 Luna supports reasoning, but Chat Completions function calling is
+            //currently supported only with reasoning_effort="none". The SEAD chatbox
+            //depends on function tools, so every requested effort is pinned to none here.
+            return {
+                off: "none",
+                minimal: "none",
+                low: "none",
+                medium: "none",
+                high: "none",
+                xhigh: "none",
+                max: "none"
+            };
+        }
+
+        //vLLM advertises only low/medium/xhigh reasoning efforts; sending "high" or
+        //"minimal" verbatim is a 400.
+        return {
+            off: null,
+            minimal: "low",
+            low: "low",
+            medium: "medium",
+            high: "xhigh",
+            xhigh: "xhigh",
+            max: "xhigh"
+        };
     }
 
     /*
