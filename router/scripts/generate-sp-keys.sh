@@ -2,10 +2,12 @@
 # Generates the SAML Service Provider's keys: a signing pair and an encryption pair,
 # self-signed for https://$DOMAIN/shibboleth, into router/mounts/shibboleth-keys/.
 #
-# Run it on each server (and on each developer's machine) - keys are never committed
-# or copied between servers. On super.sead.se and browser.sead.se the certificates
-# are part of that server's SWAMID registration: generating new ones means updating
-# the registration, so existing keys are kept unless --force is given.
+# Run it on each developer's machine - keys are never committed or copied between
+# servers. browser.sead.se, super.sead.se and staging.sead.se instead use the keys in
+# their SWAMID registration, kept in the gitignored authentication/swamid/<domain>/certificates
+# and copied into router/mounts/shibboleth-keys/ on that server before the first deploy.
+# Generating new ones there means updating the registration, so existing keys are kept
+# unless --force is given.
 #
 # Usage: router/scripts/generate-sp-keys.sh [--force]   (DOMAIN is read from .env)
 set -euo pipefail
