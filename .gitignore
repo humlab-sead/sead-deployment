@@ -59,3 +59,8 @@ router/mounts/shibboleth-keys/*
 router/mounts/shibboleth-cache/*
 !router/mounts/shibboleth-cache/.gitkeep
 __pycache__/
+
+authentication/
+
+# Local scratch area for untracked data and files that should never be committed
+work/
