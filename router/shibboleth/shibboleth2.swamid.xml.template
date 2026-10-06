@@ -1,7 +1,7 @@
 <!--
-    SAML SP for super.sead.se and browser.sead.se, against every SWAMID IdP.
+    SAML SP for browser.sead.se, super.sead.se and staging.sead.se, against every SWAMID IdP.
     Rendered by the router's entrypoint (SAML_FEDERATION=swamid) into /etc/shibboleth/shibboleth2.xml.
-    The two sites render this same file and differ only in ${DOMAIN} and their keys.
+    The three sites render this same file and differ only in ${DOMAIN} and their keys.
     Keep in step with shibboleth2.local.xml.template: the two differ only in <SSO> and <MetadataProvider>.
 -->
 <SPConfig xmlns="urn:mace:shibboleth:3.0:native:sp:config"
