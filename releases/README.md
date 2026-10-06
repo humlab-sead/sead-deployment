@@ -27,8 +27,11 @@ A release is a git tag on this repository. The commit it points at pins:
 
 The client shows the SEAD release, not its own version, as the release users are on:
 on saved viewstates, in its exports, and in its About dialog, which also lists the
-version of each component of the release. The client is built with those versions
-from `.env`, so a new release rebuilds it even when its pin is unchanged. The
+version of each component of the release. deploy.sh builds the client with them -
+`git describe` of this checkout and of the services', which on a release are its
+tags - so a new release rebuilds it even when its pin is unchanged. Outside a
+release the version says how far past a release the checkout is, as in
+`2026-10.1-11-gd4e5443`. The
 client's own tags are semver from `v1.0.0` on, so that they cannot be mistaken for
 a SEAD release; its earlier tags, up to `2026-10.0`, used the release form.
 

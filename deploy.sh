@@ -2134,6 +2134,10 @@ export_source_versions() {
         [[ -d "$src_dir/.git" ]] || continue
         export "${ENV_REF_VAR%_RELEASE}_SOURCE_VERSION=$(git -C "$src_dir" describe --tags --always --dirty='*')"
     done
+    # And this checkout's own, the SEAD version the client shows: the release's tag on a
+    # release, else the tag it is past. Never marked dirty, since a production checkout
+    # always has compose.override.yml set aside.
+    export SEAD_SOURCE_VERSION="$(git -C "$SCRIPT_DIR" describe --tags --always 2>/dev/null || true)"
 }
 
 # Compose builds every buildable service in parallel and interleaves their output into

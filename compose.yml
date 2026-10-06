@@ -146,12 +146,12 @@ services:
         MODE: ${SBC_BUILD}
         #git describe of the checkout, set by deploy.sh; reported by 'deploy.sh versions'
         SOURCE_VERSION: ${SBC_SOURCE_VERSION:-}
-        #The SEAD release the stack runs, recorded in .env by 'deploy.sh release apply', and
-        #the versions of its components; the client's About dialog shows them. SEAD_RELEASE
-        #is empty outside a release.
-        SEAD_RELEASE: ${SEAD_RELEASE:-}
-        JAS_RELEASE: ${JAS_RELEASE:-}
-        SEAD_QUERY_API_RELEASE: ${SEAD_QUERY_API_RELEASE:-}
+        #The version of this deployment and of its components, which the client's About
+        #dialog shows: what deploy.sh found checked out (git describe, the release's tags
+        #on a release), or else the refs in .env.
+        SEAD_RELEASE: ${SEAD_SOURCE_VERSION:-${SEAD_RELEASE:-}}
+        JAS_RELEASE: ${JAS_SOURCE_VERSION:-${JAS_RELEASE:-}}
+        SEAD_QUERY_API_RELEASE: ${SEAD_QUERY_API_SOURCE_VERSION:-${SEAD_QUERY_API_RELEASE:-}}
         SEAD_CHANGE_CONTROL_RELEASE: ${SEAD_CHANGE_CONTROL_RELEASE:-}
     restart: unless-stopped
     volumes:
