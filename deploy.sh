@@ -476,7 +476,7 @@ cmd_update_env() {
         if [[ -z "$value" ]]; then
             value="(empty)"
         elif [[ "$key" =~ (PASSWORD|SECRET|SALT|_PASS|_KEY|Password)$ ]]; then
-            value="<generated>"
+            value="(secret, not shown)"
         fi
         info "  ${key}=${value}"
     done
