@@ -71,7 +71,12 @@ services:
     depends_on:
       - postgresql
     restart: unless-stopped
-    image: docker.io/postgrest/postgrest:v12.2.8
+    #The official postgrest image plus curl, for the healthcheck - see the Dockerfile
+    build:
+      context: ./postgrest
+      dockerfile: docker/Dockerfile
+      args:
+        POSTGREST_IMAGE: docker.io/postgrest/postgrest:v12.2.8
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
       interval: 30s

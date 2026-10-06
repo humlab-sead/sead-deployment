@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+#For the compose healthcheck
+RUN apk add --no-cache curl
+
 ENV PGDATABASE=sead_staging
 ENV PGHOST=postgresql
 ENV PGPORT=5432
