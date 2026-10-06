@@ -28,7 +28,7 @@ viewstate_server/docker/config-letsencrypt.json
 run-mongo-express.sh
 mongodb
 sead_browser_client
-scripts
+/scripts
 bugs_import_model.sql
 bugsdata.sql
 clearinghouse/
@@ -58,3 +58,4 @@ router/mounts/shibboleth-keys/*
 !router/mounts/shibboleth-keys/.gitkeep
 router/mounts/shibboleth-cache/*
 !router/mounts/shibboleth-cache/.gitkeep
+__pycache__/

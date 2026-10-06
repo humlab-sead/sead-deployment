@@ -61,30 +61,76 @@ or from your own machine, through a target in `~/.config/sead-deployment/targets
 ./deploy.sh remote deploy super 2026-10.0
 ```
 
-This fetches the tag, checks it out (the checkout is left detached at the tag), checks
-every pinned tag on GitHub, syncs the service checkouts to their pinned commits, writes
-the pinned refs into `.env`, builds, and starts the stack. The images are built from
-those checkouts, so what was checked is what gets built; nothing is cloned during a
-build. Each image records the `git describe` of the checkout it was built from, which
-`./deploy.sh versions` reports. It refuses to run on a checkout with uncommitted
-changes. `.env` keeps its secrets and settings; only the version variables change.
+The remote deploy runs detached on the server (`release deploy --background`, logging
+to `logs/release-deploy-*.log`) and your end follows the log. Interrupting it, or losing
+the connection, leaves the deploy running; `./deploy.sh remote logs super` picks the log
+up again, and exits with the deploy's status when it ends.
 
-**A release never touches the database.** `import-db` recreates the database from
-scratch, so it is never run on its own. If the schema is not at the sqitch tag the
-release pins, the deploy says so, and the import is yours to start:
+This fetches the tag, checks that `.env` has every variable the release's `.env-example`
+defines, checks it out (the checkout is left detached at the tag), checks every pinned
+tag on GitHub, syncs the service checkouts to their pinned commits, writes the pinned
+refs into `.env`, builds, brings the database to the release, and starts the stack. The
+images are built from those checkouts, so what was checked is what gets built; nothing
+is cloned during a build. Each image records the `git describe` of the checkout it was
+built from, which `./deploy.sh versions` reports. It refuses to run on a checkout with
+uncommitted changes. `.env` keeps its secrets and settings; only the version variables
+change.
+
+**A `.env` that lacks variables stops the deploy before anything changes.** A release
+that adds services or settings adds them to `.env-example`; add them to the instance's
+`.env`, on the server, with
 
 ```bash
-./deploy.sh import-db @2026.10
+./deploy.sh generate-env --update 2026-10.0
 ```
 
+which adds only what is missing, with the example's values, generates new secrets and
+asks for new host ports (those must be unique among the instances on the host). Review
+the result, then deploy.
+
+**The database comes with the release.** The schema is part of what a release is - it
+holds the facet definitions, among other things - and everything in the database comes
+from `sead_change_control`, so a deploy rebuilds the database at the sqitch tag the
+release pins instead of migrating it:
+
+- The rebuild is the import `import-db` runs, into `sead_staging_next`, while
+  `sead_staging` keeps serving. The two are then swapped by renaming them, which takes
+  seconds. The database it replaces is kept as `sead_staging_prev` (with connections
+  refused) until the next rebuild.
+- The GADM boundaries, which come from their own import, are copied over from the
+  database being replaced, or imported in the background when it has none.
+- The query API's Redis cache is flushed and the JSON API server's cache rebuilt in the
+  background afterwards.
+- A database already at the pinned tag is left alone, so a release that only changes
+  services does not touch it.
+- A release whose postgresql image is a new PostgreSQL major version cannot start on
+  the old version's data directory. It is set aside as
+  `postgresql/mounts/pg-data-volume.pg<old>.<timestamp>`, and the new version starts on
+  an empty one; the site has no database until the rebuild is done. Remove the old
+  directory once the release is known to be good.
+
+This relies on nothing being written to the database except through
+`sead_change_control` - data, including SDF submissions, arrives as change requests.
+
 `./deploy.sh release apply` builds and starts the release of the checkout as it
-stands, for when you have checked out the tag yourself.
+stands, and brings the database to it, for when you have checked out the tag yourself.
 
 ## Rolling back
 
 `.env` records the release an instance runs (`SEAD_RELEASE`) and the one it ran
 before (`SEAD_PREVIOUS_RELEASE`). Rolling back is deploying the previous release
-again. The database is not rolled back with it.
+again. A deploy rebuilds the database at the tag the release pins, older or not, so the
+database is rolled back with it. For an instant way back after a bad rebuild, the
+replaced database is kept as `sead_staging_prev`: in psql as postgres,
+
+```sql
+ALTER DATABASE sead_staging RENAME TO sead_staging_bad;
+ALTER DATABASE sead_staging_prev RENAME TO sead_staging;
+ALTER DATABASE sead_staging WITH ALLOW_CONNECTIONS true;
+```
+
+After a PostgreSQL major version upgrade, going back means deploying the previous
+release with the kept `pg-data-volume.pg<old>.<timestamp>` moved back into place.
 
 ## Seeing what runs
 

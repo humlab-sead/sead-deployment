@@ -19,7 +19,8 @@
 #   preload-jas [--background]
 #                         Preload the JSON API Server MongoDB cache
 #   flush-cache          Flush the JAS graph cache via the REST API
-#   generate-env         Generate .env from .env-example
+#   generate-env [--update]
+#                         Generate .env from .env-example, or add what it lacks
 #   rotate-secrets       Overwrite ALL secrets in .env with fresh random values
 
 set -eo pipefail
@@ -348,7 +349,7 @@ prompt_import_old_env() {
         if [[ "$source_path" == "~" ]]; then
             source_path="$HOME"
         elif [[ "$source_path" == "~/"* ]]; then
-            source_path="$HOME/${source_path#~/}"
+            source_path="$HOME/${source_path#"~/"}"
         fi
 
         if [[ ! -f "$source_path" ]]; then
@@ -368,7 +369,126 @@ prompt_import_old_env() {
 # ──────────────────────────────────────────────────────────────────────────────
 # generate-env command
 # ──────────────────────────────────────────────────────────────────────────────
+# SEAD login defaults: the dev IdP and the ORCID sandbox in dev, SWAMID and
+# orcid.org online. Values already set are kept.
+apply_login_defaults() {
+    local file="$1"
+    if [[ "${DEPLOY_MODE}" == "prod" ]]; then
+        set_env_default "$file" SAML_FEDERATION swamid
+        set_env_default "$file" JAS_ORCID_ISSUER https://orcid.org
+    else
+        set_env_default "$file" SAML_FEDERATION local
+        set_env_default "$file" SAML_DEV_IDP_HOST sead-idp.local
+        set_env_default "$file" JAS_ORCID_ISSUER https://sandbox.orcid.org
+    fi
+    info "SAML_FEDERATION=$(get_env_var "$file" SAML_FEDERATION), JAS_ORCID_ISSUER=$(get_env_var "$file" JAS_ORCID_ISSUER)"
+}
+
+# The .env-example a release carries, or this checkout's when no release is named.
+env_example_of() {
+    local release="${1:-}"
+    if [[ -z "$release" ]]; then
+        cat .env-example
+        return
+    fi
+    git show "refs/tags/${release}:.env-example" 2>/dev/null \
+        || die "There is no .env-example in SEAD release ${release} (is the tag fetched?)."
+}
+
+# The variables an .env-example defines that .env does not, in the example's order.
+# Reads the example from stdin.
+missing_env_keys() {
+    local key
+    grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' | tr -d = | awk '!seen[$0]++' | while IFS= read -r key; do
+        grep -qE "^${key}=" .env || echo "$key"
+    done
+}
+
+# Stops a deploy whose .env lacks variables the release's compose.yml and services
+# expect. Compose would start them with those unset, which fails late and unclearly.
+check_release_env() {
+    local release="${1:-}" missing
+    [[ -f .env ]] || die ".env not found. Install the stack first: $0 install"
+    # The release refs and the release records are what the deploy writes itself.
+    missing="$(env_example_of "$release" | missing_env_keys \
+        | grep -vxE 'SEAD_RELEASE|SEAD_PREVIOUS_RELEASE|SBC_RELEASE|JAS_RELEASE|SEAD_QUERY_API_RELEASE|SEAD_CHANGE_CONTROL_RELEASE' || true)"
+    [[ -z "$missing" ]] && return 0
+
+    error ".env lacks these variables, which ${release:-this release}'s .env-example defines:"
+    printf '  %s\n' $missing >&2
+    die "Add them with '$0 generate-env --update${release:+ ${release}}', review .env, then deploy again."
+}
+
+# Adds the variables .env lacks from .env-example (a release's, when one is named),
+# with the example's values. New secrets are generated, new host ports asked for;
+# nothing already in .env changes. sead_authority_service/.env is left alone.
+cmd_update_env() {
+    local release="${1:-}"
+    [[ -z "$release" || "$release" =~ $RELEASE_NAME_PATTERN ]] \
+        || die "Usage: $0 generate-env --update [<YYYY-MM.N>]"
+    [[ -f .env ]] || die ".env not found. Run '$0 generate-env' first."
+
+    local example missing
+    example="$(env_example_of "$release")"
+    missing="$(missing_env_keys <<< "$example")"
+    if [[ -z "$missing" ]]; then
+        success ".env already has every variable ${release:-this checkout}'s .env-example defines."
+        return 0
+    fi
+
+    local backup=".env.bak.$(date +%Y%m%d_%H%M%S)"
+    cp .env "$backup"
+    chmod 600 "$backup"
+    info "Backup saved to $backup"
+
+    # The new lines are filled on their own, so an empty secret already in .env stays
+    # as the operator left it.
+    local added key
+    added="$(mktemp)"
+    for key in $missing; do
+        grep -m1 -E "^${key}=" <<< "$example" >> "$added"
+    done
+    fill_random_secrets "$added"
+    {
+        echo
+        echo "# Added from ${release:-this checkout}'s .env-example by '$0 generate-env --update' on $(date +%F)"
+        cat "$added"
+    } >> .env
+    rm -f "$added"
+
+    apply_login_defaults .env
+
+    # A host port has to be free of every instance on the host, which this .env does
+    # not know about, so a new one is always asked for.
+    for key in $missing; do
+        [[ "$key" == *_PORT ]] || continue
+        if [[ -t 0 ]]; then
+            prompt_unique_host_port .env "$key" "${key} (must be unique on this host)"
+        else
+            warn "${key}=$(get_env_var .env "$key") was taken from .env-example; check that no other instance on this host uses it."
+        fi
+    done
+
+    success "Added to .env:"
+    local value
+    for key in $missing; do
+        value="$(get_env_var .env "$key")"
+        if [[ -z "$value" ]]; then
+            value="(empty)"
+        elif [[ "$key" =~ (PASSWORD|SECRET|SALT|_PASS|_KEY|Password)$ ]]; then
+            value="<generated>"
+        fi
+        info "  ${key}=${value}"
+    done
+    warn "Review .env before deploying - especially the host ports and the login settings."
+}
+
 cmd_generate_env() {
+    if [[ "${1:-}" == "--update" ]]; then
+        shift
+        cmd_update_env "$@"
+        return
+    fi
     [[ -f .env-example ]] || die ".env-example not found. Are you in the right directory?"
 
     if [[ -f .env ]]; then
@@ -392,17 +512,7 @@ cmd_generate_env() {
     fi
     info "DEPLOY_MODE=${DEPLOY_MODE} written to .env"
 
-    # SEAD login defaults: the dev IdP and the ORCID sandbox in dev, SWAMID and
-    # orcid.org online. Values imported from an old .env are kept.
-    if [[ "${DEPLOY_MODE}" == "prod" ]]; then
-        set_env_default .env SAML_FEDERATION swamid
-        set_env_default .env JAS_ORCID_ISSUER https://orcid.org
-    else
-        set_env_default .env SAML_FEDERATION local
-        set_env_default .env SAML_DEV_IDP_HOST sead-idp.local
-        set_env_default .env JAS_ORCID_ISSUER https://sandbox.orcid.org
-    fi
-    info "SAML_FEDERATION=$(get_env_var .env SAML_FEDERATION), JAS_ORCID_ISSUER=$(get_env_var .env JAS_ORCID_ISSUER)"
+    apply_login_defaults .env
 
     # Keep QueryBuilder credentials in sync with the read-only DB user/password
     sync_linked_vars .env \
@@ -577,7 +687,7 @@ find_duplicate_port_key() {
     local target_port="$3"
     local key configured_port
 
-    for key in WEB_PORT MONGO_EXPRESS_PORT JAS_PORT POSTGRESQL_PORT; do
+    for key in WEB_PORT MONGO_EXPRESS_PORT JAS_PORT POSTGRESQL_PORT SEAD_AGENT_PORT; do
         [[ "$key" == "$target_key" ]] && continue
         configured_port="$(get_env_var "$file" "$key")"
         [[ -n "$configured_port" && "$configured_port" == "$target_port" ]] || continue
@@ -681,6 +791,7 @@ prompt_unique_instance_settings() {
     prompt_unique_host_port "$file" MONGO_EXPRESS_PORT  "MONGO_EXPRESS_PORT (mongo-express)"
     prompt_unique_host_port "$file" JAS_PORT            "JAS_PORT (JSON API Server)"
     prompt_unique_host_port "$file" POSTGRESQL_PORT     "POSTGRESQL_PORT (PostgreSQL)"
+    prompt_unique_host_port "$file" SEAD_AGENT_PORT     "SEAD_AGENT_PORT (SEAD agent)"
 
     success "Saved unique instance settings in ${file}."
 }
@@ -948,28 +1059,15 @@ prompt_db_deploy_tag() {
     SELECTED_DB_DEPLOY_TAG="$selected"
 }
 
-# Execute the database import workflow previously handled by run_database_import.sh.
-# Usage: run_database_import [deploy_tag]
-run_database_import() {
-    local deploy_tag="${1:-}"
-
-    prompt_db_deploy_tag "$deploy_tag"
-    deploy_tag="${SELECTED_DB_DEPLOY_TAG:-$DEFAULT_DB_DEPLOY_TAG}"
-
+# Sets the database users' passwords from .env and grants the read-only users what they
+# read, in the given database (default: the SEAD one). Run after an import.
+apply_database_access() {
+    local db="${1:-$DB_IMPORT_TARGET_DB}"
     [[ -n "${DATABASE_READ_ONLY_PASSWORD:-}" ]] || die "DATABASE_READ_ONLY_PASSWORD is empty. Check .env."
     [[ -n "${DATABASE_PASSWORD:-}" ]] || die "DATABASE_PASSWORD is empty. Check .env."
 
-    info "Using deploy tag '${deploy_tag}' for sead_change_control."
-
-    info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c "git -C /sead_change_control pull --ff-only"
-
-    info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c \
-        "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_IMPORT_TARGET_DB} --deploy-to-tag '${deploy_tag}' --ignore-git-tags --host postgresql"
-
-    info "Applying extensions, passwords, and grants..."
-    $COMPOSE_CMD exec -T "$DB_IMPORT_SERVICE" psql -h postgresql -U "$DB_IMPORT_USER" -d "$DB_IMPORT_TARGET_DB" -v ON_ERROR_STOP=1 <<-EOSQL
+    info "Applying extensions, passwords, and grants in ${db}..."
+    $COMPOSE_CMD exec -T "$DB_IMPORT_SERVICE" psql -h postgresql -U "$DB_IMPORT_USER" -d "$db" -v ON_ERROR_STOP=1 <<-EOSQL
 	    -- Enable PostGIS extension
 	    CREATE EXTENSION IF NOT EXISTS postgis;
 
@@ -1029,6 +1127,29 @@ run_database_import() {
 	    ALTER DEFAULT PRIVILEGES IN SCHEMA facet
 	    GRANT USAGE, SELECT ON SEQUENCES TO sead_ro, postgrest_anon;
 	EOSQL
+}
+
+# Execute the database import workflow previously handled by run_database_import.sh.
+# Usage: run_database_import [deploy_tag]
+run_database_import() {
+    local deploy_tag="${1:-}"
+
+    prompt_db_deploy_tag "$deploy_tag"
+    deploy_tag="${SELECTED_DB_DEPLOY_TAG:-$DEFAULT_DB_DEPLOY_TAG}"
+
+    [[ -n "${DATABASE_READ_ONLY_PASSWORD:-}" ]] || die "DATABASE_READ_ONLY_PASSWORD is empty. Check .env."
+    [[ -n "${DATABASE_PASSWORD:-}" ]] || die "DATABASE_PASSWORD is empty. Check .env."
+
+    info "Using deploy tag '${deploy_tag}' for sead_change_control."
+
+    info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c "git -C /sead_change_control pull --ff-only"
+
+    info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
+    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c \
+        "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_IMPORT_TARGET_DB} --deploy-to-tag '${deploy_tag}' --ignore-git-tags --host postgresql"
+
+    apply_database_access
 
     if [[ -f .env ]]; then
         set_env_var .env SEAD_CHANGE_CONTROL_RELEASE "$deploy_tag"
@@ -1472,34 +1593,227 @@ record_applied_release() {
     export SEAD_RELEASE="$release"
 }
 
-# A release never changes the database by itself: import-db recreates it from scratch.
-# This only says so when the schema is not the one the release pins.
-check_release_schema() {
-    local pinned applied retries=12
-    pinned="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
-    [[ -n "$pinned" ]] || return 0
+# ── The release's database ───────────────────────────────────────────────────
+# Everything in the SEAD database comes from sead_change_control, so a release brings its
+# schema by rebuilding the database at the sqitch tag it pins - the import import-db
+# runs - not by migrating it. The rebuild goes into a database of its own while the old
+# one keeps serving, and the two are swapped by renaming them; the old one is kept as
+# <name>_prev until the next rebuild. A rebuild only happens when the database is not at
+# the pinned tag, or when the release brings a new PostgreSQL major version: that cannot
+# start on the old version's data directory, which is then set aside (and kept) and the
+# rebuild starts from an empty one.
+PG_DATA_DIR="postgresql/mounts/pg-data-volume"
+PG_DOCKERFILE="postgresql/docker/Dockerfile"
+DB_REBUILD_NAME="${DB_IMPORT_TARGET_DB}_next"
+DB_PREVIOUS_NAME="${DB_IMPORT_TARGET_DB}_prev"
 
-    until psql_value 'select 1' >/dev/null 2>&1; do
-        retries=$((retries - 1))
-        if [[ $retries -le 0 ]]; then
-            warn "Could not reach PostgreSQL to compare the database schema with the release (${pinned})."
-            return 0
-        fi
-        sleep 5
-    done
-
-    applied="$(psql_value 'select tag from sqitch.tags order by committed_at desc limit 1' 2>/dev/null || true)"
-    if [[ "$applied" == "$pinned" ]]; then
-        success "Database schema is at ${pinned}, as the release pins."
-        return 0
-    fi
-    warn "The database schema is at ${applied:-no sqitch tag}, but the release pins ${pinned}."
-    warn "Deploying a release never touches the database. To rebuild it at ${pinned}:"
-    warn "  $0 import-db '${pinned}'   (recreates ${DB_IMPORT_TARGET_DB} from scratch)"
+# The running postgresql container, for commands that stream into or out of it.
+pg_container() {
+    local container
+    container="$(service_container "$DB_IMPORT_SERVICE" || true)"
+    [[ -n "$container" ]] || die "The ${DB_IMPORT_SERVICE} container is not running."
+    echo "$container"
 }
 
-# Builds and starts the release this checkout carries. Run by 'release deploy' once it
-# has checked out the release's tag, or by hand on a checkout already there.
+# psql as postgres in the maintenance database, for what has to happen outside the
+# databases it acts on.
+psql_admin() {
+    $CONTAINER_TOOL exec -i "$(pg_container)" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -qtA "$@"
+}
+
+# Waits until PostgreSQL takes connections over TCP. The image's entrypoint initialises
+# a new data directory with a server that listens on the socket only, so TCP is up once
+# initialisation is over and the real server runs.
+wait_for_postgres() {
+    local retries=60
+    until service_exec "$DB_IMPORT_SERVICE" pg_isready -q -h 127.0.0.1 -U postgres; do
+        retries=$((retries - 1))
+        [[ $retries -gt 0 ]] || die "PostgreSQL did not come up. See: $0 logs ${DB_IMPORT_SERVICE}"
+        sleep 5
+    done
+}
+
+# The PostgreSQL major version the release's image is built on.
+release_pg_major() {
+    local major
+    major="$(sed -nE 's/^FROM[[:space:]]+[^[:space:]]*postgis:([0-9]+)-.*/\1/p' "$PG_DOCKERFILE" 2>/dev/null | tail -n1 || true)"
+    [[ -n "$major" ]] || die "Could not tell the PostgreSQL version from the FROM line of ${PG_DOCKERFILE}."
+    echo "$major"
+}
+
+# The PostgreSQL major version the data directory was made by: what the running server
+# says, or its PG_VERSION file, which is owned by the container's user.
+data_pg_major() {
+    local version
+    version="$(psql_value 'show server_version_num' 2>/dev/null || true)"
+    if [[ -n "$version" ]]; then
+        echo $((version / 10000))
+        return
+    fi
+    if [[ "$CONTAINER_TOOL" == podman ]]; then
+        podman unshare cat "$PG_DATA_DIR/PG_VERSION" 2>/dev/null || true
+    else
+        cat "$PG_DATA_DIR/PG_VERSION" 2>/dev/null || true
+    fi
+}
+
+# Brings the container's sead_change_control up to date: the plans that say where the
+# database should be, and the changes a rebuild deploys, have to include the release's tag.
+update_container_change_control() {
+    info "Updating sead_change_control in the ${DB_IMPORT_SERVICE} container ..."
+    $CONTAINER_TOOL exec "$(pg_container)" git -C /sead_change_control pull --quiet --ff-only \
+        || die "Could not update sead_change_control in the ${DB_IMPORT_SERVICE} container."
+}
+
+# The sqitch projects that have the tag in their plan but not in the database.
+pending_schema_projects() {
+    local tag="$1" planned deployed project
+    planned="$($CONTAINER_TOOL exec "$(pg_container)" bash -c \
+        "cd /sead_change_control && for p in \$(grep -v '^#' projects.txt | grep -v '^[[:space:]]*\$'); do grep -q '^${tag} ' \"\$p/sqitch.plan\" && echo \"\$p\"; done; true")"
+    [[ -n "$planned" ]] || die "No sqitch project in sead_change_control has the tag ${tag} in its plan."
+    deployed="$(psql_value "select distinct project from sqitch.tags where tag = '${tag}'" || true)"
+    for project in $planned; do
+        grep -qxF "$project" <<< "$deployed" || echo "$project"
+    done
+}
+
+# Sets DB_AT_TAG=1 when the database is at the tag: every project whose plan has it has
+# it deployed, and no later tag is. A release pinning an older tag than the database's
+# (a rollback) is not at it. (A variable rather than a return status: called in a
+# condition, the function would run without set -e.)
+check_database_tag() {
+    local tag="$1" latest pending
+    DB_AT_TAG=0
+    [[ "$(psql_value "select to_regclass('sqitch.tags') is not null" || true)" == "t" ]] || return 0
+    latest="$(psql_value 'select max(tag) from sqitch.tags' || true)"
+    [[ "$latest" == "$tag" ]] || return 0
+    pending="$(pending_schema_projects "$tag")"
+    [[ -z "$pending" ]] || return 0
+    DB_AT_TAG=1
+}
+
+# GADM boundaries are loaded by their own import, not by sead_change_control, so a
+# rebuilt database lacks them. They are copied over from the database being replaced
+# when it has them. Sets GADM_COPIED=1 when it did.
+copy_gadm_into_rebuild() {
+    local container
+    GADM_COPIED=0
+    container="$(pg_container)"
+    [[ "$(psql_value "select count(*) from pg_tables where schemaname = 'gadm'" || true)" =~ ^[1-9] ]] || return 0
+    info "Copying the GADM boundaries into ${DB_REBUILD_NAME} ..."
+    $CONTAINER_TOOL exec "$container" bash -c \
+        "set -o pipefail; pg_dump -U postgres -n gadm '${DB_IMPORT_TARGET_DB}' | psql -U postgres -d '${DB_REBUILD_NAME}' -v ON_ERROR_STOP=1 -q >/dev/null" \
+        || die "Copying the GADM boundaries failed. ${DB_IMPORT_TARGET_DB} is untouched."
+    GADM_COPIED=1
+}
+
+# Puts the rebuilt database in the place of the one in use, which becomes <name>_prev
+# (replacing the one before). Connections are refused while the names change, so nothing
+# reconnects in between.
+swap_rebuilt_database() {
+    info "Swapping ${DB_REBUILD_NAME} in as ${DB_IMPORT_TARGET_DB}; the database it replaces is kept as ${DB_PREVIOUS_NAME} ..."
+    local failed=0
+    psql_admin <<EOSQL || failed=1
+DROP DATABASE IF EXISTS ${DB_PREVIOUS_NAME} WITH (FORCE);
+ALTER DATABASE ${DB_IMPORT_TARGET_DB} WITH ALLOW_CONNECTIONS false;
+SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+ WHERE datname IN ('${DB_IMPORT_TARGET_DB}', '${DB_REBUILD_NAME}') AND pid <> pg_backend_pid();
+ALTER DATABASE ${DB_IMPORT_TARGET_DB} RENAME TO ${DB_PREVIOUS_NAME};
+ALTER DATABASE ${DB_REBUILD_NAME} RENAME TO ${DB_IMPORT_TARGET_DB};
+EOSQL
+    if (( failed )); then
+        if [[ -z "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname = '${DB_IMPORT_TARGET_DB}'" || true)" ]]; then
+            die "Swapping the databases failed half-way: there is no ${DB_IMPORT_TARGET_DB}. Put the old one back, in psql as postgres: ALTER DATABASE ${DB_PREVIOUS_NAME} RENAME TO ${DB_IMPORT_TARGET_DB}; ALTER DATABASE ${DB_IMPORT_TARGET_DB} WITH ALLOW_CONNECTIONS true;"
+        fi
+        psql_admin -c "ALTER DATABASE ${DB_IMPORT_TARGET_DB} WITH ALLOW_CONNECTIONS true" || true
+        die "Swapping the databases failed; ${DB_IMPORT_TARGET_DB} is still the old one, and ${DB_REBUILD_NAME} the rebuild."
+    fi
+    success "${DB_IMPORT_TARGET_DB} is now the database rebuilt at $(manifest_value SEAD_CHANGE_CONTROL_RELEASE)."
+}
+
+# A new major version cannot start on the old one's data directory: it is set aside -
+# kept, for going back - and the new version starts on an empty one, which its image
+# initialises with the SEAD roles and an empty sead_staging.
+set_aside_pg_data() {
+    local from="$1" old_data
+    old_data="${PG_DATA_DIR}.pg${from}.$(date +%Y%m%d_%H%M%S)"
+    warn "PostgreSQL ${from} -> $(release_pg_major): the site has no database until the rebuild is done."
+    info "Stopping PostgreSQL ${from}; its data directory is kept as ${old_data} ..."
+    $COMPOSE_CMD stop "$DB_IMPORT_SERVICE"
+    mv "$PG_DATA_DIR" "$old_data"
+    mkdir -p "$PG_DATA_DIR"
+    PG_SET_ASIDE="$old_data"
+}
+
+# Starts the release's PostgreSQL and rebuilds the database at the pinned tag if it is
+# not there. Sets DB_REBUILT=1 when it rebuilt it.
+bring_database_to_release() {
+    local tag from to
+    DB_REBUILT=0
+    PG_SET_ASIDE=""
+    tag="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
+    to="$(release_pg_major)"
+    from="$(data_pg_major)"
+
+    if [[ -n "$from" && "$from" != "$to" ]]; then
+        (( from < to )) || die "The database is PostgreSQL ${from}, newer than the release's ${to}. Refusing to downgrade it."
+        set_aside_pg_data "$from"
+    fi
+    info "Starting PostgreSQL ${to} ..."
+    $COMPOSE_CMD up -d --no-deps "$DB_IMPORT_SERVICE"
+    wait_for_postgres
+
+    if [[ -z "$tag" ]]; then
+        warn "The release pins no schema tag; leaving the database as it is."
+        return 0
+    fi
+    update_container_change_control
+    if [[ -z "$PG_SET_ASIDE" ]]; then
+        check_database_tag "$tag"
+        if (( DB_AT_TAG )); then
+            success "Database schema is at ${tag}, as the release pins."
+            return 0
+        fi
+    fi
+
+    info "Rebuilding the database at ${tag} as ${DB_REBUILD_NAME}; ${DB_IMPORT_TARGET_DB} keeps serving meanwhile ..."
+    $CONTAINER_TOOL exec "$(pg_container)" bash -c \
+        "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_REBUILD_NAME} --deploy-to-tag '${tag}' --ignore-git-tags --host postgresql" \
+        || die "Rebuilding the database at ${tag} failed. ${DB_IMPORT_TARGET_DB} is untouched; ${DB_REBUILD_NAME} holds what the rebuild got to."
+    apply_database_access "$DB_REBUILD_NAME"
+    copy_gadm_into_rebuild
+    swap_rebuilt_database
+    set_env_var .env SEAD_CHANGE_CONTROL_RELEASE "$tag"
+    DB_REBUILT=1
+}
+
+# What the services cached from the database it replaced: the query API's facet results
+# in Redis, and the JSON API server's documents in Mongo, rebuilt in the background once
+# it is up. GADM boundaries the rebuild could not copy are imported in the background.
+refresh_after_rebuild() {
+    info "Flushing the query API's Redis cache ..."
+    $CONTAINER_TOOL exec "$(service_container redis_cache)" redis-cli FLUSHALL >/dev/null \
+        || warn "Could not flush Redis; flush it by hand: $0 shell redis_cache"
+
+    (( GADM_COPIED )) || start_gadm_import_background
+
+    local container retries=60 health=""
+    container="$(service_container json_api_server || true)"
+    while [[ -n "$container" ]] && (( retries-- > 0 )); do
+        health="$($CONTAINER_TOOL inspect -f '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+        [[ "$health" == healthy ]] && break
+        sleep 5
+    done
+    if [[ "$health" == healthy ]]; then
+        start_preload_jas_background
+    else
+        warn "json_api_server is not healthy yet; rebuild its cache when it is: $0 preload-jas --background"
+    fi
+}
+
+# Builds and starts the release this checkout carries, and brings the database to it.
+# Run by 'release deploy' once it has checked out the release's tag, or by hand on a
+# checkout already there.
 cmd_release_apply() {
     local release at_tag
     release="$(manifest_value SEAD_RELEASE)"
@@ -1513,6 +1827,8 @@ cmd_release_apply() {
     fi
 
     info "Applying SEAD release ${release}"
+    check_release_env
+
     apply_release_refs
     record_applied_release
     load_env
@@ -1520,24 +1836,85 @@ cmd_release_apply() {
     pull_non_build_images
     info "Building images..."
     compose_build
+
+    GADM_COPIED=0
+    bring_database_to_release
+
     info "Starting services..."
     $COMPOSE_CMD up -d
     success "Services started."
 
-    check_release_schema
+    if (( DB_REBUILT )); then
+        refresh_after_rebuild
+    fi
+    [[ -z "$PG_SET_ASIDE" ]] || info "PostgreSQL's previous data directory is kept as ${PG_SET_ASIDE}; remove it once the release is known to be good."
     success "SEAD ${release} deployed."
     info "Check it with: $0 versions"
+}
+
+# A release deploy run in the background, so that it outlives the SSH session it was
+# started from. Its log, and the PID while it runs, are under logs/.
+RELEASE_DEPLOY_LOG_LINK="logs/release-deploy-latest.log"
+RELEASE_DEPLOY_PID_FILE="logs/release-deploy.pid"
+
+release_deploy_running_pid() {
+    local pid
+    pid="$(cat "$RELEASE_DEPLOY_PID_FILE" 2>/dev/null || true)"
+    [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null && echo "$pid"
+    return 0
+}
+
+start_release_deploy_background() {
+    local release="$1" pid log
+    pid="$(release_deploy_running_pid)"
+    [[ -z "$pid" ]] || die "A release deploy is already running (PID ${pid}). Follow it with: $0 release log --follow"
+
+    mkdir -p logs
+    log="logs/release-deploy-${release}-$(date +%Y%m%d_%H%M%S).log"
+    # The last line of the log is the deploy's exit status, which 'release log' returns.
+    nohup bash -c '"$1" release deploy "$2"; status=$?; echo "Release deploy finished with exit status ${status}"; exit "$status"' \
+        _ "$SCRIPT_DIR/deploy.sh" "$release" > "$log" 2>&1 < /dev/null &
+    echo $! > "$RELEASE_DEPLOY_PID_FILE"
+    ln -sfn "$(basename "$log")" "$RELEASE_DEPLOY_LOG_LINK"
+    success "Deploying SEAD ${release} in the background (PID $!)."
+    info "Log: ${SCRIPT_DIR}/${log}"
+    info "Follow it with: $0 release log --follow"
+}
+
+# Shows the latest release deploy's log, following it while the deploy runs, and exits
+# with the deploy's status once it has finished.
+cmd_release_log() {
+    local follow=0 pid status
+    [[ "${1:-}" == "--follow" || "${1:-}" == "-f" ]] && follow=1
+    [[ -e "$RELEASE_DEPLOY_LOG_LINK" ]] || die "No release deploy has been run in the background here."
+
+    pid="$(release_deploy_running_pid)"
+    if (( follow )) && [[ -n "$pid" ]]; then
+        tail -n +1 -F --pid="$pid" "$RELEASE_DEPLOY_LOG_LINK" 2>/dev/null
+    else
+        cat "$RELEASE_DEPLOY_LOG_LINK"
+        [[ -n "$pid" ]] && { info "Still running (PID ${pid})."; return 0; }
+    fi
+
+    status="$(sed -n 's/^Release deploy finished with exit status \([0-9]*\)$/\1/p' "$RELEASE_DEPLOY_LOG_LINK" | tail -n1)"
+    [[ -n "$status" ]] || { warn "The deploy ended without recording its status."; return 1; }
+    return "$status"
 }
 
 # Checks out a release's tag of this repository and applies it.
 cmd_release_deploy() {
     local release="${1:-}"
-    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release deploy <YYYY-MM.N>, e.g. $0 release deploy 2026-10.0"
+    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release deploy <YYYY-MM.N> [--background], e.g. $0 release deploy 2026-10.0"
+    if [[ "${2:-}" == "--background" ]]; then
+        start_release_deploy_background "$release"
+        return
+    fi
 
     info "Fetching SEAD release tags ..."
     git fetch --quiet --tags origin
     git rev-parse -q --verify "refs/tags/${release}^{commit}" >/dev/null \
         || die "There is no SEAD release ${release}: no such tag here or on origin."
+    check_release_env "$release"
 
     # In prod mode the override file sits renamed to .disabled, which git sees as a
     # tracked file deleted. Put it back for the checkout, and away again after.
@@ -1659,6 +2036,7 @@ cmd_release() {
         cut)    cmd_release_cut "$@" ;;
         deploy) cmd_release_deploy "$@" ;;
         apply)  cmd_release_apply ;;
+        log)    cmd_release_log "$@" ;;
         ""|help|--help|-h)
             cat <<EOF
 Usage: $0 release <command> [args...]
@@ -1666,9 +2044,15 @@ Usage: $0 release <command> [args...]
 Commands:
   cut <YYYY-MM.N>     Make a new SEAD release: pick the tag of each service it
                       pins, write ${RELEASE_MANIFEST}, then commit and tag it.
-  deploy <YYYY-MM.N>  Check out that release's tag of this repository, then build
-                      and start it. Never touches the database.
-  apply               Build and start the release this checkout carries.
+  deploy <YYYY-MM.N> [--background]
+                      Check out that release's tag of this repository, then build
+                      and start it, and rebuild the database at the schema it
+                      pins if it is not there. --background runs it detached,
+                      logging under logs/.
+  apply               Build and start the release this checkout carries, and
+                      bring the database to it.
+  log [--follow]      Show the latest background deploy's log; --follow follows
+                      it until the deploy ends, and exits with its status.
 
 See releases/README.md.
 EOF
@@ -2155,7 +2539,7 @@ cmd_versions() {
 
         # The schema's own version is the last sqitch tag applied by sead_change_control.
         if [[ "$(psql_value "select to_regclass('sqitch.tags') is not null" || true)" == "t" ]]; then
-            version="$(psql_value 'select tag from sqitch.tags order by committed_at desc limit 1' || true)"
+            version="$(psql_value 'select max(tag) from sqitch.tags' || true)"
             note="$(psql_value "select to_char(max(committed_at), 'YYYY-MM-DD') from sqitch.changes" || true)"
             pinned="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
             if [[ -n "$pinned" && "$version" != "$pinned" ]]; then
@@ -2208,7 +2592,7 @@ expand_home_path() {
     if [[ "$path" == "~" ]]; then
         echo "$HOME"
     elif [[ "$path" == "~/"* ]]; then
-        echo "${HOME}/${path#~/}"
+        echo "${HOME}/${path#"~/"}"
     else
         echo "$path"
     fi
@@ -2436,7 +2820,14 @@ cmd_remote() {
             ;;
         deploy)
             [[ -n "${1:-}" && -n "${2:-}" ]] || die "Usage: $0 remote deploy <target> <release>"
-            remote_deploy_command "$1" release deploy "$2"
+            # Started detached on the target, so a dropped connection does not stop it
+            # halfway; this end only follows the log.
+            remote_deploy_command "$1" release deploy "$2" --background
+            remote_deploy_command "$1" release log --follow
+            ;;
+        logs)
+            [[ -n "${1:-}" ]] || die "Usage: $0 remote logs <target>"
+            remote_deploy_command "$1" release log --follow
             ;;
         ""|help|--help|-h)
             cat <<EOF
@@ -2449,7 +2840,10 @@ Commands:
   status <target>   Run './deploy.sh status' on the target.
   versions <target> Run './deploy.sh versions' on the target.
   deploy <target> <release>
-                    Run './deploy.sh release deploy <release>' on the target.
+                    Start './deploy.sh release deploy <release>' detached on the
+                    target, then follow its log. Interrupting this, or losing the
+                    connection, leaves the deploy running.
+  logs <target>     Follow the target's latest release deploy log, until it ends.
 
 Targets are read from $(remote_config_file).
 EOF
@@ -2514,11 +2908,19 @@ Commands:
   release cut <YYYY-MM.N>
                        Make a new SEAD release: pick the tag each service is pinned
                        to, write sead-release.env, then commit and tag it.
-  release deploy <YYYY-MM.N>
+  release deploy <YYYY-MM.N> [--background]
                        Check out that release of this repository, verify every
-                       pinned tag, then build and start it. Never touches the
-                       database; warns if its schema is not the one pinned.
-  release apply        Build and start the release this checkout carries.
+                       pinned tag and that .env has every variable it needs, then
+                       build and start it. A database not at the schema tag the
+                       release pins is rebuilt at it beside the one in use, then
+                       swapped in (the old one is kept as sead_staging_prev). A new
+                       PostgreSQL major version starts on a fresh data directory;
+                       the old one is kept. --background runs it detached, logging
+                       under logs/.
+  release apply        Build and start the release this checkout carries, and
+                       bring the database to it.
+  release log [--follow]
+                       Show (or follow) the latest background release deploy.
                        See releases/README.md.
 
   logs [service]       Tail logs (100 lines) from all services or a specific one.
@@ -2541,6 +2943,11 @@ Commands:
                        the example files, optionally importing matching values
                        from an old .env path, then auto-filling passwords and
                        secrets that remain empty.
+  generate-env --update [<YYYY-MM.N>]
+                       Add the variables .env lacks from .env-example (that
+                       release's, when one is named), with the example's values,
+                       generated secrets and prompted host ports. Nothing already
+                       in .env changes; a backup is saved first.
 
   sp-keys [--force]    Generate the SAML Service Provider's signing and encryption
                        keys for DOMAIN into router/mounts/shibboleth-keys/, unless
@@ -2592,7 +2999,7 @@ case "$command" in
     import-gadm)  shift 2>/dev/null || true; cmd_import_gadm "$@" ;;
     preload-jas)  cmd_preload_jas "$@" ;;
     flush-cache)  cmd_flush_cache ;;
-    generate-env)    cmd_generate_env ;;
+    generate-env)    cmd_generate_env "$@" ;;
     rotate-secrets)  cmd_rotate_secrets ;;
     sp-keys)         cmd_sp_keys "$@" ;;
     remote)          cmd_remote "$@" ;;

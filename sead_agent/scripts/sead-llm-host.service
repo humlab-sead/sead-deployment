@@ -1,0 +1,29 @@
+[Unit]
+# A host-only address for the SEAD agent's local LLM.
+#
+# The agent runs in a rootless podman container and cannot reach the host's
+# loopback, so the ssh tunnel to the model server has to bind an address the
+# container can route to. Binding 0.0.0.0 would also publish the model on the
+# LAN and on the VPN, so instead we give the host one address that exists
+# nowhere else: 10.123.0.1 on a dummy interface. It is reachable from the
+# container (local addresses route via lo, and rootless podman forwards there)
+# and unreachable from every external network.
+#
+# If this unit is not running, the tunnel simply refuses to bind - the model is
+# never silently exposed.
+Description=Host-only address for the SEAD agent local LLM tunnel
+After=network-pre.target
+Before=network.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# The '-' prefixes make re-running this harmless when the link already exists
+ExecStart=-/usr/sbin/ip link add name seadllm0 type dummy
+ExecStart=-/usr/sbin/ip addr add 10.123.0.1/32 dev seadllm0
+ExecStart=/usr/sbin/ip link set seadllm0 up
+ExecStop=-/usr/sbin/ip link del seadllm0
+
+[Install]
+WantedBy=multi-user.target
