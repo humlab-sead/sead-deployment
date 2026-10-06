@@ -12,6 +12,15 @@ There is an MCP server called "postgres" which gives you full read access to the
 
 Never perform write operations against databases unless specifically told to do so. You may read from them freely.
 
+Whenever you create a GitHub issue or post a comment on an existing issue, in any repository, end its body with this disclaimer, separated from the rest by a horizontal rule. This includes issues and comments created indirectly through scripts you run, such as `bin/add-change-request` in sead_change_control. Use "issue" or "comment" to match what you are posting:
+
+```markdown
+---
+
+> [!NOTE]
+> **AI-generated <issue|comment>.** This <issue|comment> was written by an AI assistant (<name of the assistant, e.g. Claude Code>), based on <what the content is based on, e.g. queries against the local `sead_staging` database and the query API>. Its findings and proposed solutions have not yet been reviewed by a person, so please verify them before acting on them.
+```
+
 The services in this system are:
 
 router - An Nginx server acting as the single entrypoint to all of the services in the system. Everything, all web requests performed to any service in the system, is routed through this.
