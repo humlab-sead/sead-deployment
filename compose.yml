@@ -36,6 +36,9 @@ services:
     ports:
       - ${POSTGRESQL_PORT}:5432
     restart: unless-stopped
+    #Parallel queries allocate dynamic shared memory in /dev/shm. Podman's 64 MB default runs
+    #out under concurrent load ("No space left on device"), and the query API then returns 500s.
+    shm_size: 1g
     environment:
       POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD}
       DATABASE_USER: ${DATABASE_USER}
