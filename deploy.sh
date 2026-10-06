@@ -236,6 +236,22 @@ is_manual_secret() {
     return 1
 }
 
+# Keys generated when empty but never rotated, because data is keyed on them.
+# JAS_AUTH_SALT: every saved viewstate's owner is sha1(user id + salt), so a new salt
+# cuts every user off from their viewstates. On browser.sead.se it is the old viewstate
+# server's salt, which Google users' viewstates from there are stored under.
+PERMANENT_SECRETS=(
+    JAS_AUTH_SALT
+)
+
+is_permanent_secret() {
+    local key="$1"
+    for keep in "${PERMANENT_SECRETS[@]}"; do
+        [[ "$key" == "$keep" ]] && return 0
+    done
+    return 1
+}
+
 fill_random_secrets() {
     local file="$1"
     # Pattern: line ends with a key whose suffix (case-insensitive) is PASSWORD, SECRET, SALT, _PASS, or _KEY,
@@ -554,6 +570,10 @@ rotate_secrets_in_file() {
             local key="${BASH_REMATCH[1]}"
             if is_manual_secret "$key"; then
                 info "Skipping manual secret: ${key}"
+                continue
+            fi
+            if is_permanent_secret "$key"; then
+                info "Keeping ${key}: data is keyed on it"
                 continue
             fi
             local val
