@@ -25,6 +25,13 @@ A release is a git tag on this repository. The commit it points at pins:
   to the commit that tag pointed at when the release was cut. A deploy checks every
   tag against its commit and refuses to build one that has been moved since.
 
+The client shows the SEAD release, not its own version, as the release users are on:
+on saved viewstates, in its exports, and in its About dialog, which also lists the
+version of each component of the release. The client is built with those versions
+from `.env`, so a new release rebuilds it even when its pin is unchanged. The
+client's own tags are semver from `v1.0.0` on, so that they cannot be mistaken for
+a SEAD release; its earlier tags, up to `2026-10.0`, used the release form.
+
 The notes for a release go in `releases/<release>/`, one file per service. A release
 being planned starts there with a `manifest.md`: the version of each service
 intended for it, the open decisions, and what has to happen before it can be cut.
