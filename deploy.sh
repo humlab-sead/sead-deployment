@@ -1852,6 +1852,9 @@ cmd_release_apply() {
     apply_release_refs
     record_applied_release
     load_env
+    # The client is built with the schema tag of the release, which it shows. .env only
+    # gets it once the database is rebuilt at it, after the images are built.
+    export SEAD_CHANGE_CONTROL_RELEASE="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
 
     pull_non_build_images
     info "Building images..."
