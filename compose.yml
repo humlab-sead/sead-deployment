@@ -295,6 +295,8 @@ services:
       #match the number of proxies in front of the agent, or the limits count nothing
       SEAD_AGENT_TRUSTED_PROXY_COUNT: ${SEAD_AGENT_TRUSTED_PROXY_COUNT:-1}
       SEAD_AGENT_ALLOWED_ORIGINS: ${SEAD_AGENT_ALLOWED_ORIGINS:-}
+      #Who may use the agent is asked of json_api_server (sead_agent/src/accessCheck.js)
+      SEAD_AGENT_AUTH_URL: ${SEAD_AGENT_AUTH_URL:-http://json_api_server:8484}
       SEAD_AGENT_MAX_CONCURRENT_TURNS: ${SEAD_AGENT_MAX_CONCURRENT_TURNS:-2}
       SEAD_AGENT_MAX_SESSIONS: ${SEAD_AGENT_MAX_SESSIONS:-20}
       SEAD_AGENT_SESSION_TTL_MS: ${SEAD_AGENT_SESSION_TTL_MS:-900000}

@@ -7,6 +7,7 @@ import { HarnessAgent } from '@ai-sdk/harness/agent';
 import { createPi } from '@ai-sdk/harness-pi';
 import { createJustBashSandbox } from '@ai-sdk/sandbox-just-bash';
 import { createClientTools } from './clientTools.js';
+import { checkAccess } from './accessCheck.js';
 
 const LLM_PROVIDER = (process.env.SEAD_AGENT_LLM_PROVIDER || "local").trim().toLowerCase();
 const USE_OPENAI = LLM_PROVIDER == "openai";
@@ -43,8 +44,8 @@ const ENABLE_SANDBOX_TOOLS = process.env.SEAD_AGENT_ENABLE_SANDBOX_TOOLS == "tru
 
 //How long we wait for the model before giving up
 const TURN_TIMEOUT_MS = parseInt(process.env.SEAD_AGENT_TIMEOUT_MS) || 120000;
-//This endpoint is unauthenticated and every request occupies the GPU behind the local
-//model, so cap the size of a message, the messages per client, and the parallel turns
+//Only users with the sead_agent permission get this far, but every request occupies the
+//GPU behind the local model, so cap the size of a message, the messages per client, and the parallel turns
 const MAX_INPUT_LENGTH = parseInt(process.env.SEAD_AGENT_MAX_INPUT_LENGTH) || 4000;
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.SEAD_AGENT_RATE_LIMIT_WINDOW_MS) || 60000;
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.SEAD_AGENT_RATE_LIMIT_MAX_REQUESTS) || 10;
@@ -176,6 +177,11 @@ export default class SeadAgent {
                 this.sendJson(res, 403, { error: "This assistant does not answer requests from this site." });
                 return;
             }
+            //Only users whose roles give them the sead_agent permission (accessCheck.js)
+            const access = await this.checkAccess(req, res);
+            if(!access) {
+                return;
+            }
             if(!this.isConfigured()) {
                 console.warn("SEAD agent request received but no language model is configured");
                 this.sendJson(res, 503, { error: "The SEAD agent is not configured on this server." });
@@ -228,7 +234,7 @@ export default class SeadAgent {
 
             let turn = null;
             try {
-                turn = await this.beginTurn(input, conversationId, clientIp, clientState);
+                turn = await this.beginTurn(input, conversationId, clientIp, clientState, access.userId);
             }
             catch(error) {
                 this.sendTurnError(res, error, { aborted: false });
@@ -248,12 +254,16 @@ export default class SeadAgent {
                 this.sendJson(res, 403, { error: "This assistant does not answer requests from this site." });
                 return;
             }
+            const access = await this.checkAccess(req, res);
+            if(!access) {
+                return;
+            }
             const body = req.body || {};
             const turn = this.turns.get(body.turnId);
 
-            //Scoped to the client address for the same reason conversations are: one
-            //browser must not be able to answer, or derail, another's turn
-            if(!turn || turn.clientIp != this.resolveClientIp(req)) {
+            //Scoped to the user and the client address for the same reason conversations
+            //are: one browser must not be able to answer, or derail, another's turn
+            if(!turn || turn.clientIp != this.resolveClientIp(req) || turn.userId != access.userId) {
                 console.warn("SEAD agent got a result for turn "+body.turnId+" which is no longer active");
                 this.sendJson(res, 404, { error: "That request is no longer active. Please send your message again." });
                 return;
@@ -285,13 +295,30 @@ export default class SeadAgent {
         * The user closed the chatbox. Drop the turn rather than leaving the model
         * occupying the GPU until it times out on its own.
         */
-        this.expressApp.post('/message/abort', (req, res) => {
+        this.expressApp.post('/message/abort', async (req, res) => {
+            const access = await checkAccess(req);
             const turn = this.turns.get(req.body ? req.body.turnId : null);
-            if(turn && turn.clientIp == this.resolveClientIp(req)) {
+            if(access.allowed && turn && turn.clientIp == this.resolveClientIp(req) && turn.userId == access.userId) {
                 turn.abortController.abort();
             }
             this.sendJson(res, 200, { status: "ok" });
         });
+    }
+
+    /*
+    * Function: checkAccess
+    * The signed-in user's access, or null once the request has been refused for want of it.
+    */
+    async checkAccess(req, res) {
+        const access = await checkAccess(req);
+        if(!access.allowed) {
+            if(access.status == 403) {
+                console.warn("SEAD agent refused "+req.path+" to a user without the sead_agent permission");
+            }
+            this.sendJson(res, access.status, { error: access.error });
+            return null;
+        }
+        return access;
     }
 
     sendJson(res, status, payload) {
@@ -441,14 +468,15 @@ export default class SeadAgent {
         }
     }
 
-    async beginTurn(input, conversationId, clientIp, clientState = null) {
+    async beginTurn(input, conversationId, clientIp, clientState = null, userId = null) {
         const agent = await this.getAgent();
-        const entry = await this.acquireSession(agent, conversationId, clientIp);
+        const entry = await this.acquireSession(agent, conversationId, clientIp, userId);
 
         const turn = {
             id: "t"+(++this.turnSequence)+"-"+Date.now().toString(36),
             entry: entry,
             clientIp: clientIp,
+            userId: userId,
             abortController: new AbortController(),
             //The model can ask for several things in one step, and the SDK runs those
             //tool calls concurrently - so more than one action can be outstanding. Keyed
@@ -907,13 +935,13 @@ export default class SeadAgent {
     * Hands back the conversation's pi session, creating it if needed. Requests without a
     * conversation id get a session of their own that is thrown away after the reply.
     */
-    async acquireSession(agent, conversationId, clientIp) {
+    async acquireSession(agent, conversationId, clientIp, userId = null) {
         if(!conversationId) {
             return { session: await agent.createSession(), key: null, busy: true, lastUsed: Date.now() };
         }
 
-        //Scope the id to the client so one browser can't join, or evict, another's conversation
-        const key = clientIp+"|"+conversationId;
+        //Scope the id to the user and client so one browser can't join, or evict, another's conversation
+        const key = userId+"|"+clientIp+"|"+conversationId;
         this.sweepSessions();
 
         let entry = this.sessions.get(key);
