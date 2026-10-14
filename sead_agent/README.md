@@ -19,18 +19,12 @@ and rate-limited independently.
 
 A request that sends the same `conversationId` every time gets a conversation the agent
 remembers; one that omits it gets one-shot replies. Conversations are scoped to the
-user and the client IP, so one browser cannot join or evict another's.
+client IP, so one browser cannot join or evict another's.
 
 ### Who may use it
 
-Only signed-in users whose roles give them the **SEAD agent** permission. Roles and their
-permissions are decided by an admin in the web client's admin panel, and kept in
-json_api_server's Mongo. `/message` and its follow-ups pass the browser's session cookie
-on to json_api_server's `/auth/check/sead_agent` (`SEAD_AGENT_AUTH_URL`), and answer `401`
-to a signed-out user and `403` to one without the permission (`src/accessCheck.js`). The
-check is made here rather than in the router, so it also holds for requests that reach
-the service's port directly. Without `SEAD_AGENT_AUTH_URL` nobody is let in. The client
-shows the chatbox only to users with the permission.
+Everyone. The chatbox is shown to every visitor of the web client, signed in or not, and
+the service asks for no login. What keeps it from being misused is in [Safety](#safety).
 
 Through the router the service is reachable at `/sead-agent/` (e.g.
 `/sead-agent/health`). The web client still posts to `<dataServerAddress>/ai-assistant/message`,
@@ -143,9 +137,8 @@ the user interface, kept for the day it gets a tool that queries the database di
 
 ## Safety
 
-The endpoint is only for users with the SEAD agent permission (see
-[Who may use it](#who-may-use-it)), but those may be many, so it is worth being explicit
-about the two different things that can go wrong with it: someone using it as a **free model server**,
+The endpoint is unauthenticated and public, so it is worth being explicit about the two
+different things that can go wrong with it: someone using it as a **free model server**,
 and someone using it as a **general-purpose assistant** that happens to be hosted by a
 university.
 
@@ -201,8 +194,7 @@ person can see on the page - work the same way. The model names a ref from an ou
 built and one of those three actions; the client decides what the ref is and whether it may be
 touched. Some of the page is out of its reach entirely (`OFF_LIMITS` in the client's
 `ScreenReader.class.js`): the chatbox itself, signing in and out, the sysadmin data import, the
-admin panel (which hands out the roles the agent is reached by), and
-download buttons, which stay the user's own click. Links that leave SEAD are refused too. A
+admin panel, and download buttons, which stay the user's own click. Links that leave SEAD are refused too. A
 region of the page can be put out of reach with `data-sead-agent="off"`.
 
 pi's builtin file and shell tools are switched off by default. When enabled with
