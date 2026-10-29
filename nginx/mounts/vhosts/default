@@ -45,12 +45,20 @@ server {
 
 	server_name _;
 
+	# The client is a single page application, but not every path is one of its pages. The
+	# front page, the domains and the privacy policy are index.html files in the build (see
+	# clientPagePaths in its webpack.config.js), the site reports, taxa and viewstates are
+	# matched by pattern, and anything else is a 404 - still with the client, which says so.
+	# Whether a site or a taxon exists is up to the router, which asks the json api server.
 	location / {
-		# First attempt to serve request as file, then
-		# as directory, then fall back to displaying a 404.
-		#try_files $uri $uri/ =404;
-                try_files $uri $uri/ /index.html?$args;
+		try_files $uri $uri/index.html =404;
 	}
+
+	location ~ ^/(site|taxon|species|viewstate)/[^/]+/?$ {
+		try_files /index.html =404;
+	}
+
+	error_page 404 /index.html;
 
 	# pass PHP scripts to FastCGI server
 	#
