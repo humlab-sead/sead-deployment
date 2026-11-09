@@ -61,7 +61,7 @@ services:
     build:
       context: ./sead_idp
       dockerfile: docker/Dockerfile
-    restart: unless-stopped
+    restart: always
     environment:
       DOMAIN: ${DOMAIN}
       SAML_DEV_IDP_HOST: ${SAML_DEV_IDP_HOST:-sead-idp.local}
@@ -76,7 +76,7 @@ services:
   postgresql_mcp:
     build:
       context: ./postgres_mcp
-    restart: unless-stopped
+    restart: always
     depends_on:
       postgresql:
         condition: service_healthy

@@ -4,12 +4,17 @@ networks:
 #Every image is pinned to an exact version, never a floating tag like mongo:4.4 or latest:
 #a SEAD release is a tag on this repository, and has to mean the same images wherever it
 #is deployed. See releases/README.md.
+#
+#restart: always, not unless-stopped. Rootless podman has no daemon to bring containers back
+#after a reboot: that is podman-restart.service (systemctl --user enable podman-restart.service,
+#for the instance's user, with lingering on), which starts only the containers whose restart
+#policy is "always". With unless-stopped the instance stays down after a reboot.
 services:
   router:
     build: ./router/docker
     ports:
       - "${WEB_PORT}:80"
-    restart: unless-stopped
+    restart: always
     environment:
       - DOMAIN=${DOMAIN}
       - BASIC_AUTH_USER=${HTACCESS_USER}
@@ -35,7 +40,7 @@ services:
     build: ./postgresql/docker
     ports:
       - ${POSTGRESQL_PORT}:5432
-    restart: unless-stopped
+    restart: always
     #Parallel queries allocate dynamic shared memory in /dev/shm. Podman's 64 MB default runs
     #out under concurrent load ("No space left on device"), and the query API then returns 500s.
     shm_size: 1g
@@ -70,7 +75,7 @@ services:
   postgrest:
     depends_on:
       - postgresql
-    restart: unless-stopped
+    restart: always
     #The official postgrest image plus curl, for the healthcheck - see the Dockerfile
     build:
       context: ./postgrest
@@ -95,7 +100,7 @@ services:
 
   mongo:
     image: docker.io/mongo:4.4.30
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "mongo --eval 'db.adminCommand(\"ping\")' -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin || exit 1"]
       interval: 30s
@@ -114,7 +119,7 @@ services:
 
   mongo-express:
     image: docker.io/mongo-express:1.0.2
-    restart: unless-stopped
+    restart: always
     ports:
       - "${MONGO_EXPRESS_PORT}:8081"
     depends_on:
@@ -153,7 +158,7 @@ services:
         JAS_RELEASE: ${JAS_SOURCE_VERSION:-${JAS_RELEASE:-}}
         SEAD_QUERY_API_RELEASE: ${SEAD_QUERY_API_SOURCE_VERSION:-${SEAD_QUERY_API_RELEASE:-}}
         SEAD_CHANGE_CONTROL_RELEASE: ${SEAD_CHANGE_CONTROL_RELEASE:-}
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./nginx/mounts/vhosts:/etc/nginx/sites-enabled
       - ./nginx/mounts/logs:/var/log/nginx
@@ -168,7 +173,7 @@ services:
       - sead_network
 
   sead_query_api:
-    restart: unless-stopped
+    restart: always
     #image: sead_query_api:2024.05.RC1
     build:
       context: ./sead_query_api
@@ -193,7 +198,7 @@ services:
     image: "docker.io/redis:5.0.14-alpine"
     command: ["redis-server", "--appendonly", "yes"]
     hostname: redis
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -213,7 +218,7 @@ services:
       args:
         MODE: "prod"
         SOURCE_VERSION: ${JAS_SOURCE_VERSION:-}
-    restart: unless-stopped
+    restart: always
     #8485 is the SAML hand-off listener. It is reached only by the router, and must never be published.
     ports:
       - "${JAS_PORT}:8484"
@@ -263,7 +268,7 @@ services:
   sead_agent:
     build:
       context: ./sead_agent
-    restart: unless-stopped
+    restart: always
     ports:
       - "${SEAD_AGENT_PORT}:8585"
     #The LLM the agent talks to is served on the podman host itself (usually through an
@@ -310,7 +315,7 @@ services:
 
   #clearinghouse:
   #  build: ./clearinghouse/docker
-  #  restart: unless-stopped
+  #  restart: always
   #  ports:
   #    - "8070:8060"
   #  env_file:
@@ -318,7 +323,7 @@ services:
 
   maria-db:
     image: docker.io/mariadb:10.11.19
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u ${MARIA_DB_USER} -p${MARIA_DB_PASSWORD} || exit 1"]
       interval: 30s
@@ -339,7 +344,7 @@ services:
 
   matomo:
     image: docker.io/matomo:5.14.0
-    restart: unless-stopped
+    restart: always
     depends_on:
       - maria-db
     environment:
