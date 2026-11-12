@@ -9,10 +9,18 @@ only place that says what the other domains offer.
 
 `general` offers every filter; each other domain offers a subset, and asking for a filter
 the active domain lacks fails.
-Switching domain **removes** the filters it lacks, so "dendro data in Småland" is best
-served by staying in `general` and adding `dataset_methods` (pick the dendrochronology
-method) alongside `region` - the `dendrochronology` domain has no way to filter by region.
-Switch domain only when the user asks for one, or when every filter you need exists in it.
+Switching domain **removes** the filters it lacks, so settle the domain *before* adding
+filters. A kind of data and a place together can go two ways:
+
+- **Stay in `general`** (the default): add `dataset_methods` (the method, e.g.
+  Dendrochronology) alongside `region` or the map. "Dendro data in Småland" is this.
+- **Switch domain first** when only the domain gives the right answer: in `general` the
+  taxa filters (`species`, `genus`, `family`) list everything found - insects, plants and
+  wood alike - so "which insects were found in Skåne" means `palaeoentomology`. Then use
+  the map (`set_map_polygons`) for the place: every domain has it, but `region` is
+  `general` only.
+
+Otherwise switch domain only when the user asks for one.
 
 ## The filters
 

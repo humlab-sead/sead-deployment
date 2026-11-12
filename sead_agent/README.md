@@ -1,9 +1,10 @@
 # SEAD agent
 
-The chatbox agent for the SEAD web client. It runs a [pi](https://www.npmjs.com/package/@ai-sdk/harness-pi)
-harness agent against an OpenAI-compatible model server. The default provider is a
-**locally hosted** server, so no chat content and no credentials leave the deployment.
-It can be switched to the OpenAI API instead - see [Using the OpenAI API](#using-the-openai-api).
+The chatbox agent for the SEAD web client. It is a Python service running a
+[Pydantic AI](https://pydantic.dev/docs/ai/overview/) agent against an OpenAI-compatible
+model server. The default provider is a **locally hosted** server, so no chat content and
+no credentials leave the deployment. It can be switched to the OpenAI API instead - see
+[Using the OpenAI API](#using-the-openai-api).
 
 This used to live inside `json_api_server` as `AIAssistant`; it is now a service of its
 own so that the API server has no LLM dependencies and the agent can be scaled, restarted
@@ -15,11 +16,40 @@ and rate-limited independently.
 | ------ | --------- | ----------- |
 | `GET`  | `/health` | Liveness. Reports `configured: false` when no model server is set. |
 | `GET`  | `/status` | Whether the model server answers. |
-| `POST` | `/message` | One chat turn. Body: `{ "input": "...", "conversationId": "optional" }`, reply: `{ "output_text": "..." }`. |
+| `POST` | `/message` | Starts a chat turn. Body: `{ "input": "...", "conversationId": "optional", "state": {...} }`. |
+| `POST` | `/message/action-result` | What the browser reported for an action. Body: `{ "turnId", "actionId", "result" }` or `{ ..., "error": "..." }`. |
+| `POST` | `/message/abort` | The user closed the chatbox. Body: `{ "turnId" }`. |
+
+`/message` and `/message/action-result` answer either `{ "status": "complete", "output_text": "..." }`
+or `{ "status": "action_required", "turnId", "action": { "id", "command", "args" } }` - see
+[How a turn works](#how-a-turn-works).
 
 A request that sends the same `conversationId` every time gets a conversation the agent
 remembers; one that omits it gets one-shot replies. Conversations are scoped to the
-client IP, so one browser cannot join or evict another's.
+client IP, so one browser cannot join or evict another's. They are held in memory, so a
+restart of the service forgets them.
+
+### How a turn works
+
+The agent's tools operate the web client - filters, the map, site reports - so they can
+only run in the browser that asked. A turn is therefore one or more runs of the agent:
+
+1. The message starts a run. If the model answers straight away, that is the reply.
+2. If it calls tools, the run ends there, with the calls *deferred*. The conversation is
+   kept, and the browser is sent the first call as an `action_required`.
+3. The browser runs it and posts the outcome to `/message/action-result`. If the model
+   asked for several things in one step, the next one goes back in the answer, one at a
+   time in the order they were asked for.
+4. Once every call has an answer, a new run picks the conversation up with the results.
+   The model then either answers or calls more tools, as in steps 1 and 2.
+
+Nothing is running while the browser works, so a browser that is slow, or never comes back,
+holds no model run open. A turn that fails leaves the conversation as it was before the
+message.
+
+Tool arguments are checked here, before anything goes to the browser. A call the client
+would refuse anyway - seven areas for the map, a polygon of two points - goes straight back
+to the model with the reason, and costs a model step rather than a browser round trip.
 
 ### Who may use it
 
@@ -60,8 +90,8 @@ SEAD_AGENT_THINKING_LEVEL=off
 This still uses the existing SEAD service, rate limits, sessions and browser tools. It
 does not create a hosted `/v1/agents` agent.
 
-For GPT-6 Luna through Chat Completions, the generated pi model config pins every
-thinking level to `reasoning_effort: "none"` because SEAD depends on function tools.
+For GPT-6 Luna through Chat Completions, the agent pins every thinking level to
+`reasoning_effort: "none"` because SEAD depends on function tools.
 Using reasoning with tools should be a later Responses API migration, not this provider
 toggle.
 
@@ -121,8 +151,8 @@ empty, or the limits are not numbered first or the reminder last, the agent answ
 message with an error rather than run with its limits missing or buried. Every numbered
 `.md` in `training/` goes into the prompt, so keep notes for humans elsewhere.
 
-The tool descriptions in `src/clientTools.js` are part of what it is told, too. They stay
-in code because they describe the parameters and handlers defined next to them.
+The tool descriptions in `src/sead_agent/client_tools.py` are part of what it is told, too.
+They stay in code because they describe the parameters defined next to them.
 
 All of it is sent with every request, so say each thing once: how a tool behaves belongs
 in its description, when and why to use it in `02_instructions.md`, and the limits only in
@@ -186,7 +216,7 @@ is the part above it: the caps hold whatever the model decides to say.
 
 The agent has no database credentials and no filesystem of its own to speak of. Its tools
 do not run here at all - each one hands a named command to the browser that asked the
-question, and the client refuses anything outside that vocabulary (`clientTools.js`). No
+question, and the client refuses anything outside that vocabulary (`client_tools.py`). No
 model-written JavaScript is ever evaluated, on either side.
 
 The general tools - `read_screen`, `click` and `set_value`, which let the agent use anything a
@@ -197,9 +227,8 @@ touched. Some of the page is out of its reach entirely (`OFF_LIMITS` in the clie
 admin panel, and download buttons, which stay the user's own click. Links that leave SEAD are refused too. A
 region of the page can be put out of reach with `data-sead-agent="off"`.
 
-pi's builtin file and shell tools are switched off by default. When enabled with
-`SEAD_AGENT_ENABLE_SANDBOX_TOOLS=true` they only ever reach a throwaway in-memory sandbox
-that contains nothing of this container's filesystem.
+The agent has no tools of its own besides these. It cannot read files, run commands or
+reach the network.
 
 ## Running
 
@@ -207,4 +236,46 @@ that contains nothing of this container's filesystem.
 podman compose up -d --build sead_agent
 podman compose logs -f sead_agent
 curl http://localhost:${SEAD_AGENT_PORT:-8585}/health
+```
+
+The service runs as a single uvicorn process. Conversations and turns waiting on a browser
+live in its memory, so it must not be scaled to several workers.
+
+## Evaluation
+
+`evals/cases.json` holds questions the agent is evaluated on - tasks, and attempts to get
+round its limits - each with what a good answer looks like. They run through the real
+chatbox against a running stack, with the Playwright spec in the web client, and
+`evals/grade.py` checks the results and shows, per question, the browser actions, model
+requests and output tokens it took:
+
+```sh
+cd sead_browser_client
+AGENT_EVAL=1 npx playwright test tests/agent-eval.spec.js --project=chromium --workers=1
+cd ../sead_agent
+python3 evals/grade.py              # add --replies to read every answer
+```
+
+Compare runs on actions, requests and tokens rather than seconds. The model server is
+shared, so how long a reply takes depends on who else is using it. Answers also vary from
+run to run, so a difference of a case or two between two runs is not yet a finding. Every
+message counts against the agent's rate limits, so a local stack needs a raised
+`SEAD_AGENT_RATE_LIMIT_LONG_MAX_REQUESTS` to run the whole set.
+
+Each finished turn is logged with where its time went, which is the first thing to look at
+when replies are slow:
+
+```
+SEAD agent turn t9-... complete in 12.9s: model 11.2s over 3 run(s), 3 request(s), 38094 in / 2177 out tokens; browser 1.7s for 4 action(s): ...
+```
+
+## Tests
+
+The tests need no model server: a scripted model plays the language model, and the tests
+play the browser.
+
+```sh
+cd sead_agent
+python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
 ```
