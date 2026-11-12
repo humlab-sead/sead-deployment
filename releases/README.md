@@ -122,6 +122,10 @@ release pins instead of migrating it:
 This relies on nothing being written to the database except through
 `sead_change_control` - data, including SDF submissions, arrives as change requests.
 
+For a services-only deployment, set `SEAD_RELEASE_NO_DB_REBUILD=1` in the environment
+of `release deploy`. It stops if the running PostgreSQL major version cannot be verified
+or differs from the release, or if the schema is not already at the pinned tag.
+
 `./deploy.sh release apply` builds and starts the release of the checkout as it
 stands, and brings the database to it, for when you have checked out the tag yourself.
 

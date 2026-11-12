@@ -1775,6 +1775,12 @@ bring_database_to_release() {
     to="$(release_pg_major)"
     from="$(data_pg_major)"
 
+    # A services-only deploy must never initialise or replace a database, even when
+    # the running version cannot be determined or the schema check later fails.
+    if [[ "${SEAD_RELEASE_NO_DB_REBUILD:-0}" == 1 && "$from" != "$to" ]]; then
+        die "Database rebuilds are disabled and PostgreSQL is ${from:-unknown}, while the release requires ${to}."
+    fi
+
     if [[ -n "$from" && "$from" != "$to" ]]; then
         (( from < to )) || die "The database is PostgreSQL ${from}, newer than the release's ${to}. Refusing to downgrade it."
         set_aside_pg_data "$from"
@@ -1796,6 +1802,8 @@ bring_database_to_release() {
         fi
     fi
 
+    [[ "${SEAD_RELEASE_NO_DB_REBUILD:-0}" != 1 ]] \
+        || die "Database rebuilds are disabled and the database could not be verified at ${tag}."
     info "Rebuilding the database at ${tag} as ${DB_REBUILD_NAME}; ${DB_IMPORT_TARGET_DB} keeps serving meanwhile ..."
     $CONTAINER_TOOL exec "$(pg_container)" bash -c \
         "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_REBUILD_NAME} --deploy-to-tag '${tag}' --ignore-git-tags --host postgresql" \
