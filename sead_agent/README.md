@@ -24,6 +24,23 @@ and rate-limited independently.
 or `{ "status": "action_required", "turnId", "action": { "id", "command", "args" } }` - see
 [How a turn works](#how-a-turn-works).
 
+### Streamed answers
+
+A request with `Accept: application/x-ndjson` gets its answer as it is written, one JSON
+object per line:
+
+- `{"type": "status", "text": "Thinking…"}` - what the agent is doing.
+- `{"type": "text", "text": "..."}` - the whole reply as far as it has been written. Empty
+  text takes back what came before it: the model wrote something and then decided to act.
+- Last, the answer itself, the same object as above - or, since the HTTP status has been
+  sent by the time a turn can fail, `{"status": "error", "httpStatus": 502, "error": "..."}`.
+
+The text lines have been through the same filter as the finished reply, so a stream can
+show nothing the reply would not. A request without the header gets the answer in one
+piece, so a web client and an agent of different ages still work together. The router
+passes the stream on unbuffered (`router/vhost.conf`), and the agent's
+`X-Accel-Buffering: no` asks the same of any nginx in front of it.
+
 A request that sends the same `conversationId` every time gets a conversation the agent
 remembers; one that omits it gets one-shot replies. Conversations are scoped to the
 client IP, so one browser cannot join or evict another's. They are held in memory, so a

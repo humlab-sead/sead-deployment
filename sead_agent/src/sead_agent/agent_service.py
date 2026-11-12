@@ -22,10 +22,11 @@ from dataclasses import dataclass, field, replace
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic_ai import Agent, CancellationToken, Conversation, DeferredToolRequests, ModelRetry, UsageLimits
 from pydantic_ai.capabilities import PrepareTools
 from pydantic_ai.exceptions import RunCancelled, UnexpectedModelBehavior, UsageLimitExceeded
+from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta, ThinkingPart, ToolCallPart
 from pydantic_ai.usage import RunUsage
 
 from .client_tools import CLIENT_TOOLS
@@ -49,6 +50,12 @@ TOOL_RETRIES = 3
 #the answer - which would put raw markup in front of the user.
 TOOL_CALL_MARKUP = re.compile(r"</?tool_calls?>|<function=|</function>|<\|tool_call|\[TOOL_CALLS\]", re.IGNORECASE)
 
+
+#A browser that asks for this gets the answer as it is written - see stream_answer
+STREAM_MEDIA_TYPE = "application/x-ndjson"
+#How often the text written so far is sent on, at most. Each line carries the whole text,
+#so sending it on every token would only repeat it.
+STREAM_INTERVAL = 0.05
 
 #What the user is told when the model is reachable but does not get to an answer
 GAVE_UP_REPLY = ("I wasn't able to work that out within the steps I can take for one message. "
@@ -136,6 +143,9 @@ class Turn:
     action_sequence: int = 0
     #Set while a run is in flight, so an abort can stop it
     cancel: CancellationToken | None = None
+    #Set while a browser that asked for a stream is waiting on this turn: takes each line
+    #to send it as the answer is written
+    emit: object = None
     aborted: bool = False
     finished: bool = False
     #Where the time went, for the line logged when the turn ends: in the model, or waiting
@@ -287,7 +297,8 @@ class SeadAgentService:
         #Usage limits are per message: the conversation carries what earlier messages used,
         #so this turn starts counting from nothing
         conversation = replace(session.conversation, usage=RunUsage()) if session.conversation else None
-        return await self.run_leg(turn, agent, user_prompt=build_prompt(user_input, client_state), conversation=conversation)
+        prompt = build_prompt(user_input, client_state)
+        return await self.respond(request, turn, lambda: self.run_leg(turn, agent, user_prompt=prompt, conversation=conversation))
 
     async def post_action_result(self, request: Request):
         """
@@ -325,7 +336,8 @@ class SeadAgentService:
         else:
             turn.results[action.tool_call_id] = {"ok": True, "result": body.get("result")}
 
-        return await self.next_action_or_resume(turn, await self.get_agent())
+        agent = await self.get_agent()
+        return await self.respond(request, turn, lambda: self.next_action_or_resume(turn, agent))
 
     async def post_abort(self, request: Request):
         """
@@ -343,6 +355,115 @@ class SeadAgentService:
                 #Waiting on the browser - nothing is running, so there is nothing to stop
                 self.finish_turn(turn, "aborted")
         return {"status": "ok"}
+
+    # --- streaming --------------------------------------------------------------------
+
+    async def respond(self, request, turn, leg):
+        """
+        Answers one leg of a turn - `leg` produces the answer. A browser that asks for a stream
+        gets it as it is written; any other gets the answer in one piece, as before streaming
+        existed, so a client and a service of different ages still work together.
+        """
+        if STREAM_MEDIA_TYPE not in (request.headers.get("accept") or ""):
+            return await leg()
+        #The router passes the stream on as it comes (router/vhost.conf); the header asks the
+        #same of any nginx in a deployment where the router is set up differently
+        return StreamingResponse(self.stream_answer(turn, leg), media_type=STREAM_MEDIA_TYPE,
+                                 headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
+
+    async def stream_answer(self, turn, leg):
+        """
+        The leg's answer as lines of JSON: {"type": "status", ...} while the model thinks,
+        {"type": "text", "text": ...} with the whole reply written so far, and last the answer
+        the leg would have given in one piece. An error can no longer change the HTTP status
+        once lines have been sent, so it is that last line instead: {"status": "error",
+        "httpStatus": ..., "error": ...}.
+        """
+        queue = asyncio.Queue()
+        turn.emit = queue.put_nowait
+        task = asyncio.create_task(leg())
+        try:
+            while True:
+                waiting = asyncio.ensure_future(queue.get())
+                done, _ = await asyncio.wait({waiting, task}, return_when=asyncio.FIRST_COMPLETED)
+                if waiting in done:
+                    yield json.dumps(waiting.result(), ensure_ascii=False)+"\n"
+                    continue
+                waiting.cancel()
+                break
+            while not queue.empty():
+                yield json.dumps(queue.get_nowait(), ensure_ascii=False)+"\n"
+            answer = task.result()
+        finally:
+            #The browser may have gone away mid-stream; the turn carries on regardless, and
+            #the next leg sets this again if that browser comes back
+            turn.emit = None
+
+        if isinstance(answer, JSONResponse):
+            answer = {"status": "error", "httpStatus": answer.status_code, **json.loads(answer.body)}
+        yield json.dumps(answer, ensure_ascii=False)+"\n"
+
+    def stream_handler(self, turn):
+        """
+        Follows the model as it writes, and passes on what the user should see: that it is
+        thinking, and the reply so far. Every text line has been through the same filter as
+        the finished reply, so the stream can show nothing the reply would not.
+        """
+        allowed_hosts = self.allowed_link_hosts(turn)
+
+        def emit(event):
+            if turn.emit is not None:
+                turn.emit(event)
+
+        async def handle(ctx, events):
+            text = ""
+            sent = ""
+            sent_at = 0.0
+            async for event in events:
+                if isinstance(event, PartStartEvent):
+                    if isinstance(event.part, ThinkingPart):
+                        emit({"type": "status", "text": "Thinking…"})
+                        continue
+                    if isinstance(event.part, ToolCallPart):
+                        #What it said before deciding to call a tool was it thinking out loud,
+                        #not the answer - take it back
+                        text = ""
+                        if sent:
+                            emit({"type": "text", "text": ""})
+                            sent = ""
+                        continue
+                    if not isinstance(event.part, TextPart):
+                        continue
+                    text += event.part.content
+                elif isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
+                    text += event.delta.content_delta
+                else:
+                    continue
+
+                now = time.perf_counter()
+                if now - sent_at < STREAM_INTERVAL:
+                    #The finished answer follows anyway, so a skipped update is never lost
+                    continue
+                shown = self.streamable(text, allowed_hosts)
+                if shown != sent:
+                    emit({"type": "text", "text": shown})
+                    sent = shown
+                    sent_at = now
+
+        return handle
+
+    @staticmethod
+    def streamable(text, allowed_hosts):
+        """The part of a reply being written that may be shown yet."""
+        if TOOL_CALL_MARKUP.search(text):
+            #It is about to be sent back to the model, not to the user
+            return ""
+        #An image or link is taken out as soon as it is complete; until then it is not one, and
+        #renders as the text it is
+        return guard_reply(text, allowed_hosts)[0].strip()
+
+    def allowed_link_hosts(self, turn):
+        return self.settings.link_hosts + ([turn.origin_host] if turn.origin_host else [])
 
     # --- turns ------------------------------------------------------------------------
 
@@ -382,6 +503,7 @@ class SeadAgentService:
                 usage_limits=self.usage_limits,
                 timeout=remaining,
                 cancellation_token=turn.cancel,
+                event_stream_handler=self.stream_handler(turn) if turn.emit else None,
             )
         except RunCancelled:
             #Either the user closed the chatbox or we ran out of time
@@ -426,8 +548,7 @@ class SeadAgentService:
             self.finish_turn(turn, "failed with no answer")
             return error_response(502, "The SEAD agent could not be reached.")
 
-        allowed_hosts = self.settings.link_hosts + ([turn.origin_host] if turn.origin_host else [])
-        reply, removed = guard_reply(reply, allowed_hosts)
+        reply, removed = guard_reply(reply, self.allowed_link_hosts(turn))
         if removed:
             log.warning("SEAD agent turn %s: took out of the reply: %s", turn.id, "; ".join(removed))
 
