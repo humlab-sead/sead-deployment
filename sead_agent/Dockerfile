@@ -1,4 +1,4 @@
-FROM docker.io/node:22-bookworm-slim
+FROM docker.io/python:3.12-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -8,27 +8,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /sead_agent
 
 # Dependencies first, so a change to the agent source doesn't reinstall them
-COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src ./src
 # Baked in so the image is self-contained; compose mounts over this so the context can be
 # edited and picked up with a restart rather than a rebuild
 COPY training ./training
 
-# SEAD_AGENT_DIR is where pi regenerates its model catalog on every startup, so it
-# points somewhere disposable and writable by the unprivileged user below
-ENV NODE_ENV=production \
-    SEAD_AGENT_PORT=8585 \
-    SEAD_AGENT_DIR=/tmp/sead-agent-pi
+ENV PYTHONPATH=/sead_agent/src \
+    PYTHONUNBUFFERED=1 \
+    PYDANTIC_AI_NO_BANNER=1 \
+    SEAD_AGENT_PORT=8585
 
 EXPOSE 8585
 
 # Liveness only - the agent is up before the model server it talks to has to be
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8585/health || exit 1
+    CMD curl -f http://localhost:${SEAD_AGENT_PORT}/health || exit 1
 
-# Nothing here needs root, and the pi sandbox is in-process
-USER node
+# Nothing here needs root
+RUN useradd --system --no-create-home sead_agent
+USER sead_agent
 
-CMD ["node", "src/index.js"]
+# One process: conversations and turns waiting on a browser live in its memory, so a second
+# worker would not know about the first one's. --no-proxy-headers keeps uvicorn from
+# rewriting the client address from X-Forwarded-For - the agent does that itself, counting
+# back from its own proxies (limits.resolve_client_ip). On SIGTERM, turns in flight get 15
+# seconds to finish.
+CMD ["sh", "-c", "exec uvicorn --factory sead_agent.main:create_app --host 0.0.0.0 --port ${SEAD_AGENT_PORT} --no-proxy-headers --timeout-graceful-shutdown 15"]
