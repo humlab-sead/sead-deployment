@@ -131,7 +131,7 @@ def report(path, show_replies=False, container="sead-sead_agent-1"):
     records = load(path)
     usage = turn_usage(container)
     print(f"Run: {path}\n")
-    print(f"{'case':32} {'total':>6} {'agent':>6} {'brwsr':>6} {'acts':>4} {'reqs':>4} {'out':>6}  result")
+    print(f"{'case':32} {'total':>6} {'first':>6} {'agent':>6} {'brwsr':>6} {'acts':>4} {'reqs':>4} {'out':>6}  result")
 
     totals, passed = [], 0
     for record in records:
@@ -143,10 +143,17 @@ def report(path, show_replies=False, container="sead-sead_agent-1"):
         browser = sum(turn["browserMs"] for turn in record["turns"])
         actions = sum(len(turn["actions"]) for turn in record["turns"])
         spent = usage_of(record, usage)
-        totals.append((record.get("category"), total, server, browser, actions, spent))
+        #When reply text first appeared in the last turn, counted from the start of the case -
+        #what the user waits for before there is something to read
+        last = record["turns"][-1]
+        first = None
+        if last.get("firstTextMs") is not None:
+            first = sum(turn["totalMs"] for turn in record["turns"][:-1]) + last["firstTextMs"]
+        totals.append((record.get("category"), total, server, browser, actions, spent, first))
         requests = f"{spent['requests']:4}" if spent else "   -"
         out = f"{spent['out']:6}" if spent else "     -"
-        print(f"{record['id'][:32]:32} {seconds(total)} {seconds(server)} {seconds(browser)} {actions:4} {requests} {out}  {'ok' if not failures else '; '.join(failures)}")
+        shown = seconds(first) if first is not None else "     -"
+        print(f"{record['id'][:32]:32} {seconds(total)} {shown} {seconds(server)} {seconds(browser)} {actions:4} {requests} {out}  {'ok' if not failures else '; '.join(failures)}")
         if show_replies:
             for turn in record["turns"]:
                 print(f"    > {turn['message']}")
@@ -162,8 +169,10 @@ def report(path, show_replies=False, container="sead-sead_agent-1"):
         known = [row[5] for row in rows if row[5]]
         spent = (f"{sum(r['out'] for r in known)} output tokens and {sum(r['requests'] for r in known)} model requests"
                  f" over {len(known)} case(s), " if known else "no token counts in the log, ")
+        firsts = [r[6] for r in rows if r[6] is not None]
+        first = f", text first shown at a median {statistics.median(firsts) / 1000:.1f}s" if firsts else ""
         print(f"{category:5}: {sum(r[4] for r in rows)} actions, {spent}"
-              f"median {statistics.median(r[1] for r in rows) / 1000:.1f}s (seconds depend on the shared model server's load)")
+              f"median {statistics.median(r[1] for r in rows) / 1000:.1f}s{first} (seconds depend on the shared model server's load)")
 
 
 def compare(path_a, path_b):

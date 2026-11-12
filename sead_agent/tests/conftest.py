@@ -3,10 +3,12 @@ import os
 #Pydantic AI prints a banner on the first run unless told not to
 os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic_ai.messages import ModelResponse, RetryPromptPart, TextPart, ToolCallPart, ToolReturnPart, UserPromptPart
-from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.models.function import DeltaToolCall, FunctionModel
 
 from sead_agent.config import DEFAULT_TRAINING_DIR, Settings
 from sead_agent.main import create_app
@@ -22,7 +24,7 @@ class ScriptedModel:
     def __init__(self, *steps):
         self.steps = list(steps)
         self.requests = []
-        self.model = FunctionModel(self.respond, model_name="scripted")
+        self.model = FunctionModel(self.respond, stream_function=self.stream, model_name="scripted")
 
     def respond(self, messages, info):
         self.requests.append(messages)
@@ -30,6 +32,17 @@ class ScriptedModel:
             raise AssertionError("The model was asked for more steps than the test scripted")
         step = self.steps.pop(0)
         return step(messages) if callable(step) else step
+
+    async def stream(self, messages, info):
+        """The same step, written out a few characters at a time, as a streaming model does."""
+        response = self.respond(messages, info)
+        for index, part in enumerate(response.parts):
+            if isinstance(part, TextPart):
+                for start in range(0, len(part.content), 4):
+                    yield part.content[start:start + 4]
+            elif isinstance(part, ToolCallPart):
+                args = part.args if isinstance(part.args, str) else json.dumps(part.args)
+                yield {index: DeltaToolCall(name=part.tool_name, json_args=args, tool_call_id=part.tool_call_id)}
 
     def last_parts(self, kind=None):
         """The parts of the last request sent to the model - what it has just been told."""
