@@ -140,10 +140,18 @@ def main():
     out.append("`general` offers every filter; each other domain offers a subset, and asking for a filter\n"
                "the active domain lacks fails.")
     if general_only:
-        out.append("Switching domain **removes** the filters it lacks, so \"dendro data in Sm\u00e5land\" is best\n"
-                   "served by staying in `general` and adding `dataset_methods` (pick the dendrochronology\n"
-                   "method) alongside `region` - the `dendrochronology` domain has no way to filter by region.\n"
-                   "Switch domain only when the user asks for one, or when every filter you need exists in it.")
+        out.append("Switching domain **removes** the filters it lacks, so settle the domain *before* adding\n"
+                   "filters. A kind of data and a place together can go two ways:\n"
+                   "\n"
+                   "- **Stay in `general`** (the default): add `dataset_methods` (the method, e.g.\n"
+                   "  Dendrochronology) alongside `region` or the map. \"Dendro data in Sm\u00e5land\" is this.\n"
+                   "- **Switch domain first** when only the domain gives the right answer: in `general` the\n"
+                   "  taxa filters (`species`, `genus`, `family`) list everything found - insects, plants and\n"
+                   "  wood alike - so \"which insects were found in Sk\u00e5ne\" means `palaeoentomology`. Then use\n"
+                   "  the map (`set_map_polygons`) for the place: every domain has it, but `region` is\n"
+                   "  `general` only.\n"
+                   "\n"
+                   "Otherwise switch domain only when the user asks for one.")
     out.append("")
 
     out.append("## The filters\n")
