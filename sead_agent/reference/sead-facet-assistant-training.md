@@ -433,7 +433,7 @@ Name lookups often return **several rows for the same name at different types** 
 | `GET /jsonapi/site/{siteId}` | Full site report data |
 | `GET /jsonapi/sample/{sampleId}`, `/jsonapi/taxon/{taxonId}` | Entity details |
 | `GET /jsonapi/taxon_distribution/{taxon_id}`, `/taxon_references/{taxon_id}` | Taxon extras |
-| `GET /jsonapi/graphs/...` | Aggregate stats behind the mosaic tiles (`countries`, `analysis_methods`, `sample_methods`, `feature_types`, `ecocodes`, `datings`, `temporal_distributon`, `dating_overview`, …) |
+| `GET /jsonapi/graphs/...` | Aggregate stats behind the mosaic tiles (`countries`, `analysis_methods`, `sample_methods`, `feature_types`, `ecocodes`, `datings`, `temporal_distribution`, `dating_overview`, …) |
 | `GET /jsonapi/dendro/...`, `/mcr/...`, `/ecocodes/...` | Domain-specific data services |
 | `GET /jsonapi/viewstate/{id}`, `POST /jsonapi/viewstate` | Saved view states |
 
