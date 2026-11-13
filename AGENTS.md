@@ -8,8 +8,6 @@ There is also a MongoDB that is used by the JSON Api Server for faster data acce
 
 When working with this repository and the services/repositories in it, take great care to note and respect existing conventions regarding naming, directory structure, code style and general architechture of each system.
 
-There is an MCP server called "postgres" which gives you full read access to the database. Make free use of it to gain understanding whenever needed.
-
 Never perform write operations against databases unless specifically told to do so. You may read from them freely.
 
 Whenever you create a GitHub issue or post a comment on an existing issue, in any repository, end its body with this disclaimer, separated from the rest by a horizontal rule. This includes issues and comments created indirectly through scripts you run, such as `bin/add-change-request` in sead_change_control. Use "issue" or "comment" to match what you are posting:
@@ -44,8 +42,6 @@ json_api_server - Delivers charts, site reports/landing pages and other things t
 maria-db - Used by Matomo.
 
 matomo - Used for webstats.
-
-ontop - API
 
 postgresql_mcp - An MCP server for allowing AI agents to interface with the PostgreSQL database.
 
