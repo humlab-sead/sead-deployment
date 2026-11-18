@@ -1839,11 +1839,426 @@ refresh_after_rebuild() {
     fi
 }
 
+# ── Release upgrade steps ────────────────────────────────────────────────────
+# A release that needs work beyond building and starting it - taking a database to a new
+# major version, rewriting data, moving something on disk - carries that work in
+# releases/<release>/upgrade.sh. 'release apply' runs the steps of every release newer
+# than the one the server runs (SEAD_RELEASE in .env) and no newer than the one it
+# applies, in four phases; within a phase, the oldest release's steps go first:
+#
+#   preflight   Read-only checks. When one fails, nothing on the server has changed.
+#               'release apply --dry-run' runs these, and stops.
+#   pre_apply   The old version still runs. Built in first, when a release brings more
+#               than checks: a dump of MongoDB into backups/.
+#     ── the images are pulled and built
+#   post_build  The new images exist; the old containers still run, unless a step
+#               stops them.
+#     ── the database is brought to the release, and everything is started
+#   post_apply  The new version runs.
+#
+# A server several releases behind runs every pending release's steps, but builds and
+# starts only once, with the newest release's images: a step must not count on an
+# intermediate release's images. A release that cannot be reached straight from too old
+# a release sets UPGRADE_MIN_FROM. Each finished step is written to UPGRADE_STATE_FILE;
+# when one fails, the deploy stops, and deploying the same release again resumes after
+# the last finished step. The release is recorded in .env only when every step has run.
+# How to write an upgrade.sh: releases/README.md.
+UPGRADE_STATE_FILE="release-upgrade.state"
+UPGRADE_PHASES=(preflight pre_apply post_build post_apply)
+UPGRADE_BACKUP_DIR="backups"
+UPGRADE_DRY_RUN=0
+# Separates the fields of a declared step, which may be empty.
+UPGRADE_FS=$'\x1f'
+
+# True when version $1 sorts before version $2: releases (2026-10.9 < 2026-10.12) and
+# dotted versions (4.4 < 5.0) alike.
+version_lt() {
+    [[ "$1" != "$2" && "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" == "$1" ]]
+}
+
+# The state file holds one KEY=value per line: from, to and started for the upgrade in
+# progress, done=<release>:<step> for each finished step, and data.<release>.<key> for
+# what a step hands to a later one.
+upgrade_state_get() {
+    awk -v k="$1=" 'index($0, k) == 1 { v = substr($0, length(k) + 1) } END { print v }' \
+        "$UPGRADE_STATE_FILE" 2>/dev/null || true
+}
+
+upgrade_state_set() {
+    (( UPGRADE_DRY_RUN )) && return 0
+    local tmp="${UPGRADE_STATE_FILE}.tmp"
+    {
+        awk -v k="$1=" 'index($0, k) != 1' "$UPGRADE_STATE_FILE" 2>/dev/null || true
+        printf '%s=%s\n' "$1" "$2"
+    } > "$tmp"
+    mv "$tmp" "$UPGRADE_STATE_FILE"
+}
+
+upgrade_is_done() {
+    grep -qxF "done=$1" "$UPGRADE_STATE_FILE" 2>/dev/null
+}
+
+# For steps: a value kept until the upgrade is over, under the running step's release.
+upgrade_data_set() { upgrade_state_set "data.${UPGRADE_RELEASE}.$1" "$2"; }
+upgrade_data_get() { upgrade_state_get "data.${UPGRADE_RELEASE}.$1"; }
+
+# Prints what releases/$1/upgrade.sh declares, one line each, fields separated by
+# UPGRADE_FS:
+#   meta <summary> <min-from>
+#   step <phase> <id> <run> <done-check> <description>
+# The file is sourced in a subshell, so nothing it defines reaches this script.
+upgrade_read_release() {
+    local file="releases/$1/upgrade.sh"
+    (
+        UPGRADE_SUMMARY=""
+        UPGRADE_MIN_FROM=""
+        declared=()
+        step() {
+            local phase="${1:-}" id="${2:-}" description="${3:-}" run="${4:-}" done_check="${5:-}"
+            [[ " ${UPGRADE_PHASES[*]} " == *" ${phase} "* ]] \
+                || die "${file}: step '${id}' has the unknown phase '${phase}' (one of: ${UPGRADE_PHASES[*]})."
+            [[ "$id" =~ ^[A-Za-z0-9._-]+$ ]] \
+                || die "${file}: step id '${id}' may hold only letters, digits, '.', '_' and '-'."
+            [[ -n "$description" && -n "$run" ]] \
+                || die "${file}: step '${id}' needs a description and a function to run: step <phase> <id> <description> <run> [done-check]"
+            declared+=("${phase}${UPGRADE_FS}${id}${UPGRADE_FS}${run}${UPGRADE_FS}${done_check}${UPGRADE_FS}${description}")
+        }
+        # The caller reads this through '|| die', which turns set -e off in here.
+        # shellcheck disable=SC1090
+        source "$file" >&2 || die "${file} failed to load."
+
+        [[ -z "$UPGRADE_MIN_FROM" || "$UPGRADE_MIN_FROM" =~ $RELEASE_NAME_PATTERN ]] \
+            || die "${file}: UPGRADE_MIN_FROM '${UPGRADE_MIN_FROM}' is not a release name (YYYY-MM.N)."
+        local entry phase id run done_check seen=" "
+        for entry in "${declared[@]}"; do
+            IFS="$UPGRADE_FS" read -r phase id run done_check _ <<< "$entry"
+            [[ "$seen" != *" ${id} "* ]] || die "${file}: there are two steps named '${id}'."
+            seen+="${id} "
+            declare -F "$run" >/dev/null || die "${file}: step '${id}' runs '${run}', which the file does not define."
+            [[ -z "$done_check" ]] || declare -F "$done_check" >/dev/null \
+                || die "${file}: step '${id}' checks '${done_check}', which the file does not define."
+        done
+        printf 'meta%s%s%s%s\n' "$UPGRADE_FS" "$UPGRADE_SUMMARY" "$UPGRADE_FS" "$UPGRADE_MIN_FROM"
+        for entry in "${declared[@]}"; do
+            printf 'step%s%s\n' "$UPGRADE_FS" "$entry"
+        done
+    )
+}
+
+# Works out the upgrade from the release the server runs to the one this checkout
+# carries: UPGRADE_FROM, UPGRADE_TO, the pending releases in UPGRADE_RELEASES (with
+# their summaries), and every step in the order it runs in the UPGRADE_STEP_* arrays.
+upgrade_plan() {
+    UPGRADE_TO="$(manifest_value SEAD_RELEASE)"
+    UPGRADE_FROM="$(upgrade_state_get from)"
+    [[ -n "$UPGRADE_FROM" ]] || UPGRADE_FROM="$(get_env_var .env SEAD_RELEASE)"
+    UPGRADE_RELEASES=() UPGRADE_SUMMARIES=()
+    UPGRADE_STEP_RELEASE=() UPGRADE_STEP_PHASE=() UPGRADE_STEP_ID=()
+    UPGRADE_STEP_RUN=() UPGRADE_STEP_DONE=() UPGRADE_STEP_DESC=()
+
+    local unfinished
+    unfinished="$(upgrade_state_get to)"
+    if [[ -n "$unfinished" && "$unfinished" != "$UPGRADE_TO" ]]; then
+        warn "An upgrade from ${UPGRADE_FROM} to ${unfinished} was left unfinished; ${UPGRADE_STATE_FILE} lists the steps it got through."
+    fi
+
+    local file release undone=()
+    for file in releases/*/upgrade.sh; do
+        [[ -f "$file" ]] || continue
+        release="$(basename "$(dirname "$file")")"
+        [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "${file}: '${release}' is not a release name (YYYY-MM.N)."
+        if version_lt "$UPGRADE_TO" "$release"; then
+            [[ -n "$UPGRADE_FROM" ]] && ! version_lt "$UPGRADE_FROM" "$release" && undone+=("$release")
+            continue
+        fi
+        [[ -z "$UPGRADE_FROM" ]] || version_lt "$UPGRADE_FROM" "$release" || continue
+        UPGRADE_RELEASES+=("$release")
+    done
+    if (( ${#undone[@]} )); then
+        warn "Going back from ${UPGRADE_FROM} to ${UPGRADE_TO} does not undo the upgrade steps of: ${undone[*]}."
+        warn "Read their releases/<release>/upgrade.sh (and notes) for what has to be put back by hand."
+    fi
+    (( ${#UPGRADE_RELEASES[@]} )) || return 0
+    [[ -n "$UPGRADE_FROM" ]] || die "This server's .env has no SEAD_RELEASE, so it is not known which of the upgrade steps in releases/*/upgrade.sh it still needs. Set SEAD_RELEASE in .env to the release it runs, then apply again."
+    mapfile -t UPGRADE_RELEASES < <(printf '%s\n' "${UPGRADE_RELEASES[@]}" | sort -V)
+
+    local declared=() line kind a b c d e needs_backup=0
+    for release in "${UPGRADE_RELEASES[@]}"; do
+        local out
+        out="$(upgrade_read_release "$release")" || die "releases/${release}/upgrade.sh could not be read (see above)."
+        while IFS= read -r line; do
+            IFS="$UPGRADE_FS" read -r kind a b c d e <<< "$line"
+            if [[ "$kind" == meta ]]; then
+                UPGRADE_SUMMARIES+=("$a")
+                if [[ -n "$b" ]] && version_lt "$UPGRADE_FROM" "$b"; then
+                    die "${release} can be upgraded to from ${b} or later only, and this server runs ${UPGRADE_FROM}. Deploy ${b} first, then ${UPGRADE_TO}."
+                fi
+            else
+                declared+=("${release}${UPGRADE_FS}${line#step"$UPGRADE_FS"}")
+                [[ "$a" == preflight ]] || needs_backup=1
+            fi
+        done <<< "$out"
+    done
+
+    local phase entry
+    for phase in "${UPGRADE_PHASES[@]}"; do
+        if [[ "$phase" == pre_apply ]] && (( needs_backup )); then
+            UPGRADE_STEP_RELEASE+=(upgrade) UPGRADE_STEP_PHASE+=(pre_apply) UPGRADE_STEP_ID+=(backup-mongo)
+            UPGRADE_STEP_RUN+=(upgrade_backup_mongo) UPGRADE_STEP_DONE+=("")
+            UPGRADE_STEP_DESC+=("dump MongoDB into ${UPGRADE_BACKUP_DIR}/")
+        fi
+        for entry in "${declared[@]}"; do
+            IFS="$UPGRADE_FS" read -r release a b c d e <<< "$entry"
+            [[ "$a" == "$phase" ]] || continue
+            UPGRADE_STEP_RELEASE+=("$release") UPGRADE_STEP_PHASE+=("$a") UPGRADE_STEP_ID+=("$b")
+            UPGRADE_STEP_RUN+=("$c") UPGRADE_STEP_DONE+=("$d") UPGRADE_STEP_DESC+=("$e")
+        done
+    done
+}
+
+upgrade_print_plan() {
+    (( ${#UPGRADE_STEP_ID[@]} )) || return 0
+    local i phase="" mark
+    info "Upgrade steps from ${UPGRADE_FROM} to ${UPGRADE_TO}:"
+    for i in "${!UPGRADE_RELEASES[@]}"; do
+        echo "      ${UPGRADE_RELEASES[$i]}  ${UPGRADE_SUMMARIES[$i]}"
+    done
+    for i in "${!UPGRADE_STEP_ID[@]}"; do
+        if [[ "${UPGRADE_STEP_PHASE[$i]}" != "$phase" ]]; then
+            phase="${UPGRADE_STEP_PHASE[$i]}"
+            echo "    ${phase}"
+        fi
+        mark=" "
+        upgrade_is_done "${UPGRADE_STEP_RELEASE[$i]}:${UPGRADE_STEP_ID[$i]}" && mark="done"
+        printf '      %-4s [%s] %s - %s\n' "$mark" "${UPGRADE_STEP_RELEASE[$i]}" "${UPGRADE_STEP_ID[$i]}" "${UPGRADE_STEP_DESC[$i]}"
+    done
+}
+
+# Starts the record of the upgrade, or picks up the one a failed run left.
+upgrade_begin() {
+    (( ${#UPGRADE_STEP_ID[@]} )) || return 0
+    (( UPGRADE_DRY_RUN )) && return 0
+    if [[ -f "$UPGRADE_STATE_FILE" ]]; then
+        warn "Resuming the upgrade from ${UPGRADE_FROM} started $(upgrade_state_get started); the steps marked done are skipped."
+    else
+        upgrade_state_set from "$UPGRADE_FROM"
+        upgrade_state_set started "$(date -Iseconds)"
+    fi
+    upgrade_state_set to "$UPGRADE_TO"
+}
+
+upgrade_finish() {
+    rm -f "$UPGRADE_STATE_FILE"
+}
+
+# Runs step $1 in a subshell, with its release's upgrade.sh sourced afresh: two releases
+# may define functions of the same name. A done-check that holds skips the step.
+upgrade_run_step() {
+    local i="$1"
+    (
+        set -eo pipefail
+        UPGRADE_RELEASE="${UPGRADE_STEP_RELEASE[$i]}"
+        if [[ "$UPGRADE_RELEASE" != upgrade ]]; then
+            step() { :; }
+            # shellcheck disable=SC1090
+            source "releases/${UPGRADE_RELEASE}/upgrade.sh"
+        fi
+        if [[ -n "${UPGRADE_STEP_DONE[$i]}" ]] && "${UPGRADE_STEP_DONE[$i]}"; then
+            info "Already done; skipped."
+            exit 0
+        fi
+        "${UPGRADE_STEP_RUN[$i]}"
+    )
+}
+
+# Runs the steps of one phase that are not done yet, and records each as it finishes.
+upgrade_run_phase() {
+    local phase="$1" i key status backup
+    for i in "${!UPGRADE_STEP_ID[@]}"; do
+        [[ "${UPGRADE_STEP_PHASE[$i]}" == "$phase" ]] || continue
+        key="${UPGRADE_STEP_RELEASE[$i]}:${UPGRADE_STEP_ID[$i]}"
+        upgrade_is_done "$key" && continue
+        info "── ${phase} [${UPGRADE_STEP_RELEASE[$i]}] ${UPGRADE_STEP_ID[$i]}: ${UPGRADE_STEP_DESC[$i]}"
+        # Not 'if upgrade_run_step': inside a condition, set -e is off for the whole step.
+        set +e
+        upgrade_run_step "$i"
+        status=$?
+        set -e
+        if (( status != 0 )); then
+            error "Upgrade step ${key} failed."
+            if (( ! UPGRADE_DRY_RUN )); then
+                info "The steps finished so far are recorded in ${UPGRADE_STATE_FILE}. Fix the cause and deploy ${UPGRADE_TO} again: it resumes at this step."
+                backup="$(upgrade_state_get data.upgrade.backup)"
+                [[ -z "$backup" ]] || info "MongoDB as it was before the upgrade: ${backup}"
+            fi
+            exit "$status"
+        fi
+        (( UPGRADE_DRY_RUN )) || echo "done=${key}" >> "$UPGRADE_STATE_FILE"
+        success "${key} done."
+    done
+}
+
+# Built-in pre_apply step: a dump of MongoDB as it was before the upgrade.
+upgrade_backup_mongo() {
+    local container out
+    container="$(service_container mongo || true)"
+    if [[ -z "$container" ]]; then
+        mongo_data_is_empty && { info "MongoDB holds no data yet; nothing to back up."; return 0; }
+        die "mongo is not running, so it cannot be backed up. Start it ($0 up mongo), then deploy again."
+    fi
+    mkdir -p "$UPGRADE_BACKUP_DIR"
+    out="${UPGRADE_BACKUP_DIR}/mongo-${UPGRADE_FROM}-$(date +%Y%m%d_%H%M%S).archive.gz"
+    info "Dumping MongoDB into ${out} ..."
+    if ! $CONTAINER_TOOL exec "$container" mongodump --quiet --archive --gzip \
+            -u "$MONGODB_ROOT_USER" -p "$MONGODB_ROOT_PASSWORD" --authenticationDatabase admin > "$out"; then
+        rm -f "$out"
+        die "mongodump failed."
+    fi
+    upgrade_data_set backup "$out"
+    success "MongoDB dumped ($(du -h "$out" | cut -f1)). Restore it with mongorestore --archive --gzip --drop."
+}
+
+# ── MongoDB major-version upgrades ───────────────────────────────────────────
+# MongoDB opens only a data directory the previous major version wrote, and only once
+# its featureCompatibilityVersion (FCV) is that version. An upgrade step that moves
+# Mongo up several majors runs each version in turn in a temporary container on the
+# stopped data directory (no network, no auth): mongo_hop. A server so never needs the
+# intermediate versions installed. Used by releases/*/upgrade.sh; modelled on VISP's
+# vispctl/mongo_upgrade.py.
+MONGO_DATA_DIR="mongodb/mounts/mongodb-data-volume"
+MONGO_FCV_JS='db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1}).featureCompatibilityVersion.version'
+# One line per collection, "<database>.<collection> <documents>", for every database but
+# MongoDB's own. ES5, so that the 4.4 shell runs it too.
+# shellcheck disable=SC2034  # used by releases/*/upgrade.sh
+MONGO_COUNTS_JS='db.adminCommand({listDatabases: 1, nameOnly: true}).databases
+  .map(function (d) { return d.name; })
+  .filter(function (n) { return ["admin", "config", "local"].indexOf(n) < 0; })
+  .sort()
+  .forEach(function (n) {
+    var s = db.getSiblingDB(n);
+    s.getCollectionInfos({type: "collection"})
+      .map(function (c) { return c.name; })
+      .filter(function (c) { return c.indexOf("system.") !== 0; })
+      .sort()
+      .forEach(function (c) { print(n + "." + c + " " + s.getCollection(c).countDocuments({})); });
+  });'
+
+# Runs a command as the owner of the containers' files: in rootless podman, files a
+# container wrote belong to a subordinate user the operator can only reach this way.
+as_container_owner() {
+    if [[ "$CONTAINER_TOOL" == podman ]]; then
+        podman unshare "$@"
+    else
+        "$@"
+    fi
+}
+
+mongo_data_is_empty() {
+    [[ -z "$(as_container_owner find "$MONGO_DATA_DIR" -mindepth 1 -maxdepth 1 2>/dev/null | head -n1 || true)" ]]
+}
+
+# "7.0.45" -> "7.0"
+mongo_major() {
+    echo "$1" | cut -d. -f1-2
+}
+
+# The mongo image compose.yml runs, e.g. docker.io/mongo:7.0.45.
+mongo_release_image() {
+    sed -nE 's#^[[:space:]]*image:[[:space:]]*"?([^"[:space:]]*/mongo:[0-9][^"[:space:]]*)"?.*#\1#p' compose.yml | head -n1
+}
+
+# Runs JavaScript in a mongo container: in mongosh where the image has it, otherwise in
+# the legacy mongo shell, the only one before 6.0. Arguments after the script go to the
+# shell, before --eval.
+mongo_shell_eval() {
+    local container="$1" js="$2" shell=mongo
+    shift 2
+    $CONTAINER_TOOL exec "$container" sh -c 'command -v mongosh' >/dev/null 2>&1 && shell=mongosh
+    $CONTAINER_TOOL exec "$container" "$shell" --quiet "$@" --eval "$js"
+}
+
+# The same on the running mongo service, as its root user.
+mongo_eval() {
+    local container
+    container="$(service_container mongo || true)"
+    [[ -n "$container" ]] || return 1
+    mongo_shell_eval "$container" "$1" -u "$MONGODB_ROOT_USER" -p "$MONGODB_ROOT_PASSWORD" --authenticationDatabase admin admin
+}
+
+mongo_live_version() { mongo_eval 'db.version()' | tr -d '[:space:]'; }
+mongo_live_fcv()     { mongo_eval "$MONGO_FCV_JS" | tr -d '[:space:]'; }
+
+# The command that sets the FCV to $1; from 7.0 on, MongoDB wants it confirmed.
+mongo_set_fcv_js() {
+    local confirm=""
+    version_lt "$1" 7.0 || confirm=", confirm: true"
+    echo "db.adminCommand({setFeatureCompatibilityVersion: '$1'${confirm}}).ok"
+}
+
+mongo_set_live_fcv() {
+    [[ "$(mongo_eval "$(mongo_set_fcv_js "$1")" | tr -d '[:space:]')" == 1 ]] \
+        || die "Setting MongoDB's featureCompatibilityVersion to $1 failed."
+}
+
+mongo_hop_container() {
+    echo "$(compose_project_name)-mongo-upgrade"
+}
+
+# Starts image $1 (exact, like docker.io/mongo:6.0.28) on the stopped MONGO_DATA_DIR,
+# raises the FCV to its major version, and shuts it down cleanly. A function named in
+# $2 runs while it is up, given the container's name. Safe to run again: the FCV is
+# raised only when it is lower. The FCV it leaves is recorded as the step's mongo_fcv
+# before the shutdown, so that a rerun never starts an older version on data this one
+# has raised.
+mongo_hop() {
+    local image="$1" while_up="${2:-}" target name current deadline
+    target="$(mongo_major "${image##*:}")"
+    name="$(mongo_hop_container)"
+    $CONTAINER_TOOL rm -f "$name" >/dev/null 2>&1 || true
+    # shellcheck disable=SC2064
+    trap "$CONTAINER_TOOL rm -f '$name' >/dev/null 2>&1 || true" EXIT
+
+    info "Starting ${image} on ${MONGO_DATA_DIR} (no network, no auth) ..."
+    $CONTAINER_TOOL run -d --name "$name" --network=none \
+        -v "${SCRIPT_DIR}/${MONGO_DATA_DIR}:/data/db:Z" \
+        "$image" mongod --bind_ip 127.0.0.1 >/dev/null
+    deadline=$((SECONDS + 180))
+    until [[ "$(mongo_shell_eval "$name" 'db.adminCommand({ping: 1}).ok' 2>/dev/null | tr -d '[:space:]')" == 1 ]]; do
+        if [[ "$($CONTAINER_TOOL inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" != true ]] || (( SECONDS > deadline )); then
+            $CONTAINER_TOOL logs --tail 30 "$name" >&2 || true
+            die "${image} did not come up on ${MONGO_DATA_DIR} (the end of its log is above)."
+        fi
+        sleep 2
+    done
+
+    current="$(mongo_shell_eval "$name" "$MONGO_FCV_JS" | tr -d '[:space:]')"
+    if version_lt "$current" "$target"; then
+        info "featureCompatibilityVersion ${current} -> ${target}"
+        [[ "$(mongo_shell_eval "$name" "$(mongo_set_fcv_js "$target")" | tr -d '[:space:]')" == 1 ]] \
+            || die "Setting the featureCompatibilityVersion to ${target} in ${image} failed."
+        current="$(mongo_shell_eval "$name" "$MONGO_FCV_JS" | tr -d '[:space:]')"
+    else
+        info "featureCompatibilityVersion is already ${current}."
+    fi
+    [[ -z "$while_up" ]] || "$while_up" "$name"
+    upgrade_data_set mongo_fcv "$current"
+
+    info "Shutting ${image} down cleanly ..."
+    $CONTAINER_TOOL stop -t 120 "$name" >/dev/null
+    $CONTAINER_TOOL rm -f "$name" >/dev/null 2>&1 || true
+}
+
 # Builds and starts the release this checkout carries, and brings the database to it.
 # Run by 'release deploy' once it has checked out the release's tag, or by hand on a
-# checkout already there.
+# checkout already there. --dry-run shows the upgrade steps and runs the preflight
+# checks only.
 cmd_release_apply() {
-    local release at_tag
+    local release at_tag dry_run=0
+    case "${1:-}" in
+        "") ;;
+        --dry-run) dry_run=1 ;;
+        *) die "Usage: $0 release apply [--dry-run]" ;;
+    esac
     release="$(manifest_value SEAD_RELEASE)"
     [[ -n "$release" ]] || die "No SEAD_RELEASE in ${RELEASE_MANIFEST} - there is no release to apply."
 
@@ -1856,17 +2271,34 @@ cmd_release_apply() {
 
     info "Applying SEAD release ${release}"
     check_release_env
+    load_env
+
+    UPGRADE_DRY_RUN=$dry_run
+    upgrade_plan
+    upgrade_print_plan
+    if (( dry_run )); then
+        upgrade_run_phase preflight
+        success "Dry run: the preflight checks passed. Nothing has been changed."
+        return 0
+    fi
+    upgrade_begin
+    upgrade_run_phase preflight
 
     apply_release_refs
-    record_applied_release
     load_env
-    # The client is built with the schema tag of the release, which it shows. .env only
-    # gets it once the database is rebuilt at it, after the images are built.
+    # The client is built with the release and the schema tag it pins, which it shows.
+    # .env gets the release once every upgrade step has run, and the schema tag once the
+    # database is rebuilt at it.
+    export SEAD_RELEASE="$release"
     export SEAD_CHANGE_CONTROL_RELEASE="$(manifest_value SEAD_CHANGE_CONTROL_RELEASE)"
+
+    upgrade_run_phase pre_apply
 
     pull_non_build_images
     info "Building images..."
     compose_build
+
+    upgrade_run_phase post_build
 
     GADM_COPIED=0
     bring_database_to_release
@@ -1878,6 +2310,11 @@ cmd_release_apply() {
     if (( DB_REBUILT )); then
         refresh_after_rebuild
     fi
+
+    upgrade_run_phase post_apply
+    record_applied_release
+    upgrade_finish
+
     [[ -z "$PG_SET_ASIDE" ]] || info "PostgreSQL's previous data directory is kept as ${PG_SET_ASIDE}; remove it once the release is known to be good."
     success "SEAD ${release} deployed."
     info "Check it with: $0 versions"
@@ -1935,11 +2372,17 @@ cmd_release_log() {
 # Checks out a release's tag of this repository and applies it.
 cmd_release_deploy() {
     local release="${1:-}"
-    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release deploy <YYYY-MM.N> [--background], e.g. $0 release deploy 2026-10.0"
-    if [[ "${2:-}" == "--background" ]]; then
-        start_release_deploy_background "$release"
-        return
-    fi
+    [[ "$release" =~ $RELEASE_NAME_PATTERN ]] || die "Usage: $0 release deploy <YYYY-MM.N> [--background | --dry-run], e.g. $0 release deploy 2026-10.0"
+    local apply_args=()
+    case "${2:-}" in
+        "") ;;
+        --background)
+            start_release_deploy_background "$release"
+            return
+            ;;
+        --dry-run) apply_args=(--dry-run) ;;
+        *) die "Unknown option '${2}'. Usage: $0 release deploy <YYYY-MM.N> [--background | --dry-run]" ;;
+    esac
 
     info "Fetching SEAD release tags ..."
     git fetch --quiet --tags origin
@@ -1967,7 +2410,7 @@ cmd_release_deploy() {
     # The release's own deploy.sh applies it - that is the one that knows what it needs.
     # Bash keeps reading this script through the file it opened, which git has replaced
     # rather than rewritten, so this copy is not disturbed on its way here.
-    exec "$SCRIPT_DIR/deploy.sh" release apply
+    exec "$SCRIPT_DIR/deploy.sh" release apply "${apply_args[@]}"
 }
 
 # Writes the release manifest. Its format is what manifest_value reads: one KEY=value
@@ -2066,7 +2509,7 @@ cmd_release() {
     case "$subcommand" in
         cut)    cmd_release_cut "$@" ;;
         deploy) cmd_release_deploy "$@" ;;
-        apply)  cmd_release_apply ;;
+        apply)  cmd_release_apply "$@" ;;
         log)    cmd_release_log "$@" ;;
         ""|help|--help|-h)
             cat <<EOF
@@ -2075,13 +2518,14 @@ Usage: $0 release <command> [args...]
 Commands:
   cut <YYYY-MM.N>     Make a new SEAD release: pick the tag of each service it
                       pins, write ${RELEASE_MANIFEST}, then commit and tag it.
-  deploy <YYYY-MM.N> [--background]
-                      Check out that release's tag of this repository, then build
-                      and start it, and rebuild the database at the schema it
-                      pins if it is not there. --background runs it detached,
-                      logging under logs/.
-  apply               Build and start the release this checkout carries, and
-                      bring the database to it.
+  deploy <YYYY-MM.N> [--background | --dry-run]
+                      Check out that release's tag of this repository, run the
+                      upgrade steps of the releases since the one this server
+                      runs, then build and start it, and rebuild the database at
+                      the schema it pins if it is not there. --background runs it
+                      detached, logging under logs/. --dry-run checks out the tag,
+                      shows the upgrade steps and runs their preflight checks only.
+  apply [--dry-run]   The same for the release this checkout carries.
   log [--follow]      Show the latest background deploy's log; --follow follows
                       it until the deploy ends, and exits with its status.
 
@@ -2525,6 +2969,10 @@ cmd_versions() {
             "$([[ "$at_tag" == "$release" ]] && echo "at its tag" || echo "not at tag ${release}")"
         version_row "applied" "${SEAD_RELEASE:-none}" \
             "${SEAD_PREVIOUS_RELEASE:+previous ${SEAD_PREVIOUS_RELEASE}}"
+        if [[ -f "$UPGRADE_STATE_FILE" ]]; then
+            version_row "upgrade" "to $(upgrade_state_get to) unfinished" \
+                "$(grep -c '^done=' "$UPGRADE_STATE_FILE" || true) steps done; deploy it again to resume"
+        fi
         for service in "${RELEASE_SERVICES[@]}"; do
             set_release_selection_config "$service"
             ref_var="$ENV_REF_VAR"
@@ -2943,16 +3391,21 @@ Commands:
   release cut <YYYY-MM.N>
                        Make a new SEAD release: pick the tag each service is pinned
                        to, write sead-release.env, then commit and tag it.
-  release deploy <YYYY-MM.N> [--background]
+  release deploy <YYYY-MM.N> [--background | --dry-run]
                        Check out that release of this repository, verify every
-                       pinned tag and that .env has every variable it needs, then
-                       build and start it. A database not at the schema tag the
+                       pinned tag and that .env has every variable it needs, run
+                       the upgrade steps (releases/<release>/upgrade.sh) of every
+                       release since the one this server runs, then build and
+                       start it. A failed upgrade step stops the deploy; deploying
+                       again resumes at that step. A database not at the schema tag the
                        release pins is rebuilt at it beside the one in use, then
                        swapped in (the old one is kept as sead_staging_prev). A new
                        PostgreSQL major version starts on a fresh data directory;
                        the old one is kept. --background runs it detached, logging
-                       under logs/.
-  release apply        Build and start the release this checkout carries, and
+                       under logs/. --dry-run checks out the release, shows its
+                       upgrade steps and runs their preflight checks, nothing more.
+  release apply [--dry-run]
+                       Build and start the release this checkout carries, and
                        bring the database to it.
   release log [--follow]
                        Show (or follow) the latest background release deploy.

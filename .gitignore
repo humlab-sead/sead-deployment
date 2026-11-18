@@ -52,6 +52,11 @@ remote-targets.conf
 # Generated at runtime: build, GADM import and JAS preload logs
 logs/
 
+# Made by release upgrades: the record of one in progress, and the dumps taken before it
+release-upgrade.state
+release-upgrade.state.tmp
+backups/
+
 
 # SAML SP keys (made on each server, never committed) and shibd's metadata cache
 router/mounts/shibboleth-keys/*

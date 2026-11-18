@@ -99,10 +99,10 @@ services:
       - sead_network
 
   mongo:
-    image: docker.io/mongo:4.4.30
+    image: docker.io/mongo:7.0.45
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "mongo --eval 'db.adminCommand(\"ping\")' -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin || exit 1"]
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\")' -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 60s
