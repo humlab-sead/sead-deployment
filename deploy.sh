@@ -1162,8 +1162,7 @@ run_database_import() {
 
     info "Using deploy tag '${deploy_tag}' for sead_change_control."
 
-    info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c "git -C /sead_change_control pull --ff-only"
+    checkout_change_control_tag "$deploy_tag"
 
     info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
     $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c \
@@ -1677,12 +1676,30 @@ data_pg_major() {
     fi
 }
 
-# Brings the container's sead_change_control up to date: the plans that say where the
-# database should be, and the changes a rebuild deploys, have to include the release's tag.
-update_container_change_control() {
-    info "Updating sead_change_control in the ${DB_IMPORT_SERVICE} container ..."
-    $CONTAINER_TOOL exec "$(pg_container)" git -C /sead_change_control pull --quiet --ff-only \
-        || die "Could not update sead_change_control in the ${DB_IMPORT_SERVICE} container."
+# Puts the container's sead_change_control at the git tag of the same name as the sqitch
+# tag, so a database built at a tag gets the plans and changes that were tagged, and not
+# whatever main holds now: a plan Sqitch cannot parse on main breaks every rebuild, even at
+# an older tag. Local edits in the clone are stashed, not lost.
+# Usage: checkout_change_control_tag <tag>
+checkout_change_control_tag() {
+    local tag="$1"
+    [[ -n "$tag" ]] || die "No sead_change_control tag to check out."
+    info "Checking out sead_change_control ${tag} in the ${DB_IMPORT_SERVICE} container ..."
+    $CONTAINER_TOOL exec "$(pg_container)" bash -c "
+        set -e
+        cd /sead_change_control
+        git fetch --quiet --tags --force origin
+        if ! git rev-parse --verify --quiet 'refs/tags/${tag}^{commit}' >/dev/null; then
+            echo 'sead_change_control has no git tag ${tag}.' >&2
+            exit 1
+        fi
+        if [ -n \"\$(git status --porcelain --untracked-files=no)\" ]; then
+            git stash push --quiet -m 'deploy.sh: local edits before checking out ${tag}'
+            echo 'Local edits in sead_change_control were stashed (git stash list).' >&2
+        fi
+        git checkout --quiet --detach 'refs/tags/${tag}'
+        git log --oneline -1
+    " || die "Could not check out sead_change_control ${tag} in the ${DB_IMPORT_SERVICE} container."
 }
 
 # The sqitch projects that have the tag in their plan but not in the database.
@@ -1793,7 +1810,7 @@ bring_database_to_release() {
         warn "The release pins no schema tag; leaving the database as it is."
         return 0
     fi
-    update_container_change_control
+    checkout_change_control_tag "$tag"
     if [[ -z "$PG_SET_ASIDE" ]]; then
         check_database_tag "$tag"
         if (( DB_AT_TAG )); then
