@@ -13,6 +13,7 @@
 #   status               Show running status of all containers
 #   versions             Report the versions of everything installed and running
 #   release <command>    Cut, deploy or apply a SEAD release (see releases/README.md)
+#   experiment <command> Apply, revert or inspect an experiment (experiments/<name>/)
 #   logs [service]       Tail logs (all services or specific one)
 #   shell <service>      Open an interactive shell inside a container
 #   import-db            Re-import the PostgreSQL database
@@ -70,18 +71,45 @@ fi
 # DEPLOY_MODE is read from .env (set during install); default to dev if unset.
 # Can also be forced on the command line: DEPLOY_MODE=prod ./deploy.sh up
 #
+# While an experiment is active (EXPERIMENT in .env, see 'experiment apply'), its
+# experiments/<name>/compose.yml is added as one more -f, in prod mode too. Naming any
+# file with -f stops compose from loading compose.override.yml by itself, so in dev mode
+# the override is listed explicitly, before the experiment's file.
+#
 # Standalone compose tools (podman-compose, docker-compose) are invoked directly.
 # Integrated tools (podman, docker) use the 'compose' sub-command.
 build_compose_cmd() {
     local prod="${DEPLOY_MODE:-dev}"
+    local experiment_file=""
+    if [[ -n "${EXPERIMENT:-}" ]]; then
+        if [[ -f "experiments/${EXPERIMENT}/compose.yml" ]]; then
+            experiment_file="experiments/${EXPERIMENT}/compose.yml"
+        else
+            # stderr, as this is called inside $( ) and its output is the command; plain
+            # text, as it also runs before the colour helpers below are defined
+            echo "[WARN]  EXPERIMENT=${EXPERIMENT} is set, but experiments/${EXPERIMENT}/compose.yml does not exist; ignoring it." >&2
+        fi
+    fi
+
+    local files=""
+    if [[ "$prod" == "prod" || -n "$experiment_file" ]]; then
+        files=" -f compose.yml"
+        if [[ "$prod" != "prod" && -f compose.override.yml ]]; then
+            files+=" -f compose.override.yml"
+        fi
+        if [[ -n "$experiment_file" ]]; then
+            files+=" -f ${experiment_file}"
+        fi
+    fi
+
     case "$CONTAINER_TOOL" in
         podman-compose|docker-compose)
             # Standalone tools: 'podman-compose -f compose.yml' or 'podman-compose'
-            [[ "$prod" == "prod" ]] && echo "$CONTAINER_TOOL -f compose.yml" || echo "$CONTAINER_TOOL"
+            echo "${CONTAINER_TOOL}${files}"
             ;;
         *)
             # Integrated sub-command: 'podman compose -f compose.yml' or 'podman compose'
-            [[ "$prod" == "prod" ]] && echo "$CONTAINER_TOOL compose -f compose.yml" || echo "$CONTAINER_TOOL compose"
+            echo "${CONTAINER_TOOL} compose${files}"
             ;;
     esac
 }
@@ -3064,6 +3092,532 @@ cmd_versions() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Experiments — a stack run on branches of its own, with data of its own
+# ──────────────────────────────────────────────────────────────────────────────
+# An experiment (experiments/<name>/) is something that must never reach a release, but
+# has to be shown on a real server: client and JSON API server built from branches of
+# their own, a compose file added to the stack's, and a sqitch project (generated from
+# data that is not in git) deployed to the stack's database. experiment.env says which;
+# 'experiment apply' puts it in place, 'experiment revert' takes it away again and
+# returns the stack to the release it carries.
+#
+# While an experiment is active, .env has EXPERIMENT=<name>, which makes
+# build_compose_cmd add the experiment's compose file to every compose command.
+EXPERIMENT_NAME_PATTERN='^[a-z0-9][a-z0-9_-]*$'
+# The services an experiment replaces: the ones built from repositories of their own.
+EXPERIMENT_SERVICES=(client json_api_server)
+# 1 while 'experiment apply' or 'revert' runs with --dry-run: experiment_run then prints
+# what it would do.
+EXPERIMENT_DRY_RUN=0
+# The apply run in the background, as for a release deploy: log, and the PID while it runs.
+EXPERIMENT_APPLY_LOG_LINK="logs/experiment-apply-latest.log"
+EXPERIMENT_APPLY_PID_FILE="logs/experiment-apply.pid"
+
+# One value from an experiment's experiment.env. Read rather than sourced, for the same
+# reason as manifest_value: it names SBC_RELEASE and JAS_RELEASE, and sourcing would
+# change what .env says the stack is built from.
+experiment_value() {
+    sed -n "s/^${2}=//p" "$SCRIPT_DIR/experiments/${1}/experiment.env" 2>/dev/null | tail -n1
+}
+
+# Dies unless the experiment exists in this checkout. Experiments live on their own
+# branches, so a checkout on another branch has none.
+experiment_require() {
+    local name="$1"
+    [[ "$name" =~ $EXPERIMENT_NAME_PATTERN ]] || die "'${name}' is not an experiment name (lower case letters, digits, - and _)."
+    [[ -f "experiments/${name}/experiment.env" ]] \
+        || die "There is no experiment '${name}' in this checkout: experiments/${name}/experiment.env is missing. Experiments live on branches of their own; this one is on '$(git branch --show-current 2>/dev/null || true)'."
+}
+
+# The names of the experiments this checkout has.
+experiment_names() {
+    local file
+    for file in experiments/*/experiment.env; do
+        [[ -f "$file" ]] || continue
+        basename "$(dirname "$file")"
+    done
+}
+
+# A path from experiment.env goes into rsync and rm commands: it has to stay inside this
+# checkout.
+experiment_safe_path() {
+    [[ -n "$1" && "$1" != /* && "$1" != *..* ]] \
+        || die "Unsafe path '${1}' in experiment.env: paths are relative to ${SCRIPT_DIR} and must not contain '..'."
+}
+
+# What the experiment needs on disk and does not find: a path is missing, or is a
+# directory with nothing in it. One per line.
+experiment_missing_paths() {
+    local name="$1" path
+    local paths=()
+    read -ra paths <<< "$(experiment_value "$name" EXPERIMENT_REQUIRED_PATHS)"
+    for path in "${paths[@]}"; do
+        experiment_safe_path "$path"
+        if [[ -d "$path" ]]; then
+            [[ -n "$(ls -A "$path")" ]] || echo "${path} (empty)"
+        elif [[ ! -e "$path" ]]; then
+            echo "$path"
+        fi
+    done
+}
+
+# Dies, telling how to get the data, unless the experiment's data is all here.
+experiment_check_data() {
+    local name="$1" missing
+    missing="$(experiment_missing_paths "$name")"
+    [[ -z "$missing" ]] && return 0
+    error "The data of experiment '${name}' is not here. Missing:"
+    sed 's/^/        /' <<< "$missing" >&2
+    die "The data is not in git. Copy it from a machine that has it - run './deploy.sh remote experiment <target> ${name}' there - or make it: the micrographs with the experiment's make_web_images.py (in $(experiment_value "$name" EXPERIMENT_DATA_DIR)), the sqitch project with the generator on sead_change_control's experiment branch."
+}
+
+# Runs a command, or, on a dry run, says that it would.
+experiment_run() {
+    if (( EXPERIMENT_DRY_RUN )); then
+        printf '    would run:'
+        printf ' %q' "$@"
+        echo
+    else
+        "$@"
+    fi
+}
+
+experiment_step() {
+    local prefix=""
+    if (( EXPERIMENT_DRY_RUN )); then
+        prefix="[dry run] "
+    fi
+    info "${prefix}$*"
+}
+
+# The container a service runs in. On a dry run the service may well be down.
+experiment_container() {
+    local container
+    container="$(service_container "$1" || true)"
+    if [[ -z "$container" ]]; then
+        (( EXPERIMENT_DRY_RUN )) && { echo "<${1} container>"; return; }
+        die "The ${1} container is not running."
+    fi
+    echo "$container"
+}
+
+experiment_backup_env() {
+    local backup
+    backup=".env.bak.$(date +%Y%m%d_%H%M%S)"
+    cp .env "$backup"
+    chmod 600 "$backup"
+    info "Backup saved to $backup"
+}
+
+unset_env_var() {
+    sed -i -E "/^${2}=/d" "$1"
+}
+
+# Waits for a service's healthcheck. Returns 1 if it does not turn healthy in 5 minutes.
+wait_for_service_healthy() {
+    local container retries=60 health=""
+    container="$(service_container "$1" || true)"
+    [[ -n "$container" ]] || return 1
+    while (( retries-- > 0 )); do
+        health="$($CONTAINER_TOOL inspect -f '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+        [[ "$health" == healthy ]] && return 0
+        sleep 5
+    done
+    return 1
+}
+
+# Runs sqitch on the experiment's project inside the postgresql container, which carries
+# sqitch and the credentials of DATABASE_USER (SQITCH_PASSWORD in compose.yml). The
+# project is generated, so it is copied in afresh each time rather than kept there.
+# Usage: experiment_sqitch <name> deploy|revert|status
+experiment_sqitch() {
+    local name="$1" action="$2" sqitch_dir container dir target
+    local sqitch_args=()
+    sqitch_dir="$(experiment_value "$name" EXPERIMENT_SQITCH_DIR)"
+    [[ -n "$sqitch_dir" ]] || die "experiments/${name}/experiment.env has no EXPERIMENT_SQITCH_DIR."
+    experiment_safe_path "$sqitch_dir"
+    [[ -f "${sqitch_dir}/sqitch.plan" ]] || die "No sqitch project in ${sqitch_dir} (sqitch.plan is missing). See: $0 experiment apply ${name} --dry-run"
+    [[ -n "${DATABASE_USER:-}" ]] || die "DATABASE_USER is empty. Check .env."
+
+    container="$(experiment_container "$DB_IMPORT_SERVICE")"
+    dir="/tmp/experiment-${name}-sqitch"
+    target="db:pg://${DATABASE_USER}@localhost:5432/${DB_IMPORT_TARGET_DB}"
+    case "$action" in
+        deploy) sqitch_args=(deploy --verify "$target") ;;
+        revert) sqitch_args=(revert -y "$target") ;;
+        status) sqitch_args=(status "$target") ;;
+        *)      die "experiment_sqitch: unknown action '${action}'." ;;
+    esac
+
+    experiment_run "$CONTAINER_TOOL" exec "$container" rm -rf "$dir"
+    experiment_run "$CONTAINER_TOOL" exec "$container" mkdir -p "$dir"
+    experiment_run "$CONTAINER_TOOL" cp "${sqitch_dir}/." "${container}:${dir}"
+    experiment_run "$CONTAINER_TOOL" exec "$container" sqitch --chdir "$dir" "${sqitch_args[@]}"
+}
+
+# What the services cached from the database and the code that is no more: the query
+# API's facet results in Redis, and the JSON API server's graph cache and site documents
+# in Mongo. The site documents are rebuilt in the background, by preload_jas.sh, which
+# flushes them first and the graph cache last.
+experiment_refresh_caches() {
+    experiment_step "Flushing the query API's Redis cache ..."
+    experiment_run "$CONTAINER_TOOL" exec "$(experiment_container redis_cache)" redis-cli FLUSHALL \
+        || warn "Could not flush Redis; flush it by hand: $0 shell redis_cache"
+
+    if (( EXPERIMENT_DRY_RUN )); then
+        experiment_step "Waiting for json_api_server to be healthy ..."
+    elif ! wait_for_service_healthy json_api_server; then
+        warn "json_api_server is not healthy yet; flush and rebuild its cache when it is: $0 flush-cache; $0 preload-jas --background"
+        return 0
+    fi
+
+    experiment_step "Flushing the JAS graph cache ..."
+    experiment_run cmd_flush_cache || warn "Could not flush the JAS graph cache: $0 flush-cache"
+
+    if [[ "${1:-}" == "--sites" ]]; then
+        experiment_rebuild_sites
+    else
+        experiment_step "Rebuilding the JAS site cache in the background ..."
+        experiment_run start_preload_jas_background
+    fi
+}
+
+# Builds just the experiment's own sites into the JAS site cache, by asking JAS for each
+# with the cache bypassed (/site/<id>/true rebuilds and stores it). Rebuilding every site
+# (preload_jas.sh) would take far longer and is not needed when only these are new.
+experiment_rebuild_sites() {
+    local sql pg jas id ids count=0
+    sql="$(experiment_value "$EXPERIMENT_ARG_NAME" EXPERIMENT_SITES_SQL)"
+    if [[ -z "$sql" ]]; then
+        experiment_step "Rebuilding the JAS site cache in the background (no EXPERIMENT_SITES_SQL) ..."
+        experiment_run start_preload_jas_background
+        return 0
+    fi
+    experiment_step "Building the experiment's sites into the JAS site cache ..."
+    (( EXPERIMENT_DRY_RUN )) && return 0
+    pg="$(experiment_container postgresql)"
+    jas="$(experiment_container json_api_server)"
+    ids="$("$CONTAINER_TOOL" exec "$pg" psql -U "$DB_IMPORT_USER" -d "$DB_IMPORT_TARGET_DB" -Atc "$sql")" \
+        || { warn "Could not list the experiment's sites; rebuild them by hand: $0 preload-jas --background"; return 0; }
+    for id in $ids; do
+        if "$CONTAINER_TOOL" exec "$jas" curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:8484/site/${id}/true"; then
+            count=$((count + 1))
+        else
+            warn "JAS could not build site ${id}."
+        fi
+    done
+    success "Built ${count} site(s) into the JAS site cache: $(echo $ids | tr '\n' ' ')"
+}
+
+# Rebuilds client and json_api_server from their checkouts, with the compose files
+# COMPOSE_CMD now has, and replaces their containers. The rest of the stack is left
+# alone: --no-deps, so that compose does not touch what these depend on.
+experiment_rebuild_services() {
+    experiment_step "Building ${EXPERIMENT_SERVICES[*]} ..."
+    experiment_run export_source_versions
+    experiment_run compose_build "${EXPERIMENT_SERVICES[@]}"
+    experiment_step "Replacing the ${EXPERIMENT_SERVICES[*]} containers ..."
+    # shellcheck disable=SC2086  # COMPOSE_CMD is a command line, split on purpose
+    experiment_run $COMPOSE_CMD up -d --no-deps --force-recreate "${EXPERIMENT_SERVICES[@]}"
+}
+
+# Splits '<name> [--dry-run]' (and, where allowed, '--background') into EXPERIMENT_ARG_NAME
+# and EXPERIMENT_DRY_RUN.
+EXPERIMENT_ARG_NAME=""
+EXPERIMENT_ARG_BACKGROUND=0
+experiment_parse_args() {
+    local usage="$1" allow_background="$2" arg
+    shift 2
+    EXPERIMENT_ARG_NAME=""
+    EXPERIMENT_ARG_BACKGROUND=0
+    EXPERIMENT_DRY_RUN=0
+    for arg in "$@"; do
+        case "$arg" in
+            --dry-run) EXPERIMENT_DRY_RUN=1 ;;
+            --background) [[ "$allow_background" == 1 ]] || die "Usage: ${usage}"; EXPERIMENT_ARG_BACKGROUND=1 ;;
+            -*) die "Unknown option '${arg}'. Usage: ${usage}" ;;
+            *) [[ -z "$EXPERIMENT_ARG_NAME" ]] || die "Usage: ${usage}"; EXPERIMENT_ARG_NAME="$arg" ;;
+        esac
+    done
+    [[ -n "$EXPERIMENT_ARG_NAME" ]] || die "Usage: ${usage}"
+    (( ! (EXPERIMENT_DRY_RUN && EXPERIMENT_ARG_BACKGROUND) )) || die "Usage: ${usage}"
+    experiment_require "$EXPERIMENT_ARG_NAME"
+}
+
+# On a dry run, what the checkout of a service looks like to the sync that would follow.
+experiment_dry_run_checkout() {
+    local service="$1" src_dir="$2" ref="$3" current
+    if [[ ! -d "$src_dir/.git" ]]; then
+        info "    ${src_dir} is not cloned here; it would be cloned"
+        return
+    fi
+    current="$(git -C "$src_dir" describe --tags --always --dirty='*' 2>/dev/null || true)"
+    info "    ${src_dir} is at ${current} on '$(git -C "$src_dir" branch --show-current)'; it would be checked out at '${ref}'"
+    if [[ -n "$(git -C "$src_dir" status --porcelain)" ]]; then
+        warn "    ${src_dir} has uncommitted changes; the real run would stop at ${service}."
+    fi
+}
+
+cmd_experiment_apply() {
+    experiment_parse_args "$0 experiment apply <name> [--dry-run | --background]" 1 "$@"
+    local name="$EXPERIMENT_ARG_NAME" service ref src_dir
+    if (( EXPERIMENT_ARG_BACKGROUND )); then
+        start_experiment_apply_background "$name"
+        return
+    fi
+
+    info "Applying experiment ${name}: $(experiment_value "$name" EXPERIMENT_DESCRIPTION)"
+    experiment_check_data "$name"
+    if (( ! EXPERIMENT_DRY_RUN )); then
+        [[ -f .env ]] || die ".env not found. Install the stack first: $0 install"
+        # Nothing is changed unless the database can be reached at the end.
+        experiment_container "$DB_IMPORT_SERVICE" >/dev/null
+    fi
+    for service in "${EXPERIMENT_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        [[ -n "$(experiment_value "$name" "$ENV_REF_VAR")" ]] \
+            || die "experiments/${name}/experiment.env has no ${ENV_REF_VAR} (the ref of ${service})."
+    done
+
+    experiment_step "Recording the experiment in .env ..."
+    experiment_run experiment_backup_env
+    experiment_run set_env_var .env EXPERIMENT "$name"
+    for service in "${EXPERIMENT_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        ref="$(experiment_value "$name" "$ENV_REF_VAR")"
+        experiment_run set_env_var .env "$ENV_REF_VAR" "$ref"
+        export "${ENV_REF_VAR}=${ref}"
+    done
+    # From here on every compose command adds the experiment's compose file.
+    export EXPERIMENT="$name"
+    COMPOSE_CMD="$(build_compose_cmd)"
+    info "Compose command: ${COMPOSE_CMD}"
+
+    for service in "${EXPERIMENT_SERVICES[@]}"; do
+        set_release_selection_config "$service"
+        ref="${!ENV_REF_VAR}"
+        src_dir="$(service_source_dir "$service")"
+        experiment_step "Checking out ${ref} of ${service} in ${src_dir} ..."
+        if (( EXPERIMENT_DRY_RUN )); then
+            experiment_dry_run_checkout "$service" "$src_dir" "$ref"
+        fi
+        experiment_run sync_local_repo_to_selected_ref "$service" "$src_dir" "$RELEASE_REPO" "$PRIMARY_BRANCH" "$ENV_REF_VAR"
+    done
+
+    experiment_rebuild_services
+
+    experiment_step "Deploying the sqitch project to ${DB_IMPORT_TARGET_DB} ..."
+    experiment_sqitch "$name" deploy
+
+    experiment_refresh_caches --sites
+
+    if (( EXPERIMENT_DRY_RUN )); then
+        success "Dry run: nothing has been changed."
+    else
+        success "Experiment ${name} applied. Take it away again with: $0 experiment revert ${name}"
+    fi
+}
+
+cmd_experiment_revert() {
+    experiment_parse_args "$0 experiment revert <name> [--dry-run]" 0 "$@"
+    local name="$EXPERIMENT_ARG_NAME" active sqitch_dir restore=1
+    [[ -f .env || $EXPERIMENT_DRY_RUN -eq 1 ]] || die ".env not found. Install the stack first: $0 install"
+
+    active="$(get_env_var .env EXPERIMENT 2>/dev/null || true)"
+    [[ -z "$active" || "$active" == "$name" ]] \
+        || die "The active experiment is '${active}', not '${name}'. Revert that one: $0 experiment revert ${active}"
+
+    # The generated project is needed again, for its revert scripts.
+    sqitch_dir="$(experiment_value "$name" EXPERIMENT_SQITCH_DIR)"
+    experiment_safe_path "$sqitch_dir"
+    [[ -f "${sqitch_dir}/sqitch.plan" ]] \
+        || die "No sqitch project in ${sqitch_dir}, so there are no revert scripts. Copy it back from a machine that has it: './deploy.sh remote experiment <target> ${name}' (that applies it again), or generate it."
+
+    if [[ ! -f "$RELEASE_MANIFEST" ]]; then
+        restore=0
+        warn "There is no ${RELEASE_MANIFEST} in this checkout, so client and json_api_server cannot be returned to a release's pins."
+        warn "They are left as they are; afterwards run '$0 update client' and '$0 update json_api_server' and pick their refs."
+    fi
+
+    info "Reverting experiment ${name}"
+    experiment_step "Reverting the sqitch project in ${DB_IMPORT_TARGET_DB} ..."
+    experiment_sqitch "$name" revert
+
+    experiment_step "Removing the experiment from .env ..."
+    if (( EXPERIMENT_DRY_RUN )); then
+        experiment_run experiment_backup_env
+        experiment_run unset_env_var .env EXPERIMENT
+    elif [[ -f .env ]]; then
+        experiment_backup_env
+        unset_env_var .env EXPERIMENT
+    fi
+    # Without it, compose commands go back to the stack's own files.
+    unset EXPERIMENT
+    COMPOSE_CMD="$(build_compose_cmd)"
+    info "Compose command: ${COMPOSE_CMD}"
+
+    if (( restore )); then
+        experiment_step "Returning ${EXPERIMENT_SERVICES[*]} (and the other pinned services) to ${RELEASE_MANIFEST} ..."
+        experiment_run apply_release_refs
+        experiment_rebuild_services
+        experiment_refresh_caches
+    else
+        warn "Not rebuilding client and json_api_server. The stack still runs the experiment's code, without its images mounted."
+    fi
+
+    if (( EXPERIMENT_DRY_RUN )); then
+        success "Dry run: nothing has been changed."
+    else
+        success "Experiment ${name} reverted."
+    fi
+}
+
+cmd_experiment_status() {
+    [[ $# -le 1 ]] || die "Usage: $0 experiment status [name]"
+    local active names=() name service ref current src_dir missing sqitch_dir
+    active="$(get_env_var .env EXPERIMENT 2>/dev/null || true)"
+
+    if [[ -n "${1:-}" ]]; then
+        experiment_require "$1"
+        names=("$1")
+    elif [[ -n "$active" ]]; then
+        names=("$active")
+    else
+        mapfile -t names < <(experiment_names)
+    fi
+
+    if [[ -n "$active" ]]; then
+        info "Active experiment: ${active}"
+    else
+        info "No experiment is active."
+    fi
+    [[ ${#names[@]} -gt 0 ]] || { info "This checkout has no experiments (experiments/<name>/experiment.env)."; return 0; }
+    info "Compose command: ${COMPOSE_CMD}"
+
+    for name in "${names[@]}"; do
+        echo
+        echo -e "${CYAN}${name}${NC}$([[ "$name" == "$active" ]] && echo ' (active)' || echo ' (not active)')"
+        experiment_require "$name"
+        echo "  $(experiment_value "$name" EXPERIMENT_DESCRIPTION)"
+
+        for service in "${EXPERIMENT_SERVICES[@]}"; do
+            set_release_selection_config "$service"
+            ref="$(experiment_value "$name" "$ENV_REF_VAR")"
+            src_dir="$(service_source_dir "$service")"
+            current="(not cloned)"
+            if [[ -d "$src_dir/.git" ]]; then
+                current="$(git -C "$src_dir" branch --show-current)"
+                current="${current:-detached}@$(git -C "$src_dir" describe --tags --always --dirty='*')"
+            fi
+            version_row "$service" "wants ${ref}" "checked out: ${current}; .env: $(get_env_var .env "$ENV_REF_VAR" 2>/dev/null || true)"
+        done
+
+        missing="$(experiment_missing_paths "$name")"
+        if [[ -z "$missing" ]]; then
+            version_row "data" "present" "$(experiment_value "$name" EXPERIMENT_REQUIRED_PATHS)"
+        else
+            version_row "data" "missing" "$(tr '\n' ' ' <<< "$missing")"
+        fi
+
+        sqitch_dir="$(experiment_value "$name" EXPERIMENT_SQITCH_DIR)"
+        if [[ -n "$(service_container "$DB_IMPORT_SERVICE" || true)" && -f "${sqitch_dir}/sqitch.plan" ]]; then
+            echo "  sqitch status:"
+            experiment_sqitch "$name" status 2>&1 | sed 's/^/    /' || true
+        elif [[ -z "$(service_container "$DB_IMPORT_SERVICE" || true)" ]]; then
+            version_row "sqitch" "unknown" "the ${DB_IMPORT_SERVICE} container is not running"
+        else
+            version_row "sqitch" "unknown" "no project in ${sqitch_dir}"
+        fi
+    done
+}
+
+# An apply run in the background, so that it outlives the SSH session it was started
+# from. Its log, and the PID while it runs, are under logs/.
+experiment_apply_running_pid() {
+    local pid
+    pid="$(cat "$EXPERIMENT_APPLY_PID_FILE" 2>/dev/null || true)"
+    [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null && echo "$pid"
+    return 0
+}
+
+start_experiment_apply_background() {
+    local name="$1" pid log
+    pid="$(experiment_apply_running_pid)"
+    [[ -z "$pid" ]] || die "An experiment apply is already running (PID ${pid}). Follow it with: $0 experiment log --follow"
+
+    mkdir -p logs
+    log="logs/experiment-apply-${name}-$(date +%Y%m%d_%H%M%S).log"
+    # The last line of the log is the apply's exit status, which 'experiment log' returns.
+    nohup bash -c '"$1" experiment apply "$2"; status=$?; echo "Experiment apply finished with exit status ${status}"; exit "$status"' \
+        _ "$SCRIPT_DIR/deploy.sh" "$name" > "$log" 2>&1 < /dev/null &
+    echo $! > "$EXPERIMENT_APPLY_PID_FILE"
+    ln -sfn "$(basename "$log")" "$EXPERIMENT_APPLY_LOG_LINK"
+    success "Applying experiment ${name} in the background (PID $!)."
+    info "Log: ${SCRIPT_DIR}/${log}"
+    info "Follow it with: $0 experiment log --follow"
+}
+
+# Shows the latest background apply's log, following it while it runs, and exits with its
+# status once it has finished.
+cmd_experiment_log() {
+    local follow=0 pid status
+    [[ "${1:-}" == "--follow" || "${1:-}" == "-f" ]] && follow=1
+    [[ -e "$EXPERIMENT_APPLY_LOG_LINK" ]] || die "No experiment apply has been run in the background here."
+
+    pid="$(experiment_apply_running_pid)"
+    if (( follow )) && [[ -n "$pid" ]]; then
+        tail -n +1 -F --pid="$pid" "$EXPERIMENT_APPLY_LOG_LINK" 2>/dev/null
+    else
+        cat "$EXPERIMENT_APPLY_LOG_LINK"
+        [[ -n "$pid" ]] && { info "Still running (PID ${pid})."; return 0; }
+    fi
+
+    status="$(sed -n 's/^Experiment apply finished with exit status \([0-9]*\)$/\1/p' "$EXPERIMENT_APPLY_LOG_LINK" | tail -n1)"
+    [[ -n "$status" ]] || { warn "The apply ended without recording its status."; return 1; }
+    return "$status"
+}
+
+cmd_experiment() {
+    local subcommand="${1:-}"
+    shift || true
+
+    case "$subcommand" in
+        apply)  cmd_experiment_apply "$@" ;;
+        revert) cmd_experiment_revert "$@" ;;
+        status) cmd_experiment_status "$@" ;;
+        log)    cmd_experiment_log "$@" ;;
+        ""|help|--help|-h)
+            cat <<EOF
+Usage: $0 experiment <command> [args...]
+
+An experiment (experiments/<name>/, on a branch of its own) runs client and
+json_api_server from branches, adds a compose file to the stack's, and deploys a
+sqitch project to the database. Its data is not in git: see 'remote experiment'.
+
+Commands:
+  apply <name> [--dry-run | --background]
+                      Check the experiment's data is here, record it (EXPERIMENT and
+                      the refs) in .env, check out, build and restart client and
+                      json_api_server, deploy the sqitch project inside the
+                      ${DB_IMPORT_SERVICE} container, flush the query API's and the JAS caches and
+                      rebuild the JAS site cache in the background. --dry-run
+                      shows each step and changes nothing. --background runs it
+                      detached, logging under logs/.
+  revert <name> [--dry-run]
+                      Revert the sqitch project, remove EXPERIMENT from .env, return
+                      client and json_api_server to the pins in ${RELEASE_MANIFEST},
+                      rebuild and restart them without the experiment, flush caches.
+  status [name]       Which experiment is active, its refs against the checkouts,
+                      whether its data is here, and the sqitch status of its project.
+  log [--follow]      Show the latest background apply's log; --follow follows it
+                      until the apply ends, and exits with its status.
+EOF
+            ;;
+        *) die "Unknown experiment command: ${subcommand}" ;;
+    esac
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Remote targets — SSH identities for per-instance deployments
 # ──────────────────────────────────────────────────────────────────────────────
 remote_config_file() {
@@ -3168,29 +3722,39 @@ remote_ssh_destination() {
     fi
 }
 
-remote_ssh() {
+# Sets REMOTE_SSH_DEST and REMOTE_SSH_OPTS from a target's settings: the destination, and
+# the options for its identity file and port. ssh and rsync (as its -e command) both use
+# them, so that they reach the target the same way.
+REMOTE_SSH_DEST=""
+REMOTE_SSH_OPTS=()
+remote_ssh_prepare() {
     local target="$1"
-    shift
 
     require_remote_config
     command -v ssh &>/dev/null || die "ssh is required for remote commands."
 
-    local dest identity port
-    dest="$(remote_ssh_destination "$target")"
+    local identity port
+    REMOTE_SSH_DEST="$(remote_ssh_destination "$target")"
     identity="$(remote_target_value "$target" identity_file)"
     port="$(remote_target_value "$target" port)"
 
-    local ssh_opts=(-o BatchMode=yes)
+    REMOTE_SSH_OPTS=(-o BatchMode=yes)
     if [[ -n "$identity" ]]; then
         identity="$(expand_home_path "$identity")"
         [[ -f "$identity" ]] || die "Identity file for target '${target}' does not exist: ${identity}"
-        ssh_opts+=(-i "$identity" -o IdentitiesOnly=yes)
+        REMOTE_SSH_OPTS+=(-i "$identity" -o IdentitiesOnly=yes)
     fi
     if [[ -n "$port" ]]; then
-        ssh_opts+=(-p "$port")
+        REMOTE_SSH_OPTS+=(-p "$port")
     fi
+}
 
-    ssh "${ssh_opts[@]}" "$dest" "$@"
+remote_ssh() {
+    local target="$1"
+    shift
+
+    remote_ssh_prepare "$target"
+    ssh "${REMOTE_SSH_OPTS[@]}" "$REMOTE_SSH_DEST" "$@"
 }
 
 remote_deploy_command() {
@@ -3206,6 +3770,52 @@ remote_deploy_command() {
     done
 
     remote_ssh "$target" "$remote_cmd"
+}
+
+# Copies an experiment's data to a target, and applies the experiment there. The data is
+# not in git, so this is how it gets to a server. The target's checkout must already be
+# on the experiment's branch: it is that checkout's deploy.sh that applies it.
+cmd_remote_experiment() {
+    local target="${1:-}" name="${2:-}"
+    [[ -n "$target" && -n "$name" && $# -eq 2 ]] || die "Usage: $0 remote experiment <target> <name>"
+    experiment_require "$name"
+    command -v rsync &>/dev/null || die "rsync is required for 'remote experiment'."
+
+    local path remote_path sync_paths=() rel src slash rsync_ssh
+    path="$(remote_target_required_value "$target" path)"
+
+    info "Checking the data of experiment '${name}' here ..."
+    experiment_check_data "$name"
+
+    info "Checking that ${target}'s checkout has the experiment ..."
+    remote_path="${path}/experiments/${name}/experiment.env"
+    remote_ssh "$target" "test -f $(shell_quote "$remote_path")" \
+        || die "${target}'s checkout (${path}) has no experiments/${name}/experiment.env. Check out the experiment's branch there by hand first (git fetch && git checkout <branch> in ${path}); this copies the data and applies the experiment, it does not change branches. If the server's MongoDB is still 4.4, do its upgrade to 7.0 first (releases/README.md): this branch's compose.yml runs mongo 7.0 and would not start on 4.4's data."
+
+    remote_ssh_prepare "$target"
+    rsync_ssh="ssh$(printf ' %q' "${REMOTE_SSH_OPTS[@]}")"
+    read -ra sync_paths <<< "$(experiment_value "$name" EXPERIMENT_SYNC_PATHS)"
+    [[ ${#sync_paths[@]} -gt 0 ]] || die "experiments/${name}/experiment.env has no EXPERIMENT_SYNC_PATHS."
+    for rel in "${sync_paths[@]}"; do
+        experiment_safe_path "$rel"
+        # A directory is copied by its contents (trailing slash), so it ends up at the
+        # same path on the target rather than inside it.
+        src="${rel%/}"
+        slash=""
+        if [[ -d "$src" ]]; then
+            slash="/"
+        fi
+        info "Copying ${src} to ${REMOTE_SSH_DEST}:${path}/${src} ..."
+        remote_ssh "$target" "mkdir -p $(shell_quote "$(dirname "${path}/${src}")")"
+        # --delete makes the target's copy match: a micrograph dropped here goes there too.
+        rsync -rltz --delete --chmod=D755,F644 --info=stats1 -e "$rsync_ssh" \
+            "${src}${slash}" "${REMOTE_SSH_DEST}:$(shell_quote "${path}/${src}")${slash}"
+    done
+
+    # Started detached on the target, so a dropped connection does not stop it halfway;
+    # this end only follows the log.
+    remote_deploy_command "$target" experiment apply "$name" --background
+    remote_deploy_command "$target" experiment log --follow
 }
 
 cmd_remote_init_config() {
@@ -3312,6 +3922,15 @@ cmd_remote() {
             [[ -n "${1:-}" ]] || die "Usage: $0 remote logs <target>"
             remote_deploy_command "$1" release log --follow
             ;;
+        experiment) cmd_remote_experiment "$@" ;;
+        experiment-revert)
+            [[ -n "${1:-}" && -n "${2:-}" ]] || die "Usage: $0 remote experiment-revert <target> <name>"
+            remote_deploy_command "$1" experiment revert "$2"
+            ;;
+        experiment-log)
+            [[ -n "${1:-}" ]] || die "Usage: $0 remote experiment-log <target>"
+            remote_deploy_command "$1" experiment log --follow
+            ;;
         ""|help|--help|-h)
             cat <<EOF
 Usage: $0 remote <command> [args...]
@@ -3327,6 +3946,15 @@ Commands:
                     target, then follow its log. Interrupting this, or losing the
                     connection, leaves the deploy running.
   logs <target>     Follow the target's latest release deploy log, until it ends.
+  experiment <target> <name>
+                    Copy the experiment's data (not in git) from here to the target's
+                    checkout over SSH, then start './deploy.sh experiment apply <name>'
+                    detached on the target and follow its log. The target's checkout
+                    must already be on the experiment's branch.
+  experiment-revert <target> <name>
+                    Run './deploy.sh experiment revert <name>' on the target.
+  experiment-log <target>
+                    Follow the target's latest experiment apply log, until it ends.
 
 Targets are read from $(remote_config_file).
 EOF
@@ -3411,6 +4039,22 @@ Commands:
                        Show (or follow) the latest background release deploy.
                        See releases/README.md.
 
+  experiment apply <name> [--dry-run | --background]
+                       Run an experiment (experiments/<name>/, only on its own
+                       branch): client and json_api_server from the branches it
+                       names, its compose file added to the stack's, its sqitch
+                       project deployed to the database, caches flushed. The data
+                       is not in git; see 'remote experiment'. --dry-run shows the
+                       steps and changes nothing.
+  experiment revert <name> [--dry-run]
+                       Take the experiment away again and return client and
+                       json_api_server to the pins in sead-release.env.
+  experiment status [name]
+                       The active experiment, its refs against the checkouts,
+                       whether its data is here, and its sqitch status.
+  experiment log [--follow]
+                       Show (or follow) the latest background experiment apply.
+
   logs [service]       Tail logs (100 lines) from all services or a specific one.
   shell <service>      Open an interactive shell inside a running container.
 
@@ -3453,6 +4097,8 @@ Commands:
                          $0 remote init-config
                          $0 remote targets
                          $0 remote check super
+                       'remote experiment <target> <name>' copies an experiment's
+                       data to a target and applies it there.
 
 Environment variables:
   CONTAINER_TOOL       Override the container engine (podman | docker).
@@ -3481,6 +4127,7 @@ case "$command" in
     status)       cmd_status ;;
     versions)     cmd_versions ;;
     release)      cmd_release "$@" ;;
+    experiment)   cmd_experiment "$@" ;;
     logs)         cmd_logs "$@" ;;
     shell)        cmd_shell "$@" ;;
     import-db)    cmd_import_db "${1:-}" ;;

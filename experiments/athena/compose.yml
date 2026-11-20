@@ -1,0 +1,13 @@
+# Athena ceramics prototype (experiment/athena branch only; never merged).
+# Added on top of compose.yml (and compose.override.yml in dev) by deploy.sh while
+# EXPERIMENT=athena. Paths resolve from the sead-deployment directory.
+#
+# The micrographs are not in git: local-work/athena/web/ is made by
+# local-work/athena/make_web_images.py and copied to servers by
+# './deploy.sh remote experiment <target> athena'.
+services:
+  json_api_server:
+    environment:
+      SAMPLE_IMAGES_DIR: /sample_images
+    volumes:
+      - ./local-work/athena/web:/sample_images:ro,Z
