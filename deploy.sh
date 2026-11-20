@@ -1708,7 +1708,12 @@ checkout_change_control_tag() {
             git stash push --quiet -m 'deploy.sh: local edits before checking out ${tag}'
             echo 'Local edits in sead_change_control were stashed (git stash list).' >&2
         fi
-        git checkout --quiet --detach 'refs/tags/${tag}'
+        # bin/deploy-staging runs its own 'git pull' under 'set -e', which fails on a
+        # detached HEAD and would move a branch on to main. So the tag goes on a local
+        # branch that tracks itself: its pull has nothing to merge.
+        git checkout --quiet -B deploy-at-tag 'refs/tags/${tag}'
+        git config branch.deploy-at-tag.remote .
+        git config branch.deploy-at-tag.merge refs/heads/deploy-at-tag
         git log --oneline -1
     " || die "Could not check out sead_change_control ${tag} in the ${DB_IMPORT_SERVICE} container."
 }
