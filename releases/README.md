@@ -103,6 +103,10 @@ holds the facet definitions, among other things - and everything in the database
 from `sead_change_control`, so a deploy rebuilds the database at the sqitch tag the
 release pins instead of migrating it:
 
+- The rebuild, like `import-db` and `install`, first checks out the git tag of the same
+  name in the postgresql container's `sead_change_control` clone, so it deploys the
+  plans and changes that were tagged and not whatever `main` holds now. The sqitch tag
+  must therefore also be a git tag in `sead_change_control`.
 - The rebuild is the import `import-db` runs, into `sead_staging_next`, while
   `sead_staging` keeps serving. The two are then swapped by renaming them, which takes
   seconds. The database it replaces is kept as `sead_staging_prev` (with connections

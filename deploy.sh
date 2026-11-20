@@ -115,6 +115,17 @@ build_compose_cmd() {
 }
 COMPOSE_CMD="$(build_compose_cmd)"
 
+# The container engine behind the compose tool, for commands on single containers and
+# images (ps, exec, inspect, ...): the standalone podman-compose and docker-compose have
+# no such commands, while the containers they start carry the same compose labels.
+container_engine() {
+    case "$CONTAINER_TOOL" in
+        podman-compose) echo podman ;;
+        docker-compose) echo docker ;;
+        *) echo "$CONTAINER_TOOL" ;;
+    esac
+}
+
 # podman-compose may hang on stacks that use depends_on condition: service_healthy.
 # When native podman compose is available, transparently switch to it for compatibility.
 apply_compose_compatibility_override() {
@@ -852,7 +863,7 @@ pull_non_build_images() {
         return
     fi
 
-    warn "'$CONTAINER_TOOL compose pull --ignore-buildable' not supported; falling back to '$CONTAINER_TOOL compose pull'."
+    warn "'$COMPOSE_CMD pull --ignore-buildable' not supported; falling back to '$COMPOSE_CMD pull'."
     $COMPOSE_CMD pull
     success "Images pulled."
 }
@@ -1190,8 +1201,7 @@ run_database_import() {
 
     info "Using deploy tag '${deploy_tag}' for sead_change_control."
 
-    info "Updating sead_change_control repository inside the ${DB_IMPORT_SERVICE} container..."
-    $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c "git -C /sead_change_control pull --ff-only"
+    checkout_change_control_tag "$deploy_tag"
 
     info "Running database import command inside the ${DB_IMPORT_SERVICE} container..."
     $COMPOSE_CMD exec "$DB_IMPORT_SERVICE" bash -c \
@@ -1666,7 +1676,7 @@ pg_container() {
 # psql as postgres in the maintenance database, for what has to happen outside the
 # databases it acts on.
 psql_admin() {
-    $CONTAINER_TOOL exec -i "$(pg_container)" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -qtA "$@"
+    $(container_engine) exec -i "$(pg_container)" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -qtA "$@"
 }
 
 # Waits until PostgreSQL takes connections over TCP. The image's entrypoint initialises
@@ -1698,25 +1708,48 @@ data_pg_major() {
         echo $((version / 10000))
         return
     fi
-    if [[ "$CONTAINER_TOOL" == podman ]]; then
+    if [[ "$(container_engine)" == podman ]]; then
         podman unshare cat "$PG_DATA_DIR/PG_VERSION" 2>/dev/null || true
     else
         cat "$PG_DATA_DIR/PG_VERSION" 2>/dev/null || true
     fi
 }
 
-# Brings the container's sead_change_control up to date: the plans that say where the
-# database should be, and the changes a rebuild deploys, have to include the release's tag.
-update_container_change_control() {
-    info "Updating sead_change_control in the ${DB_IMPORT_SERVICE} container ..."
-    $CONTAINER_TOOL exec "$(pg_container)" git -C /sead_change_control pull --quiet --ff-only \
-        || die "Could not update sead_change_control in the ${DB_IMPORT_SERVICE} container."
+# Puts the container's sead_change_control at the git tag of the same name as the sqitch
+# tag, so a database built at a tag gets the plans and changes that were tagged, and not
+# whatever main holds now: a plan Sqitch cannot parse on main breaks every rebuild, even at
+# an older tag. Local edits in the clone are stashed, not lost.
+# Usage: checkout_change_control_tag <tag>
+checkout_change_control_tag() {
+    local tag="$1"
+    [[ -n "$tag" ]] || die "No sead_change_control tag to check out."
+    info "Checking out sead_change_control ${tag} in the ${DB_IMPORT_SERVICE} container ..."
+    $(container_engine) exec "$(pg_container)" bash -c "
+        set -e
+        cd /sead_change_control
+        git fetch --quiet --tags --force origin
+        if ! git rev-parse --verify --quiet 'refs/tags/${tag}^{commit}' >/dev/null; then
+            echo 'sead_change_control has no git tag ${tag}.' >&2
+            exit 1
+        fi
+        if [ -n \"\$(git status --porcelain --untracked-files=no)\" ]; then
+            git stash push --quiet -m 'deploy.sh: local edits before checking out ${tag}'
+            echo 'Local edits in sead_change_control were stashed (git stash list).' >&2
+        fi
+        # bin/deploy-staging runs its own 'git pull' under 'set -e', which fails on a
+        # detached HEAD and would move a branch on to main. So the tag goes on a local
+        # branch that tracks itself: its pull has nothing to merge.
+        git checkout --quiet -B deploy-at-tag 'refs/tags/${tag}'
+        git config branch.deploy-at-tag.remote .
+        git config branch.deploy-at-tag.merge refs/heads/deploy-at-tag
+        git log --oneline -1
+    " || die "Could not check out sead_change_control ${tag} in the ${DB_IMPORT_SERVICE} container."
 }
 
 # The sqitch projects that have the tag in their plan but not in the database.
 pending_schema_projects() {
     local tag="$1" planned deployed project
-    planned="$($CONTAINER_TOOL exec "$(pg_container)" bash -c \
+    planned="$($(container_engine) exec "$(pg_container)" bash -c \
         "cd /sead_change_control && for p in \$(grep -v '^#' projects.txt | grep -v '^[[:space:]]*\$'); do grep -q '^${tag} ' \"\$p/sqitch.plan\" && echo \"\$p\"; done; true")"
     [[ -n "$planned" ]] || die "No sqitch project in sead_change_control has the tag ${tag} in its plan."
     deployed="$(psql_value "select distinct project from sqitch.tags where tag = '${tag}'" || true)"
@@ -1749,7 +1782,7 @@ copy_gadm_into_rebuild() {
     container="$(pg_container)"
     [[ "$(psql_value "select count(*) from pg_tables where schemaname = 'gadm'" || true)" =~ ^[1-9] ]] || return 0
     info "Copying the GADM boundaries into ${DB_REBUILD_NAME} ..."
-    $CONTAINER_TOOL exec "$container" bash -c \
+    $(container_engine) exec "$container" bash -c \
         "set -o pipefail; pg_dump -U postgres -n gadm '${DB_IMPORT_TARGET_DB}' | psql -U postgres -d '${DB_REBUILD_NAME}' -v ON_ERROR_STOP=1 -q >/dev/null" \
         || die "Copying the GADM boundaries failed. ${DB_IMPORT_TARGET_DB} is untouched."
     GADM_COPIED=1
@@ -1821,7 +1854,7 @@ bring_database_to_release() {
         warn "The release pins no schema tag; leaving the database as it is."
         return 0
     fi
-    update_container_change_control
+    checkout_change_control_tag "$tag"
     if [[ -z "$PG_SET_ASIDE" ]]; then
         check_database_tag "$tag"
         if (( DB_AT_TAG )); then
@@ -1833,7 +1866,7 @@ bring_database_to_release() {
     [[ "${SEAD_RELEASE_NO_DB_REBUILD:-0}" != 1 ]] \
         || die "Database rebuilds are disabled and the database could not be verified at ${tag}."
     info "Rebuilding the database at ${tag} as ${DB_REBUILD_NAME}; ${DB_IMPORT_TARGET_DB} keeps serving meanwhile ..."
-    $CONTAINER_TOOL exec "$(pg_container)" bash -c \
+    $(container_engine) exec "$(pg_container)" bash -c \
         "cd /sead_change_control && ./bin/deploy-staging --port 5432 --user ${DB_IMPORT_USER} --create-database --on-conflict drop --source-type empty --target-db-name ${DB_REBUILD_NAME} --deploy-to-tag '${tag}' --ignore-git-tags --host postgresql" \
         || die "Rebuilding the database at ${tag} failed. ${DB_IMPORT_TARGET_DB} is untouched; ${DB_REBUILD_NAME} holds what the rebuild got to."
     apply_database_access "$DB_REBUILD_NAME"
@@ -1848,7 +1881,7 @@ bring_database_to_release() {
 # it is up. GADM boundaries the rebuild could not copy are imported in the background.
 refresh_after_rebuild() {
     info "Flushing the query API's Redis cache ..."
-    $CONTAINER_TOOL exec "$(service_container redis_cache)" redis-cli FLUSHALL >/dev/null \
+    $(container_engine) exec "$(service_container redis_cache)" redis-cli FLUSHALL >/dev/null \
         || warn "Could not flush Redis; flush it by hand: $0 shell redis_cache"
 
     (( GADM_COPIED )) || start_gadm_import_background
@@ -1856,7 +1889,7 @@ refresh_after_rebuild() {
     local container retries=60 health=""
     container="$(service_container json_api_server || true)"
     while [[ -n "$container" ]] && (( retries-- > 0 )); do
-        health="$($CONTAINER_TOOL inspect -f '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
+        health="$($(container_engine) inspect -f '{{.State.Health.Status}}' "$container" 2>/dev/null || true)"
         [[ "$health" == healthy ]] && break
         sleep 5
     done
@@ -2579,7 +2612,7 @@ cmd_down() {
         success "Stack stopped."
     else
         warn "compose down returned non-zero (possible rootless netns cleanup bug). Pruning networks..."
-        $CONTAINER_TOOL network prune -f
+        $(container_engine) network prune -f
         success "Network cleanup done."
     fi
 }
@@ -2866,7 +2899,7 @@ compose_project_name() { echo "${COMPOSE_PROJECT_NAME:-$(basename "$SCRIPT_DIR")
 # Looked up by compose label rather than by name, which every compose implementation
 # spells differently.
 service_container() {
-    $CONTAINER_TOOL ps \
+    $(container_engine) ps \
         --filter "label=com.docker.compose.project=$(compose_project_name)" \
         --filter "label=com.docker.compose.service=$1" \
         --format '{{.Names}}' 2>/dev/null | head -n1
@@ -2880,12 +2913,12 @@ service_exec() {
     local container
     container="$(service_container "$service" || true)"
     [[ -n "$container" ]] || return 1
-    $CONTAINER_TOOL exec "$container" "$@" 2>/dev/null
+    $(container_engine) exec "$container" "$@" 2>/dev/null
 }
 
 # The image reference a service is running, and the day that image was built.
 service_image() {
-    $CONTAINER_TOOL ps \
+    $(container_engine) ps \
         --filter "label=com.docker.compose.project=$(compose_project_name)" \
         --filter "label=com.docker.compose.service=$1" \
         --format '{{.Image}}' 2>/dev/null | head -n1
@@ -2894,7 +2927,7 @@ service_image() {
 image_build_date() {
     local image="$1"
     [[ -n "$image" ]] || return 0
-    $CONTAINER_TOOL image inspect "$image" --format '{{.Created}}' 2>/dev/null | cut -c1-10
+    $(container_engine) image inspect "$image" --format '{{.Created}}' 2>/dev/null | cut -c1-10
 }
 
 short_image_name() { echo "${1#docker.io/}" | sed 's|^library/||'; }
@@ -2905,7 +2938,7 @@ service_mounts_source() {
     local container
     container="$(service_container "$1" || true)"
     [[ -n "$container" ]] || return 1
-    $CONTAINER_TOOL inspect "$container" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' 2>/dev/null \
+    $(container_engine) inspect "$container" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' 2>/dev/null \
         | grep -qx "${SCRIPT_DIR}/$2"
 }
 
@@ -3968,7 +4001,7 @@ EOF
 # ──────────────────────────────────────────────────────────────────────────────
 usage() {
     cat <<EOF
-SEAD Deployment Utility (using: $CONTAINER_TOOL compose)
+SEAD Deployment Utility (using: $COMPOSE_CMD)
 
 Usage: $0 <command> [args...]
 
