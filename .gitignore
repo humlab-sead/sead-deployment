@@ -69,3 +69,4 @@ authentication/
 
 # Local scratch area for untracked data and files that should never be committed
 work/
+local-work/
