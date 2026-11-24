@@ -10,7 +10,7 @@ A release is a git tag on this repository. The commit it points at pins:
 
 - **Everything kept in this repository** - `compose.yml`, the router, `sead_idp`,
   the postgresql image, `sead_agent`, and the third-party images, which `compose.yml`
-  names by exact version (`mongo:4.4.30`, never `mongo:4.4` or `latest`).
+  names by exact version (`mongo:7.0.45`, never `mongo:7.0` or `latest`).
 - **The services built from repositories of their own**, through
   [`sead-release.env`](../sead-release.env) at the root:
 
@@ -133,6 +133,76 @@ or differs from the release, or if the schema is not already at the pinned tag.
 `./deploy.sh release apply` builds and starts the release of the checkout as it
 stands, and brings the database to it, for when you have checked out the tag yourself.
 
+## Upgrade steps
+
+Most releases need nothing on a server but building and starting them. One that does -
+taking MongoDB to a new major version, rewriting data, moving something on disk -
+carries that work in `releases/<release>/upgrade.sh`, next to its notes. A deploy runs
+the steps of every release newer than the one the server runs (`SEAD_RELEASE` in
+`.env`) and no newer than the one it deploys, so a server several releases behind
+gets every release's steps, oldest release first. It builds and starts only once,
+with the newest release's images.
+
+To see what a deploy would do, without changing anything but the checkout:
+
+```bash
+./deploy.sh release deploy 2026-11.1 --dry-run
+```
+
+It lists the pending steps and runs their preflight checks.
+
+The steps run in four phases, around what a deploy did already:
+
+| Phase | When | For |
+| --- | --- | --- |
+| `preflight` | before anything changes | read-only checks; when one fails, the server is as it was |
+| `pre_apply` | the old version still runs | built in first: a dump of MongoDB into `backups/`; then e.g. preparing data the old version can still read |
+| `post_build` | the new images are built, the old containers still run | work that has to happen before the new versions start, such as a database that cannot open its old data as it is |
+| `post_apply` | the new version runs | checking that the data came through |
+
+PostgreSQL is brought to the release, and everything started, between `post_build` and
+`post_apply`.
+
+**A failed step stops the deploy, and deploying again resumes there.** Each finished
+step is recorded in `release-upgrade.state` (not in git). Fix the cause and run the same
+deploy again: it skips the steps marked done, and starts with the one that failed.
+`./deploy.sh versions` shows an unfinished upgrade. The release is written to `.env`
+only once every step has run.
+
+### Writing an upgrade.sh
+
+`deploy.sh` sources the file, so it is bash, and declares its steps with `step`:
+
+```bash
+# shellcheck disable=SC2034  # read by deploy.sh
+UPGRADE_SUMMARY="One line on what the release changes"   # shown in the plan
+UPGRADE_MIN_FROM=""   # the oldest release that may upgrade straight to this one
+
+check_x()   { ...; }
+migrate_x() { ...; }
+x_is_done() { ...; }
+
+#    phase      id         description                    run        [done-check]
+step preflight  check-x    "the server can be upgraded"   check_x
+step post_build migrate-x  "move x to its new form"       migrate_x  x_is_done
+```
+
+- A step runs in a subshell with `set -e`, its release's file sourced afresh, and
+  everything in `deploy.sh` at hand: `info`, `warn`, `die`, `$COMPOSE_CMD`,
+  `$CONTAINER_TOOL`, `service_container`, the variables of `.env`, and the MongoDB
+  helpers (`mongo_eval`, `mongo_hop`, ...).
+- `upgrade_data_set key value` keeps a value for a later step, or for a rerun of this
+  one; `upgrade_data_get key` reads it back.
+- `preflight` steps only look.
+- Every other step may be run again after it failed halfway. Check the actual state
+  rather than assuming it, and give a step a done-check when its work may already be
+  done: when the check succeeds, the step is skipped.
+- A step must not count on an intermediate release's images. A database that goes up
+  one major version at a time runs each one in a temporary container, as
+  [`2026-11.1/upgrade.sh`](2026-11.1/upgrade.sh) does with `mongo_hop`. If that cannot
+  work, set `UPGRADE_MIN_FROM`; a server on an older release then deploys that one first.
+- Steps run unattended, in a background deploy: there are no questions to the operator.
+
 ## Rolling back
 
 `.env` records the release an instance runs (`SEAD_RELEASE`) and the one it ran
@@ -149,6 +219,12 @@ ALTER DATABASE sead_staging WITH ALLOW_CONNECTIONS true;
 
 After a PostgreSQL major version upgrade, going back means deploying the previous
 release with the kept `pg-data-volume.pg<old>.<timestamp>` moved back into place.
+
+Upgrade steps are not undone by deploying an older release; the deploy warns which
+releases' steps it does not undo. Each `upgrade.sh` says what it keeps for a way back
+and how to use it. Before any step changes something, MongoDB is dumped into
+`backups/mongo-<release>-<timestamp>.archive.gz`, which `mongorestore --archive --gzip
+--drop` restores.
 
 ## Seeing what runs
 
