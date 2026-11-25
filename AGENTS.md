@@ -19,6 +19,29 @@ Whenever you create a GitHub issue or post a comment on an existing issue, in an
 > **AI-generated <issue|comment>.** This <issue|comment> was written by an AI assistant (<name of the assistant, e.g. Claude Code>), based on <what the content is based on, e.g. queries against the local `sead_staging` database and the query API>. Its findings and proposed solutions have not yet been reviewed by a person, so please verify them before acting on them.
 ```
 
+## Documenting major changes
+
+Every major change to SEAD is documented in a directory of its own under `docs/` in this repository, named in snake_case after the change (e.g. `docs/administrative_unit_geographical_mapping/`). A change is major when it does any of these: adds or changes database schema or data sources, spans several repositories, takes more than one session, or involves design decisions that someone will later need to understand. The point is a paper trail: anyone should later be able to see what was done, why, and who decided.
+
+Create the directory at the start of the work and keep it up to date as the work goes on, not only at the end. Use `docs/administrative_unit_geographical_mapping/` as the model. It should contain:
+
+- `human-brief.md`: a one-page overview for people in a hurry. Very short, and visual wherever possible (tables, Mermaid charts and diagrams). It covers the goal, the status, what was done, the decisions waiting and what remains.
+- `README.md`: the current status, an index of the documents and a description of the supporting files.
+- A decision log (e.g. `05-decision-log.md`) with numbered entries (`D-01`, `D-02`, …). Each entry gives the date, who decided, the decision, its justification, and the alternatives considered. Mark who decided as one of:
+  - the person by name;
+  - the AI assistant, accepted by that person;
+  - the AI assistant, not yet reviewed.
+
+  Open questions get an entry marked as open. Superseded decisions say so; they are not deleted.
+- Further numbered documents as the work needs them, such as background and scope, sources, method, data model and implementation, results, and open issues and next steps.
+- A `supporting/` directory for the scripts, data extracts and other files the documents rely on.
+
+Record mistakes and corrections where they happened, rather than quietly rewriting history.
+
+This repository is public. Never put credentials, tokens or other secrets in `docs/`. Avoid local absolute paths and links that only one person can open. Point out anything that should be reviewed before it is committed.
+
+## Services
+
 The services in this system are:
 
 router - An Nginx server acting as the single entrypoint to all of the services in the system. Everything, all web requests performed to any service in the system, is routed through this.
