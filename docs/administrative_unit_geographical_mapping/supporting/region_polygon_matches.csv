@@ -1,0 +1,1157 @@
+location_id,name,type_id,country,cls,n_sites,status,socken_kod,socken_namn,gadm_gid,gadm_name
+3962,Tucuman,2,Argentina,bare,1,A:gadm,,,ARG.24_1,Tucumán
+1083,Halsnæs,2,Denmark,bare,1,A:gadm,,,DNK.1.17_1,Halsnæs
+988,Hovedstaden,2,Denmark,bare,3,A:gadm,,,DNK.1_1,Hovedstaden
+3952,Sjælland,2,Denmark,bare,3,A:gadm,,,DNK.4_1,Sjælland
+4077,Stevns,2,Denmark,bare,1,A:gadm,,,DNK.4.16_1,Stevns
+726,Norfolk,2,England,bare,1,A:gadm,,,GBR.1.59_1,Norfolk
+3933,Mecklenburg-Vorpommern,2,Germany,bare,1,A:gadm,,,DEU.8_1,Mecklenburg-Vorpommern
+3937,Nordrhein-Westfalen,2,Germany,bare,2,A:gadm,,,DEU.10_1,Nordrhein-Westfalen
+3941,Ostholstein,2,Germany,bare,3,A:gadm,,,DEU.15.8_1,Ostholstein
+3944,Rheinland-Pfalz,2,Germany,bare,1,A:gadm,,,DEU.11_1,Rheinland-Pfalz
+4104,Schleswig-Flensburg,2,Germany,bare,1,A:gadm,,,DEU.15.12_1,Schleswig-Flensburg
+3959,Toscana,2,Italy,bare,1,A:gadm,,,ITA.16_1,Toscana
+3927,Kurzeme,14,Latvia,bare,1,A:gadm,,,LVA.1_1,Kurzeme
+4009,Dronten,2,Netherlands,bare,1,A:gadm,,,NLD.2.2_1,Dronten
+4060,Haarlem,2,Netherlands,bare,1,A:gadm,,,NLD.9.21_1,Haarlem
+3930,Limburg,2,Netherlands,bare,1,A:gadm,,,NLD.7_1,Limburg
+723,Noord-Holland,2,Netherlands,bare,1,A:gadm,,,NLD.9_1,Noord-Holland
+1019,Åmot kommune,2,Norway,kommun,10,A:gadm,,,NOR.6.2_1,Åmot
+989,Båtsfjords kommune,2,Norway,kommun,1,A:gadm,,,NOR.5.2_1,Båtsfjord
+1099,Finnmark,2,Norway,bare,2,A:gadm,,,NOR.5_1,Finnmark
+1009,Finnmarks fylke,2,Norway,lan,7,A:gadm,,,NOR.5_1,Finnmark
+4046,Grimstad,2,Norway,bare,1,A:gadm,,,NOR.3.9_1,Grimstad
+1052,Hammerfest kommune,2,Norway,kommun,1,A:gadm,,,NOR.5.5_1,Hammerfest
+968,Hedmark fylke,2,Norway,lan,11,A:gadm,,,NOR.6_1,Hedmark
+3924,Hordaland,2,Norway,bare,1,A:gadm,,,NOR.7_1,Hordaland
+4106,Kragerø?,2,Norway,bare,1,A:gadm,,,NOR.16.6_1,Kragerø
+4107,Kristiansand?,2,Norway,bare,1,A:gadm,,,NOR.18.6_1,Kristiansand
+1078,Larvik kommune,2,Norway,kommun,1,A:gadm,,,NOR.19.6_1,Larvik
+1127,Oslo fylke,2,Norway,lan,1,A:gadm,,,NOR.12_1,Oslo
+1028,Oslo kommune,2,Norway,kommun,1,A:gadm,,,NOR.12_1,Oslo
+1032,Porsanger kommune,2,Norway,kommun,1,A:gadm,,,NOR.5.15_1,Porsanger
+1101,Porsgrunn kommune,2,Norway,kommun,2,A:gadm,,,NOR.16.11_1,Porsgrunn
+996,Sør-Varangers kommune,2,Norway,kommun,2,A:gadm,,,NOR.5.16_1,Sør-Varanger
+799,Svalbard,2,Norway,bare,1,A:gadm,,,SJM.2_1,Svalbard
+1193,Tana kommune,2,Norway,kommun,1,A:gadm,,,NOR.5.17_1,Tana
+993,Telemark fylke,2,Norway,lan,9,A:gadm,,,NOR.16_1,Telemark
+4231,Tønsberg,2,Norway,bare,3,A:gadm,,,NOR.19.14_1,Tønsberg
+1212,Troms fylke,2,Norway,lan,1,A:gadm,,,NOR.17_1,Troms
+3964,Vest-Agder,2,Norway,bare,3,A:gadm,,,NOR.18_1,Vest-Agder
+816,Vestfold,2,Norway,bare,3,A:gadm,,,NOR.19_1,Vestfold
+1199,Vestfold fylke,2,Norway,lan,1,A:gadm,,,NOR.19_1,Vestfold
+3918,Chachapoyas,2,Peru,bare,5,A:gadm,,,PER.1.3_1,Chachapoyas
+3932,Mazowieckie,2,Poland,bare,1,A:gadm,,,POL.7_1,Mazowieckie
+3943,Pomorskie,2,Poland,bare,1,A:gadm,,,POL.11_1,Pomorskie
+3953,Wielkopolskie,2,Poland,bare,3,A:gadm,,,POL.15_1,Wielkopolskie
+3967,Zachodniopomorskie,2,Poland,bare,2,A:gadm,,,POL.16_1,Zachodniopomorskie
+4003,Cluj-Napoca,2,Romania,bare,1,A:gadm,,,ROU.14.27_1,Cluj-napoca
+4167,Salaj,2,Romania,bare,1,A:gadm,,,ROU.33_1,Sălaj
+1080,Älvdalens kommun,2,Sweden,kommun,1,A:gadm,,,SWE.2.1_1,Älvdalen
+3739,Alvesta kommun,2,Sweden,kommun,1,A:gadm,,,SWE.9.2_1,Alvesta
+1409,Älvsbyns kommun,2,Sweden,kommun,1,A:gadm,,,SWE.10.1_1,Älvsbyn
+4589,Aneby kommun,2,Sweden,kommun,1,A:gadm,,,SWE.7.1_1,Aneby
+1188,Ånge kommun,2,Sweden,kommun,2,A:gadm,,,SWE.19.1_1,Ånge
+1077,Arboga kommun,2,Sweden,kommun,3,A:gadm,,,SWE.20.1_1,Arboga
+1329,Åre kommun,2,Sweden,kommun,2,A:gadm,,,SWE.6.1_1,Åre
+1240,Arvidsjaur kommun,2,Sweden,kommun,7,A:gadm,,,SWE.10.3_1,Arvidsjaur
+1103,Arvika kommun,2,Sweden,kommun,1,A:gadm,,,SWE.17.2_1,Arvika
+4642,Åtvidaberg kommun,2,Sweden,kommun,3,A:gadm,,,SWE.12.1_1,Åtvidaberg
+965,Bengtsfors kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.4_1,Bengtsfors
+1121,Bjurholms kommun,2,Sweden,kommun,1,A:gadm,,,SWE.18.2_1,Bjurholm
+3740,Borgholm kommun,2,Sweden,kommun,10,A:gadm,,,SWE.8.1_1,Borgholm
+1060,Borlänge kommun,2,Sweden,kommun,1,A:gadm,,,SWE.2.3_1,Borlänge
+4590,Boxholm kommun,2,Sweden,kommun,1,A:gadm,,,SWE.12.2_1,Boxholm
+4591,Bromölla kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.5_1,Bromölla
+4592,Burlöv kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.6_1,Burlöv
+1067,Dalarnas län,2,Sweden,lan,4,A:gadm,,,SWE.2_1,Dalarna
+4593,Ekerö kommun,2,Sweden,kommun,2,A:gadm,,,SWE.15.3_1,Ekerö
+3741,Eksjö kommun,2,Sweden,kommun,21,A:gadm,,,SWE.7.2_1,Eksjö
+3742,Emmaboda kommun,2,Sweden,kommun,2,A:gadm,,,SWE.8.2_1,Emmaboda
+1279,Enköping kommun,2,Sweden,kommun,2,A:gadm,,,SWE.16.2_1,Enköping
+1342,Eskilstuna kommun,2,Sweden,kommun,6,A:gadm,,,SWE.14.1_1,Eskilstuna
+4594,Eslöv kommun,2,Sweden,kommun,2,A:gadm,,,SWE.13.7_1,Eslöv
+933,Falköpings kommun,2,Sweden,kommun,3,A:gadm,,,SWE.21.9_1,Falköping
+4595,Finspång kommun,2,Sweden,kommun,5,A:gadm,,,SWE.12.3_1,Finspång
+4596,Flen kommun,2,Sweden,kommun,4,A:gadm,,,SWE.14.2_1,Flen
+1104,Gävleborgs län,2,Sweden,lan,12,A:gadm,,,SWE.3_1,Gävleborg
+994,Gävle kommun,2,Sweden,kommun,3,A:gadm,,,SWE.3.2_1,Gävle
+3743,Gislaved kommun,2,Sweden,kommun,2,A:gadm,,,SWE.7.3_1,Gislaved
+1412,Gnesta kommun,2,Sweden,kommun,4,A:gadm,,,SWE.14.3_1,Gnesta
+4598,Göteborg kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.11_1,Göteborg
+936,Götene kommun,2,Sweden,kommun,7,A:gadm,,,SWE.21.12_1,Götene
+4587,Gotlands län,2,Sweden,lan,63,A:gadm,,,SWE.4_1,Gotland
+1149,Grums kommun,2,Sweden,kommun,1,A:gadm,,,SWE.17.6_1,Grums
+972,Hallsbergs kommun,2,Sweden,kommun,3,A:gadm,,,SWE.11.4_1,Hallsberg
+1314,Hallstahammar kommun,2,Sweden,kommun,1,A:gadm,,,SWE.20.3_1,Hallstahammar
+833,Halmstads kommun,2,Sweden,kommun,7,A:gadm,,,SWE.5.2_1,Halmstad
+1237,Haninge kommun,2,Sweden,kommun,9,A:gadm,,,SWE.15.4_1,Haninge
+1261,Härjedalens kommun,2,Sweden,kommun,2,A:gadm,,,SWE.6.4_1,Härjedalen
+1203,Härnösands kommun,2,Sweden,kommun,2,A:gadm,,,SWE.19.2_1,Härnösand
+4601,Hässleholm kommun,2,Sweden,kommun,7,A:gadm,,,SWE.13.8_1,Hässleholm
+4599,Heby kommun,2,Sweden,kommun,4,A:gadm,,,SWE.20.4_1,Heby
+4600,Helsingborg kommun,2,Sweden,kommun,3,A:gadm,,,SWE.13.9_1,Helsingborg
+1181,Hofors kommun,2,Sweden,kommun,1,A:gadm,,,SWE.3.3_1,Hofors
+4602,Höganäs kommun,2,Sweden,kommun,4,A:gadm,,,SWE.13.10_1,Höganäs
+4603,Höör kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.11_1,Höör
+1347,Huddinge kommun,2,Sweden,kommun,2,A:gadm,,,SWE.15.5_1,Huddinge
+1302,Hudiksvall kommun,2,Sweden,kommun,4,A:gadm,,,SWE.3.4_1,Hudiksvall
+3745,Hylte kommun,2,Sweden,kommun,1,A:gadm,,,SWE.5.3_1,Hylte
+1230,Jämtlands län,2,Sweden,lan,5,A:gadm,,,SWE.6_1,Jämtland
+3747,Jönköping kommun,2,Sweden,kommun,6,A:gadm,,,SWE.7.5_1,Jönköping
+3736,Jönköpings län,2,Sweden,lan,43,A:gadm,,,SWE.7_1,Jönköping
+1257,Kalix kommun,2,Sweden,kommun,6,A:gadm,,,SWE.10.8_1,Kalix
+3748,Kalmar kommun,2,Sweden,kommun,14,A:gadm,,,SWE.8.5_1,Kalmar
+4604,Katrineholm kommun,2,Sweden,kommun,3,A:gadm,,,SWE.14.4_1,Katrineholm
+4607,Kävlinge kommun,2,Sweden,kommun,5,A:gadm,,,SWE.13.13_1,Kävlinge
+4605,Kinda kommun,2,Sweden,kommun,5,A:gadm,,,SWE.12.4_1,Kinda
+1400,Knivsta kommun,2,Sweden,kommun,3,A:gadm,,,SWE.16.4_1,Knivsta
+1128,Kramfors kommun,2,Sweden,kommun,2,A:gadm,,,SWE.19.3_1,Kramfors
+4606,Kristianstad kommun,2,Sweden,kommun,10,A:gadm,,,SWE.13.15_1,Kristianstad
+3738,Kronobergs län,2,Sweden,lan,6,A:gadm,,,SWE.9_1,Kronoberg
+906,Kungälv kommun,2,Sweden,kommun,4,A:gadm,,,SWE.21.20_1,Kungälv
+843,Kungsbacka kommun,2,Sweden,kommun,7,A:gadm,,,SWE.5.4_1,Kungsbacka
+844,Laholms kommun,2,Sweden,kommun,3,A:gadm,,,SWE.5.5_1,Laholm
+931,Lidköpings kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.22_1,Lidköping
+4608,Linköping kommun,2,Sweden,kommun,14,A:gadm,,,SWE.12.5_1,Linköping
+1225,Ljusdal kommun,2,Sweden,kommun,1,A:gadm,,,SWE.3.5_1,Ljusdal
+1239,Luleå kommun,2,Sweden,kommun,4,A:gadm,,,SWE.10.10_1,Luleå
+4609,Lund kommun,2,Sweden,kommun,7,A:gadm,,,SWE.13.18_1,Lund
+928,Lysekil kommun,2,Sweden,kommun,2,A:gadm,,,SWE.21.24_1,Lysekil
+1157,Mariestads kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.25_1,Mariestad
+976,Marks kommun,2,Sweden,kommun,3,A:gadm,,,SWE.21.26_1,Mark
+1129,Mölndals kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.28_1,Mölndal
+3751,Mönsterås kommun,2,Sweden,kommun,2,A:gadm,,,SWE.8.6_1,Mönsterås
+4611,Motala kommun,2,Sweden,kommun,4,A:gadm,,,SWE.12.7_1,Motala
+925,Munkedal kommun,2,Sweden,kommun,14,A:gadm,,,SWE.21.30_1,Munkedal
+4613,Nacka kommun,2,Sweden,kommun,1,A:gadm,,,SWE.15.8_1,Nacka
+4615,Nässjö kommun,2,Sweden,kommun,2,A:gadm,,,SWE.7.6_1,Nässjö
+982,Nordmalings kommun,2,Sweden,kommun,10,A:gadm,,,SWE.18.6_1,Nordmaling
+4614,Norrköping kommun,2,Sweden,kommun,2,A:gadm,,,SWE.12.8_1,Norrköping
+1244,Norrtälje kommun,2,Sweden,kommun,25,A:gadm,,,SWE.15.9_1,Norrtälje
+3752,Nybro kommun,2,Sweden,kommun,6,A:gadm,,,SWE.8.8_1,Nybro
+1313,Nyköping kommun,2,Sweden,kommun,10,A:gadm,,,SWE.14.5_1,Nyköping
+1346,Nykvarn kommun,2,Sweden,kommun,2,A:gadm,,,SWE.15.10_1,Nykvarn
+1306,Nynäshamn kommun,2,Sweden,kommun,5,A:gadm,,,SWE.15.11_1,Nynäshamn
+4643,Ödeshög kommun,2,Sweden,kommun,3,A:gadm,,,SWE.12.9_1,Ödeshög
+953,Örnsköldsviks kommun,2,Sweden,kommun,29,A:gadm,,,SWE.19.4_1,Örnsköldsvik
+1265,Orust kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.32_1,Orust
+3800,Osby kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.21_1,Osby
+3753,Oskarshamn kommun,2,Sweden,kommun,1,A:gadm,,,SWE.8.9_1,Oskarshamn
+4588,Östergötlands län,2,Sweden,lan,62,A:gadm,,,SWE.12_1,Östergötland
+4644,Östhammar kommun,2,Sweden,kommun,8,A:gadm,,,SWE.16.5_1,Östhammar
+4645,Östra Göinge kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.22_1,Östra Göinge
+1354,Överkalix kommun,2,Sweden,kommun,1,A:gadm,,,SWE.10.11_1,Överkalix
+1369,Övertorneå kommun,2,Sweden,kommun,1,A:gadm,,,SWE.10.12_1,Övertorneå
+4616,Perstorp kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.23_1,Perstorp
+1299,Ragunda kommun,2,Sweden,kommun,1,A:gadm,,,SWE.6.7_1,Ragunda
+1010,Sandvikens kommun,2,Sweden,kommun,1,A:gadm,,,SWE.3.9_1,Sandviken
+1413,Sigtuna kommun,2,Sweden,kommun,8,A:gadm,,,SWE.15.14_1,Sigtuna
+4617,Simrishamn kommun,2,Sweden,kommun,2,A:gadm,,,SWE.13.24_1,Simrishamn
+4618,Sjöbo kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.25_1,Sjöbo
+944,Skellefteå kommun,2,Sweden,kommun,6,A:gadm,,,SWE.18.9_1,Skellefteå
+943,Skövde kommun,2,Sweden,kommun,2,A:gadm,,,SWE.21.35_1,Skövde
+4619,Skurup kommun,2,Sweden,kommun,2,A:gadm,,,SWE.13.26_1,Skurup
+1243,Söderhamn kommun,2,Sweden,kommun,2,A:gadm,,,SWE.3.10_1,Söderhamn
+4626,Söderköping kommun,2,Sweden,kommun,1,A:gadm,,,SWE.12.10_1,Söderköping
+1249,Södermanlands län,2,Sweden,lan,36,A:gadm,,,SWE.14_1,Södermanland
+4627,Södertälje kommun,2,Sweden,kommun,1,A:gadm,,,SWE.15.15_1,Södertälje
+1006,Sollefteå kommun,2,Sweden,kommun,6,A:gadm,,,SWE.19.5_1,Sollefteå
+4620,Sollentuna kommun,2,Sweden,kommun,3,A:gadm,,,SWE.15.16_1,Sollentuna
+4621,Solna kommun,2,Sweden,kommun,2,A:gadm,,,SWE.15.17_1,Solna
+978,Sorsele kommun,2,Sweden,kommun,1,A:gadm,,,SWE.18.10_1,Sorsele
+1301,Sotenäs kommun,2,Sweden,kommun,4,A:gadm,,,SWE.21.36_1,Sotenäs
+4622,Staffanstorp kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.27_1,Staffanstorp
+918,Stenungsund kommun,2,Sweden,kommun,4,A:gadm,,,SWE.21.37_1,Stenungsund
+4623,Stockholm kommun,2,Sweden,kommun,11,A:gadm,,,SWE.15.18_1,Stockholm
+1113,Storumans kommun,2,Sweden,kommun,1,A:gadm,,,SWE.18.11_1,Storuman
+1273,Strängnäs kommun,2,Sweden,kommun,5,A:gadm,,,SWE.14.7_1,Strängnäs
+921,Strömstad kommun,2,Sweden,kommun,7,A:gadm,,,SWE.21.38_1,Strömstad
+1227,Sundsvall kommun,2,Sweden,kommun,9,A:gadm,,,SWE.19.6_1,Sundsvall
+4624,Svalöv kommun,2,Sweden,kommun,3,A:gadm,,,SWE.13.28_1,Svalöv
+4625,Svedala kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.29_1,Svedala
+1097,Svenljunga kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.39_1,Svenljunga
+4628,Tierp kommun,2,Sweden,kommun,3,A:gadm,,,SWE.16.6_1,Tierp
+1350,Timrå kommun,2,Sweden,kommun,1,A:gadm,,,SWE.19.7_1,Timrå
+4629,Tomelilla kommun,2,Sweden,kommun,3,A:gadm,,,SWE.13.30_1,Tomelilla
+4630,Torsås kommun,2,Sweden,kommun,2,A:gadm,,,SWE.8.10_1,Torsås
+1130,Tranemo kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.45_1,Tranemo
+4631,Trelleborg kommun,2,Sweden,kommun,1,A:gadm,,,SWE.13.31_1,Trelleborg
+1094,Trollhättans kommun,2,Sweden,kommun,3,A:gadm,,,SWE.21.46_1,Trollhättan
+4632,Trosa kommun,2,Sweden,kommun,1,A:gadm,,,SWE.14.8_1,Trosa
+4633,Tyresö kommun,2,Sweden,kommun,3,A:gadm,,,SWE.15.21_1,Tyresö
+923,Uddevalla kommun,2,Sweden,kommun,9,A:gadm,,,SWE.21.47_1,Uddevalla
+929,Umeå kommun,2,Sweden,kommun,37,A:gadm,,,SWE.18.12_1,Umeå
+1380,Upplands-Väsby kommun,2,Sweden,kommun,2,A:gadm,,,SWE.15.23_1,Upplands-Väsby
+1322,Uppsala kommun,2,Sweden,kommun,9,A:gadm,,,SWE.16.7_1,Uppsala
+3755,Uppvidinge kommun,2,Sweden,kommun,2,A:gadm,,,SWE.9.7_1,Uppvidinge
+4635,Vadstena kommun,2,Sweden,kommun,10,A:gadm,,,SWE.12.11_1,Vadstena
+4636,Valdemarsvik kommun,2,Sweden,kommun,3,A:gadm,,,SWE.12.12_1,Valdemarsvik
+4637,Vallentuna kommun,2,Sweden,kommun,3,A:gadm,,,SWE.15.24_1,Vallentuna
+1132,Vänersborgs kommun,2,Sweden,kommun,1,A:gadm,,,SWE.21.49_1,Vänersborg
+1017,Vara kommun,2,Sweden,kommun,2,A:gadm,,,SWE.21.50_1,Vara
+867,Varbergs kommun,2,Sweden,kommun,2,A:gadm,,,SWE.5.6_1,Varberg
+4639,Värmdö kommun,2,Sweden,kommun,1,A:gadm,,,SWE.15.25_1,Värmdö
+1202,Värmlands län,2,Sweden,lan,2,A:gadm,,,SWE.17_1,Värmland
+1340,Västerås kommun,2,Sweden,kommun,3,A:gadm,,,SWE.20.11_1,Västerås
+941,Västerbottens län,2,Sweden,lan,57,A:gadm,,,SWE.18_1,Västerbotten
+999,Västernorrlands län,2,Sweden,lan,50,A:gadm,,,SWE.19_1,Västernorrland
+3760,Västervik kommun,2,Sweden,kommun,9,A:gadm,,,SWE.8.11_1,Västervik
+909,Västra Götalands län,2,Sweden,lan,104,A:gadm,,,SWE.21_1,Västra Götaland
+3761,Växjö kommun,2,Sweden,kommun,3,A:gadm,,,SWE.9.8_1,Växjö
+3757,Vetlanda kommun,2,Sweden,kommun,2,A:gadm,,,SWE.7.11_1,Vetlanda
+1358,Vilhelmina kommun,2,Sweden,kommun,6,A:gadm,,,SWE.18.14_1,Vilhelmina
+3758,Vimmerby kommun,2,Sweden,kommun,4,A:gadm,,,SWE.8.12_1,Vimmerby
+4640,Ydre kommun,2,Sweden,kommun,6,A:gadm,,,SWE.12.13_1,Ydre
+4641,Ystad kommun,2,Sweden,kommun,10,A:gadm,,,SWE.13.33_1,Ystad
+3926,Kisarawe,2,"Tanzania, United Republic Of",bare,2,A:gadm,,,TZA.20.4_1,Kisarawe
+3916,Buhera,2,Zimbabwe,bare,1,A:gadm,,,ZWE.3.1_2,Buhera
+4267,Ådals-Liden socken,2,Sweden,socken,2,A:socken,2512,Ådals-Liden,,
+3972,Adelsö socken,2,Sweden,socken,3,A:socken,0001,Adelsö,,
+3799,Älghult socken,2,Sweden,socken,1,A:socken,0775,Älghult,,
+3852,Algutsboda socken,2,Sweden,socken,1,A:socken,0784,Algutsboda,,
+4646,Algutsrum socken,2,Sweden,socken,2,A:socken,0785,Algutsrum,,
+4647,Alseda socken,2,Sweden,socken,1,A:socken,0560,Alseda,,
+4648,Alsike socken,2,Sweden,socken,1,A:socken,0201,Alsike,,
+4649,Alskog socken,2,Sweden,socken,1,A:socken,0894,Alskog,,
+3975,Alunda socken,2,Sweden,socken,2,A:socken,0203,Alunda,,
+4650,Alva socken,2,Sweden,socken,1,A:socken,0895,Alva,,
+5136,Älvestad,2,Sweden,bare,1,A:socken,0546,Älvestad,,
+4852,Älvestad socken,2,Sweden,socken,1,A:socken,0546,Älvestad,,
+1291,Älvsby socken,2,Sweden,socken,1,A:socken,0193,Älvsby,,
+3976,Annelöv socken,2,Sweden,socken,1,A:socken,1175,Annelöv,,
+1414,Arboga socken,2,Sweden,socken,1,A:socken,3077,Arboga,,
+4865,Arby kyrka,2,Sweden,kyrka,1,A:socken,0786,Arby,,
+4651,Arby socken,2,Sweden,socken,1,A:socken,0786,Arby,,
+4273,Ärentuna socken,2,Sweden,socken,3,A:socken,0300,Ärentuna,,
+3978,Arjeplog socken,2,Sweden,socken,2,A:socken,0160,Arjeplog,,
+1037,Arnäs socken,2,Sweden,socken,1,A:socken,2450,Arnäs,,
+851,Årstads socken,2,Sweden,socken,1,A:socken,1524,Årstad,,
+1378,Arvidsjaur socken,2,Sweden,socken,5,A:socken,0161,Arvidsjaur,,
+4850,Åsbo socken,2,Sweden,socken,1,A:socken,0543,Åsbo,,
+4866,Asby,2,Sweden,bare,1,A:socken,0400,Asby,,
+4652,Asby socken,2,Sweden,socken,1,A:socken,0400,Asby,,
+3798,Åseda socken,2,Sweden,socken,1,A:socken,0774,Åseda,,
+4867,Ask,2,Sweden,bare,1,A:socken,0401,Ask,,
+3979,Askeby socken,2,Sweden,socken,2,A:socken,0402,Askeby,,
+4653,Ask socken,2,Sweden,socken,1,A:socken,0401,Ask,,
+1277,Askum socken,2,Sweden,socken,2,A:socken,1532,Askum,,
+3980,Asmundtorp socken,2,Sweden,socken,1,A:socken,1179,Asmundtorp,,
+4270,Ås socken,2,Sweden,socken,1,A:socken,0889,Ås,,
+4851,Åtvid socken,2,Sweden,socken,2,A:socken,0544,Åtvid,,
+3981,Augerum socken,2,Sweden,socken,1,A:socken,0986,Augerum,,
+4868,Baldringe,2,Sweden,bare,1,A:socken,1180,Baldringe,,
+4654,Baldringe socken,2,Sweden,socken,1,A:socken,1180,Baldringe,,
+3999,Bälinge socken,2,Sweden,socken,2,A:socken,0212,Bälinge,,
+4869,Balkåkra,2,Sweden,bare,1,A:socken,1181,Balkåkra,,
+4655,Balkåkra socken,2,Sweden,socken,1,A:socken,1181,Balkåkra,,
+4671,Bäl socken,2,Sweden,socken,1,A:socken,0906,Bäl,,
+4656,Bankekind socken,2,Sweden,socken,2,A:socken,0403,Bankekind,,
+3982,Barsebäck socken,2,Sweden,socken,1,A:socken,1183,Barsebäck,,
+995,Berghems socken,2,Sweden,socken,2,A:socken,1630,Berghem,,
+4875,Bjälbo,2,Sweden,bare,1,A:socken,0404,Bjälbo,,
+4658,Bjälbo socken,2,Sweden,socken,1,A:socken,0404,Bjälbo,,
+4876,Bjäresjö,2,Sweden,bare,1,A:socken,1188,Bjäresjö,,
+3984,Bjäresjö socken,2,Sweden,socken,3,A:socken,1188,Bjäresjö,,
+3985,Bjärtrå socken,2,Sweden,socken,1,A:socken,2452,Bjärtrå,,
+4877,Björka,2,Sweden,bare,1,A:socken,1190,Björka,,
+4659,Björka socken,2,Sweden,socken,1,A:socken,1190,Björka,,
+3986,Björklinge socken,2,Sweden,socken,2,A:socken,0207,Björklinge,,
+915,Björlanda socken,2,Sweden,socken,4,A:socken,1536,Björlanda,,
+4660,Björnlunda socken,2,Sweden,socken,2,A:socken,0312,Björnlunda,,
+1114,Bjurholms socken,2,Sweden,socken,1,A:socken,0130,Bjurholm,,
+1360,Blidö socken,2,Sweden,socken,5,A:socken,0004,Blidö,,
+3988,Blidsberg socken,2,Sweden,socken,1,A:socken,1632,Blidsberg,,
+3990,Bodum socken,2,Sweden,socken,1,A:socken,2454,Bodum,,
+4880,Bonderup,2,Sweden,bare,1,A:socken,1193,Bonderup,,
+4661,Bonderup socken,2,Sweden,socken,1,A:socken,1193,Bonderup,,
+4662,Boo socken,2,Sweden,socken,1,A:socken,0005,Boo,,
+3991,Borgeby socken,2,Sweden,socken,1,A:socken,1194,Borgeby,,
+4663,Borgholm socken,2,Sweden,socken,1,A:socken,0789,Borgholm,,
+1208,Borgsjö socken,2,Sweden,socken,2,A:socken,2455,Borgsjö,,
+1159,Borlänge socken,2,Sweden,socken,1,A:socken,2344,Borlänge,,
+4664,Bosebo socken,2,Sweden,socken,1,A:socken,0571,Bosebo,,
+991,Boteå socken,2,Sweden,socken,3,A:socken,2456,Boteå,,
+3993,Botkyrka socken,2,Sweden,socken,2,A:socken,0006,Botkyrka,,
+4886,Bromma,2,Sweden,bare,1,A:socken,1200,Bromma,,
+4666,Bromma socken,2,Sweden,socken,1,A:socken,1200,Bromma,,
+4889,Brönnestad,2,Sweden,bare,1,A:socken,1031,Brönnestad,,
+4668,Brönnestad socken,2,Sweden,socken,2,A:socken,1031,Brönnestad,,
+4888,Brunnby,2,Sweden,bare,1,A:socken,1201,Brunnby,,
+4667,Brunnby socken,2,Sweden,socken,2,A:socken,1201,Brunnby,,
+4669,Bunge socken,2,Sweden,socken,1,A:socken,0903,Bunge,,
+1070,Bunkeflo socken,2,Sweden,socken,9,A:socken,1203,Bunkeflo,,
+1071,Bureå socken,2,Sweden,socken,2,A:socken,0131,Bureå,,
+4890,Burlöv,2,Sweden,bare,1,A:socken,1204,Burlöv,,
+3998,Burlöv socken,2,Sweden,socken,2,A:socken,1204,Burlöv,,
+4670,Burs socken,2,Sweden,socken,1,A:socken,0904,Burs,,
+1123,Burträsk socken,2,Sweden,socken,1,A:socken,0132,Burträsk,,
+1255,Byske socken,2,Sweden,socken,2,A:socken,0134,Byske,,
+4005,Dagstorp socken,2,Sweden,socken,3,A:socken,1208,Dagstorp,,
+4892,Dalby,2,Sweden,bare,2,A:socken,1209,Dalby,,
+4007,Danmark socken,2,Sweden,socken,2,A:socken,0216,Danmark,,
+4672,Djursdala socken,2,Sweden,socken,1,A:socken,0794,Djursdala,,
+4896,Dörby kyrka,2,Sweden,kyrka,1,A:socken,0796,Dörby,,
+4673,Dörby socken,2,Sweden,socken,1,A:socken,0796,Dörby,,
+4010,Dunker socken,2,Sweden,socken,2,A:socken,0317,Dunker,,
+4675,Edsbro socken,2,Sweden,socken,1,A:socken,0014,Edsbro,,
+4674,Ed socken,2,Sweden,socken,1,A:socken,0012,Ed,,
+863,Eftra socken,2,Sweden,socken,1,A:socken,1438,Eftra,,
+4015,Ekerö socken,2,Sweden,socken,2,A:socken,0015,Ekerö,,
+4676,Eke socken,2,Sweden,socken,1,A:socken,0908,Eke,,
+1341,Enånger socken,2,Sweden,socken,2,A:socken,2401,Enånger,,
+4017,Endre socken,2,Sweden,socken,1,A:socken,0911,Endre,,
+4018,Enslöv socken,2,Sweden,socken,1,A:socken,1440,Enslöv,,
+1397,Eskilstuna socken,2,Sweden,socken,1,A:socken,0318,Eskilstuna,,
+4678,Etelhem socken,2,Sweden,socken,1,A:socken,0913,Etelhem,,
+1136,Falköpings socken,2,Sweden,socken,1,A:socken,1885,Falköping,,
+945,Faluns socken,2,Sweden,socken,1,A:socken,2347,Falun,,
+4902,Farhult,2,Sweden,bare,1,A:socken,1216,Farhult,,
+4679,Farhult socken,2,Sweden,socken,1,A:socken,1216,Farhult,,
+1401,Färila socken,2,Sweden,socken,1,A:socken,2403,Färila,,
+4680,Faringe socken,2,Sweden,socken,1,A:socken,0221,Faringe,,
+4910,Färlöv,2,Sweden,bare,1,A:socken,1045,Färlöv,,
+4692,Färlöv socken,2,Sweden,socken,1,A:socken,1045,Färlöv,,
+4031,Fårö socken,2,Sweden,socken,1,A:socken,0920,Fårö,,
+4681,Farstorp socken,2,Sweden,socken,1,A:socken,1039,Farstorp,,
+4023,Fellingsbro socken,2,Sweden,socken,1,A:socken,2222,Fellingsbro,,
+4682,Film socken,2,Sweden,socken,2,A:socken,0222,Film,,
+4904,Fivelstad,2,Sweden,bare,1,A:socken,0417,Fivelstad,,
+4683,Fivelstad socken,2,Sweden,socken,1,A:socken,0417,Fivelstad,,
+4024,Fjälkestad socken,2,Sweden,socken,1,A:socken,1041,Fjälkestad,,
+4025,Fjälkinge socken,2,Sweden,socken,1,A:socken,1042,Fjälkinge,,
+4026,Fjällsjö socken,2,Sweden,socken,1,A:socken,2460,Fjällsjö,,
+842,Fjärås socken,2,Sweden,socken,3,A:socken,1444,Fjärås,,
+4028,Flädie socken,2,Sweden,socken,1,A:socken,1222,Flädie,,
+4684,Fleringe socken,2,Sweden,socken,1,A:socken,0916,Fleringe,,
+4685,Flisby socken,2,Sweden,socken,1,A:socken,0586,Flisby,,
+4905,Flistad,2,Sweden,bare,1,A:socken,0418,Flistad,,
+4686,Flistad socken,2,Sweden,socken,1,A:socken,0418,Flistad,,
+4687,Floda socken,2,Sweden,socken,1,A:socken,0320,Floda,,
+4688,Follingbo socken,2,Sweden,socken,1,A:socken,0918,Follingbo,,
+3812,Föra,2,Sweden,bare,1,A:socken,0804,Föra,,
+3769,Föra socken,2,Sweden,socken,2,A:socken,0804,Föra,,
+1357,Forsa socken,2,Sweden,socken,2,A:socken,2402,Forsa,,
+914,Forshälla socken,2,Sweden,socken,2,A:socken,1544,Forshälla,,
+4689,Forsmark socken,2,Sweden,socken,1,A:socken,0224,Forsmark,,
+1016,Fors socken,2,Sweden,socken,2,A:socken,1658,Fors,,
+1328,Foss socken,2,Sweden,socken,5,A:socken,1545,Foss,,
+1266,Fresta socken,2,Sweden,socken,2,A:socken,0019,Fresta,,
+4690,Frötuna socken,2,Sweden,socken,1,A:socken,0021,Frötuna,,
+4907,Furingstad,2,Sweden,bare,1,A:socken,0420,Furingstad,,
+4691,Furingstad socken,2,Sweden,socken,1,A:socken,0420,Furingstad,,
+4693,Gammelgarn socken,2,Sweden,socken,2,A:socken,0921,Gammelgarn,,
+4694,Garde socken,2,Sweden,socken,1,A:socken,0923,Garde,,
+4703,Gårdsby socken,2,Sweden,socken,1,A:socken,0713,Gårdsby,,
+4921,Gärdslösa kyrka,2,Sweden,kyrka,1,A:socken,0813,Gärdslösa,,
+4704,Gärdslösa socken,2,Sweden,socken,1,A:socken,0813,Gärdslösa,,
+1311,Gåsinge-Dillnäs socken,2,Sweden,socken,1,A:socken,0327,Gåsinge-Dillnäs,,
+1201,Gävle socken,2,Sweden,socken,1,A:socken,2405,Gävle,,
+4914,Genarp,2,Sweden,bare,1,A:socken,1230,Genarp,,
+4695,Genarp socken,2,Sweden,socken,1,A:socken,1230,Genarp,,
+854,Getinge socken,2,Sweden,socken,1,A:socken,1448,Getinge,,
+4696,Gillberga socken,2,Sweden,socken,1,A:socken,0324,Gillberga,,
+4036,Glanshammar socken,2,Sweden,socken,2,A:socken,2225,Glanshammar,,
+4037,Glemminge socken,2,Sweden,socken,1,A:socken,1048,Glemminge,,
+4697,Glimåkra socken,2,Sweden,socken,1,A:socken,1049,Glimåkra,,
+4698,Glömminge socken,2,Sweden,socken,2,A:socken,0808,Glömminge,,
+4039,Glostorp socken,2,Sweden,socken,1,A:socken,1233,Glostorp,,
+4058,Gödestad socken,2,Sweden,socken,1,A:socken,1455,Gödestad,,
+4059,Gökhem socken,2,Sweden,socken,2,A:socken,1913,Gökhem,,
+4705,Göteborg socken,2,Sweden,socken,1,A:socken,1549,Göteborg,,
+935,Göteborgs socken,2,Sweden,socken,3,A:socken,1549,Göteborg,,
+1051,Götene socken,2,Sweden,socken,1,A:socken,1915,Götene,,
+4699,Gothem socken,2,Sweden,socken,1,A:socken,0925,Gothem,,
+1092,Götlunda socken,2,Sweden,socken,1,A:socken,2229,Götlunda,,
+4050,Gräsgård socken,2,Sweden,socken,1,A:socken,0809,Gräsgård,,
+4044,Grevie socken,2,Sweden,socken,4,A:socken,1050,Grevie,,
+4045,Grimeton socken,2,Sweden,socken,2,A:socken,1449,Grimeton,,
+4051,Grödinge socken,2,Sweden,socken,1,A:socken,0024,Grödinge,,
+4052,Grötlingbo socken,2,Sweden,socken,4,A:socken,0926,Grötlingbo,,
+1194,Grums socken,2,Sweden,socken,1,A:socken,2141,Grums,,
+1102,Grundsunda socken,2,Sweden,socken,5,A:socken,2463,Grundsunda,,
+4053,Gualöv socken,2,Sweden,socken,1,A:socken,1053,Gualöv,,
+4701,Guldrupe socken,2,Sweden,socken,1,A:socken,0927,Guldrupe,,
+4702,Gullabo socken,2,Sweden,socken,1,A:socken,0810,Gullabo,,
+1084,Gunnarskogs socken,2,Sweden,socken,1,A:socken,2143,Gunnarskog,,
+4061,Hablingbo socken,2,Sweden,socken,2,A:socken,0928,Hablingbo,,
+924,Håby socken,2,Sweden,socken,2,A:socken,1554,Håby,,
+4923,Hagby kyrka,2,Sweden,kyrka,1,A:socken,0814,Hagby,,
+3770,Hagby socken,2,Sweden,socken,1,A:socken,0814,Hagby,,
+4924,Hagebyhöga,2,Sweden,bare,1,A:socken,0428,Hagebyhöga,,
+4706,Hagebyhöga socken,2,Sweden,socken,1,A:socken,0428,Hagebyhöga,,
+4723,Häglinge socken,2,Sweden,socken,2,A:socken,1062,Häglinge,,
+4925,Hakarp,2,Sweden,bare,1,A:socken,0599,Hakarp,,
+3889,Hakarp socken,2,Sweden,socken,2,A:socken,0599,Hakarp,,
+4724,Hällestad socken,2,Sweden,socken,1,A:socken,0438,Hällestad,,
+4722,Hållnäs socken,2,Sweden,socken,1,A:socken,0240,Hållnäs,,
+4707,Hall socken,2,Sweden,socken,2,A:socken,0929,Hall,,
+4927,Halltorps kyrka,2,Sweden,kyrka,1,A:socken,0816,Halltorp,,
+4709,Halltorp socken,2,Sweden,socken,1,A:socken,0816,Halltorp,,
+836,Halmstads socken,2,Sweden,socken,1,A:socken,1456,Halmstad,,
+905,Hålta socken,2,Sweden,socken,1,A:socken,1555,Hålta,,
+4710,Hammarby socken,2,Sweden,socken,1,A:socken,0028,Hammarby,,
+4928,Hammarlunda,2,Sweden,bare,1,A:socken,1245,Hammarlunda,,
+4711,Hammarlunda socken,2,Sweden,socken,1,A:socken,1245,Hammarlunda,,
+4063,Hangvar socken,2,Sweden,socken,1,A:socken,0932,Hangvar,,
+4725,Härad socken,2,Sweden,socken,1,A:socken,0336,Härad,,
+4065,Harbo socken,2,Sweden,socken,1,A:socken,2287,Harbo,,
+4726,Härlöv socken,2,Sweden,socken,1,A:socken,0724,Härlöv,,
+4949,Härnevi,2,Sweden,bare,1,A:socken,0243,Härnevi,,
+4727,Härnevi socken,2,Sweden,socken,1,A:socken,0243,Härnevi,,
+1031,Härnösands socken,2,Sweden,socken,2,A:socken,2470,Härnösand,,
+4066,Harplinge socken,2,Sweden,socken,3,A:socken,1458,Harplinge,,
+4728,Hässleby socken,2,Sweden,socken,1,A:socken,0608,Hässleby,,
+4067,Hasslösa socken,2,Sweden,socken,1,A:socken,1923,Hasslösa,,
+875,Hasslövs socken,2,Sweden,socken,1,A:socken,1459,Hasslöv,,
+4085,Häverö socken,2,Sweden,socken,2,A:socken,0036,Häverö,,
+4930,Heda,2,Sweden,bare,1,A:socken,0430,Heda,,
+4712,Heda socken,2,Sweden,socken,1,A:socken,0430,Heda,,
+4931,Hedeskoga,2,Sweden,bare,1,A:socken,1251,Hedeskoga,,
+4070,Hedeskoga socken,2,Sweden,socken,2,A:socken,1251,Hedeskoga,,
+1167,Hedesunda socken,2,Sweden,socken,1,A:socken,2411,Hedesunda,,
+4713,Hejde socken,2,Sweden,socken,1,A:socken,0934,Hejde,,
+4714,Hellvi socken,2,Sweden,socken,1,A:socken,0937,Hellvi,,
+4073,Helsingborg socken,2,Sweden,socken,3,A:socken,1262,Helsingborg,,
+4075,Hemse socken,2,Sweden,socken,2,A:socken,0938,Hemse,,
+4936,Hofterup,2,Sweden,bare,1,A:socken,1254,Hofterup,,
+4715,Hofterup socken,2,Sweden,socken,1,A:socken,1254,Hofterup,,
+919,Hogdal socken,2,Sweden,socken,2,A:socken,1553,Hogdal,,
+4716,Holmby socken,2,Sweden,socken,1,A:socken,1255,Holmby,,
+4078,Holmedal socken,2,Sweden,socken,1,A:socken,2148,Holmedal,,
+3772,Höreda socken,2,Sweden,socken,1,A:socken,0609,Höreda,,
+4954,Hörja,2,Sweden,bare,1,A:socken,1066,Hörja,,
+4729,Hörja socken,2,Sweden,socken,1,A:socken,1066,Hörja,,
+974,Hörnefors socken,2,Sweden,socken,12,A:socken,0140,Hörnefors,,
+4937,Horns kyrka,2,Sweden,kyrka,1,A:socken,0434,Horn,,
+4717,Horn socken,2,Sweden,socken,1,A:socken,0434,Horn,,
+4938,Hossmo kyrka,2,Sweden,kyrka,1,A:socken,0818,Hossmo,,
+4080,Hossmo socken,2,Sweden,socken,2,A:socken,0818,Hossmo,,
+4939,Hov,2,Sweden,bare,1,A:socken,0435,Hov,,
+4718,Hov socken,2,Sweden,socken,1,A:socken,0435,Hov,,
+4081,Hubbo socken,2,Sweden,socken,1,A:socken,2290,Hubbo,,
+1375,Huddinge socken,2,Sweden,socken,1,A:socken,0030,Huddinge,,
+4942,Hulterstads kyrka,2,Sweden,kyrka,1,A:socken,0819,Hulterstad,,
+4082,Hulterstad socken,2,Sweden,socken,2,A:socken,0819,Hulterstad,,
+4719,Hult socken,2,Sweden,socken,2,A:socken,0603,Hult,,
+4721,Husby-Ärlinghundra socken,2,Sweden,socken,1,A:socken,0032,Husby-Ärlinghundra,,
+1186,Idre socken,2,Sweden,socken,1,A:socken,2357,Idre,,
+4956,Ingatorp,2,Sweden,bare,1,A:socken,0610,Ingatorp,,
+3773,Ingatorp socken,2,Sweden,socken,3,A:socken,0610,Ingatorp,,
+4086,Ingelstorp socken,2,Sweden,socken,5,A:socken,1070,Ingelstorp,,
+4087,Ivetofta socken,2,Sweden,socken,6,A:socken,1071,Ivetofta,,
+4731,Järlåsa socken,2,Sweden,socken,1,A:socken,0246,Järlåsa,,
+4089,Järrestad socken,2,Sweden,socken,3,A:socken,1073,Järrestad,,
+4732,Järsnäs socken,2,Sweden,socken,1,A:socken,0612,Järsnäs,,
+4733,Jönköping socken,2,Sweden,socken,2,A:socken,0614,Jönköping,,
+926,Jörlanda socken,2,Sweden,socken,1,A:socken,1558,Jörlanda,,
+4090,Jörn socken,2,Sweden,socken,1,A:socken,0141,Jörn,,
+4959,Kaga,2,Sweden,bare,1,A:socken,0443,Kaga,,
+4734,Kaga socken,2,Sweden,socken,1,A:socken,0443,Kaga,,
+3823,Källa,2,Sweden,bare,1,A:socken,0833,Källa,,
+3778,Källa socken,2,Sweden,socken,1,A:socken,0833,Källa,,
+1339,Kall socken,2,Sweden,socken,1,A:socken,2540,Kall,,
+4741,Källunge socken,2,Sweden,socken,1,A:socken,0943,Källunge,,
+3891,Kalmar socken,2,Sweden,socken,6,A:socken,0826,Kalmar,,
+1196,Karleby socken,2,Sweden,socken,2,A:socken,1951,Karleby,,
+4742,Kärnbo socken,2,Sweden,socken,1,A:socken,0343,Kärnbo,,
+5015,Kävlinge,2,Sweden,bare,1,A:socken,1289,Kävlinge,,
+4743,Kävlinge socken,2,Sweden,socken,1,A:socken,1289,Kävlinge,,
+4096,Kila socken,2,Sweden,socken,1,A:socken,2294,Kila,,
+4095,Kil socken,2,Sweden,socken,1,A:socken,2240,Kil,,
+4735,Kisa socken,2,Sweden,socken,2,A:socken,0445,Kisa,,
+4098,Kjula socken,2,Sweden,socken,1,A:socken,0342,Kjula,,
+1316,Knivsta socken,2,Sweden,socken,1,A:socken,0248,Knivsta,,
+1371,Kolbäck socken,2,Sweden,socken,1,A:socken,2295,Kolbäck,,
+4118,Köping socken,2,Sweden,socken,6,A:socken,0834,Köping,,
+4736,Kristianstad socken,2,Sweden,socken,3,A:socken,1077,Kristianstad,,
+4737,Kristvalla socken,2,Sweden,socken,1,A:socken,0831,Kristvalla,,
+4108,Krokek socken,2,Sweden,socken,1,A:socken,0449,Krokek,,
+4970,Kullerstad,2,Sweden,bare,1,A:socken,0451,Kullerstad,,
+4738,Kullerstad socken,2,Sweden,socken,1,A:socken,0451,Kullerstad,,
+4972,Kumla kyrka,2,Sweden,kyrka,1,A:socken,0452,Kumla,,
+4739,Kumla socken,2,Sweden,socken,1,A:socken,0452,Kumla,,
+4111,Kvarsebo socken,2,Sweden,socken,1,A:socken,0453,Kvarsebo,,
+853,Kvibille socken,2,Sweden,socken,1,A:socken,1471,Kvibille,,
+1242,Kville socken,2,Sweden,socken,3,A:socken,1564,Kville,,
+4112,Kvillinge socken,2,Sweden,socken,2,A:socken,0454,Kvillinge,,
+4113,Kvistofta socken,2,Sweden,socken,1,A:socken,1282,Kvistofta,,
+4115,Kyrkheddinge socken,2,Sweden,socken,1,A:socken,1283,Kyrkheddinge,,
+4740,Kyrkoköpinge socken,2,Sweden,socken,1,A:socken,1284,Kyrkoköpinge,,
+849,Laholms socken,2,Sweden,socken,1,A:socken,1474,Laholm,,
+857,Landa socken,2,Sweden,socken,1,A:socken,1475,Landa,,
+5023,Långlöts kyrka,2,Sweden,kyrka,1,A:socken,0841,Långlöt,,
+4754,Långlöt socken,2,Sweden,socken,1,A:socken,0841,Långlöt,,
+4755,Länna socken,2,Sweden,socken,2,A:socken,0049,Länna,,
+4756,Lärbro socken,2,Sweden,socken,1,A:socken,0951,Lärbro,,
+4745,Lau socken,2,Sweden,socken,1,A:socken,0944,Lau,,
+992,Ledsjö socken,2,Sweden,socken,5,A:socken,1968,Ledsjö,,
+1050,Leksbergs socken,2,Sweden,socken,1,A:socken,1969,Leksberg,,
+4746,Levide socken,2,Sweden,socken,1,A:socken,0945,Levide,,
+4122,Lilla Beddinge socken,2,Sweden,socken,2,A:socken,1292,Lilla Beddinge,,
+4747,Lilla Harrie socken,2,Sweden,socken,1,A:socken,1293,Lilla Harrie,,
+4123,Lilla Malma socken,2,Sweden,socken,2,A:socken,0346,Lilla Malma,,
+5020,Linderöd,2,Sweden,bare,1,A:socken,1083,Linderöd,,
+4749,Linderöd socken,2,Sweden,socken,1,A:socken,1083,Linderöd,,
+4748,Linde socken,2,Sweden,socken,1,A:socken,0946,Linde,,
+4750,Linköping socken,2,Sweden,socken,6,A:socken,0461,Linköping,,
+1298,Ljusterö socken,2,Sweden,socken,3,A:socken,0044,Ljusterö,,
+1270,Lockarp socken,2,Sweden,socken,4,A:socken,1296,Lockarp,,
+5024,Löddeköpinge,2,Sweden,bare,1,A:socken,1302,Löddeköpinge,,
+4132,Löddeköpinge socken,2,Sweden,socken,3,A:socken,1302,Löddeköpinge,,
+4133,Löderup socken,2,Sweden,socken,9,A:socken,1086,Löderup,,
+3892,Lofta socken,2,Sweden,socken,1,A:socken,0837,Lofta,,
+1366,Lohärad socken,2,Sweden,socken,2,A:socken,0045,Lohärad,,
+4751,Lojsta socken,2,Sweden,socken,1,A:socken,0947,Lojsta,,
+5026,Löt,2,Sweden,bare,1,A:socken,0843,Löt,,
+4757,Löt socken,2,Sweden,socken,1,A:socken,0843,Löt,,
+4134,Lövånger socken,2,Sweden,socken,2,A:socken,0144,Lövånger,,
+4752,Lovö socken,2,Sweden,socken,1,A:socken,0046,Lovö,,
+4130,Lund socken,2,Sweden,socken,3,A:socken,1298,Lund,,
+4753,Lye socken,2,Sweden,socken,1,A:socken,0950,Lye,,
+985,Månstads socken,2,Sweden,socken,1,A:socken,1740,Månstad,,
+1370,Medåker socken,2,Sweden,socken,1,A:socken,2305,Medåker,,
+4139,Mellby socken,2,Sweden,socken,1,A:socken,0632,Mellby,,
+4758,Mellösa socken,2,Sweden,socken,1,A:socken,0354,Mellösa,,
+4141,Mjällby socken,2,Sweden,socken,1,A:socken,1006,Mjällby,,
+4759,Mjölby socken,2,Sweden,socken,1,A:socken,0465,Mjölby,,
+1053,Mölndals socken,2,Sweden,socken,1,A:socken,1582,Mölndal,,
+3785,Mönsterås socken,2,Sweden,socken,1,A:socken,0848,Mönsterås,,
+5035,Mörbylånga kyrka,2,Sweden,kyrka,1,A:socken,0849,Mörbylånga,,
+4761,Mörbylånga socken,2,Sweden,socken,1,A:socken,0849,Mörbylånga,,
+1318,Morlanda socken,2,Sweden,socken,1,A:socken,1580,Morlanda,,
+5034,Mortorps kyrka,2,Sweden,kyrka,1,A:socken,0846,Mortorp,,
+3782,Mortorp socken,2,Sweden,socken,1,A:socken,0846,Mortorp,,
+4760,Motala socken,2,Sweden,socken,1,A:socken,0467,Motala,,
+4771,Näshulta socken,2,Sweden,socken,1,A:socken,0358,Näshulta,,
+4770,Näs socken,2,Sweden,socken,1,A:socken,0956,Näs,,
+937,Nätra socken,2,Sweden,socken,14,A:socken,2484,Nätra,,
+1264,Naverstad socken,2,Sweden,socken,1,A:socken,1583,Naverstad,,
+1241,Nederkalix socken,2,Sweden,socken,1,A:socken,0184,Nederkalix,,
+1221,Nederluleå socken,2,Sweden,socken,3,A:socken,0185,Nederluleå,,
+1283,Njurunda socken,2,Sweden,socken,3,A:socken,2481,Njurunda,,
+4152,Nöbbele socken,2,Sweden,socken,1,A:socken,0740,Nöbbele,,
+959,Nordmalings socken,2,Sweden,socken,10,A:socken,0146,Nordmaling,,
+1184,Norra Björke socken,2,Sweden,socken,1,A:socken,1744,Norra Björke,,
+1268,Norrala socken,2,Sweden,socken,1,A:socken,2427,Norrala,,
+4762,Norra Mellby socken,2,Sweden,socken,1,A:socken,1090,Norra Mellby,,
+4145,Norra Nöbbelöv socken,2,Sweden,socken,2,A:socken,1313,Norra Nöbbelöv,,
+5038,Norra Rörum,2,Sweden,bare,1,A:socken,1314,Norra Rörum,,
+4763,Norra Rörum socken,2,Sweden,socken,1,A:socken,1314,Norra Rörum,,
+4764,Norra Solberga socken,2,Sweden,socken,1,A:socken,0639,Norra Solberga,,
+4765,Norra Vi socken,2,Sweden,socken,1,A:socken,0469,Norra Vi,,
+4766,Norrlanda socken,2,Sweden,socken,1,A:socken,0954,Norrlanda,,
+4767,Norrtälje socken,2,Sweden,socken,1,A:socken,0058,Norrtälje,,
+5040,Norrvidinge,2,Sweden,bare,1,A:socken,1317,Norrvidinge,,
+4146,Norrvidinge socken,2,Sweden,socken,2,A:socken,1317,Norrvidinge,,
+903,Norum socken,2,Sweden,socken,3,A:socken,1584,Norum,,
+4768,Nybro socken,2,Sweden,socken,1,A:socken,4100,Nybro,,
+1222,Nyköping socken,2,Sweden,socken,6,A:socken,0357,Nyköping,,
+5041,Nykyrka,2,Sweden,bare,1,A:socken,0356,Nykyrka,,
+4769,Nykyrka socken,2,Sweden,socken,1,A:socken,0356,Nykyrka,,
+1252,Odensala socken,2,Sweden,socken,2,A:socken,0064,Odensala,,
+1074,Ödskölts socken,2,Sweden,socken,1,A:socken,1834,Ödskölt,,
+4274,Öggestorp socken,2,Sweden,socken,1,A:socken,0689,Öggestorp,,
+4275,Öja socken,2,Sweden,socken,1,A:socken,0394,Öja,,
+868,Onsala socken,2,Sweden,socken,2,A:socken,1482,Onsala,,
+5139,Örberga,2,Sweden,bare,1,A:socken,0548,Örberga,,
+4854,Örberga socken,2,Sweden,socken,1,A:socken,0548,Örberga,,
+1143,Örby socken,2,Sweden,socken,1,A:socken,1838,Örby,,
+4276,Örkelljunga socken,2,Sweden,socken,1,A:socken,1157,Örkelljunga,,
+4772,Orkesta socken,2,Sweden,socken,1,A:socken,0065,Orkesta,,
+1189,Örsås socken,2,Sweden,socken,1,A:socken,1839,Örsås,,
+4855,Örsjö socken,2,Sweden,socken,4,A:socken,0890,Örsjö,,
+4853,Ör socken,2,Sweden,socken,1,A:socken,0780,Ör,,
+4773,Oskarshamn socken,2,Sweden,socken,1,A:socken,0855,Oskarshamn,,
+4277,Ösmo socken,2,Sweden,socken,4,A:socken,0120,Ösmo,,
+4856,Östergarn socken,2,Sweden,socken,1,A:socken,0983,Östergarn,,
+1228,Österhaninge socken,2,Sweden,socken,8,A:socken,0123,Österhaninge,,
+4858,Östra Ed socken,2,Sweden,socken,1,A:socken,0550,Östra Ed,,
+4859,Östra Ryd socken,2,Sweden,socken,2,A:socken,0126,Östra Ryd,,
+4860,Östra Skrukeby socken,2,Sweden,socken,1,A:socken,0555,Östra Skrukeby,,
+4861,Östra Vingåker socken,2,Sweden,socken,1,A:socken,0396,Östra Vingåker,,
+5140,Östra Vram,2,Sweden,bare,1,A:socken,1171,Östra Vram,,
+4862,Östra Vram socken,2,Sweden,socken,1,A:socken,1171,Östra Vram,,
+1045,Ovansjö socken,2,Sweden,socken,1,A:socken,2430,Ovansjö,,
+4279,Övergran socken,2,Sweden,socken,1,A:socken,0306,Övergran,,
+4280,Överjärna socken,2,Sweden,socken,2,A:socken,0128,Överjärna,,
+1406,Överkalix socken,2,Sweden,socken,1,A:socken,0197,Överkalix,,
+1055,Överlännäs socken,2,Sweden,socken,1,A:socken,2515,Överlännäs,,
+5143,Överselö kyrka,2,Sweden,kyrka,1,A:socken,0397,Överselö,,
+4863,Överselö socken,2,Sweden,socken,1,A:socken,0397,Överselö,,
+1394,Övertorneå socken,2,Sweden,socken,1,A:socken,0199,Övertorneå,,
+5144,Övraby,2,Sweden,bare,1,A:socken,1172,Övraby,,
+4154,Oxie socken,2,Sweden,socken,3,A:socken,1320,Oxie,,
+4156,Partille socken,2,Sweden,socken,1,A:socken,1586,Partille,,
+5047,Perstorp,2,Sweden,bare,1,A:socken,1103,Perstorp,,
+4774,Perstorp socken,2,Sweden,socken,1,A:socken,1103,Perstorp,,
+1087,Råda socken,2,Sweden,socken,1,A:socken,2013,Råda,,
+1395,Ragunda socken,2,Sweden,socken,1,A:socken,2559,Ragunda,,
+932,Ramsele socken,2,Sweden,socken,1,A:socken,2485,Ramsele,,
+1404,Råneå socken,2,Sweden,socken,1,A:socken,0190,Råneå,,
+4164,Rångedala socken,2,Sweden,socken,1,A:socken,1758,Rångedala,,
+3834,Räpplinge,2,Sweden,bare,1,A:socken,0862,Räpplinge,,
+5051,Ravlunda,2,Sweden,bare,1,A:socken,1105,Ravlunda,,
+4775,Ravlunda socken,2,Sweden,socken,1,A:socken,1105,Ravlunda,,
+5052,Resmo kyrka,2,Sweden,kyrka,1,A:socken,0858,Resmo,,
+4158,Resmo socken,2,Sweden,socken,3,A:socken,0858,Resmo,,
+4776,Riala socken,2,Sweden,socken,2,A:socken,0067,Riala,,
+4777,Risinge socken,2,Sweden,socken,1,A:socken,0479,Risinge,,
+5053,Rogslösa,2,Sweden,bare,1,A:socken,0480,Rogslösa,,
+4778,Rogslösa socken,2,Sweden,socken,1,A:socken,0480,Rogslösa,,
+4779,Roma socken,2,Sweden,socken,1,A:socken,0958,Roma,,
+4165,Rörum socken,2,Sweden,socken,1,A:socken,1111,Rörum,,
+4780,Roslags-bro socken,2,Sweden,socken,1,A:socken,0069,Roslags-Bro,,
+4783,Rö socken,2,Sweden,socken,1,A:socken,0075,Rö,,
+3787,Rumskulla  socken,2,Sweden,socken,2,A:socken,0859,Rumskulla,,
+4781,Runsten socken,2,Sweden,socken,2,A:socken,0860,Runsten,,
+5057,Ryssby kyrka,2,Sweden,kyrka,1,A:socken,0861,Ryssby,,
+4782,Ryssby socken,2,Sweden,socken,1,A:socken,0861,Ryssby,,
+4203,Säby socken,2,Sweden,socken,1,A:socken,1361,Säby,,
+4784,Sanda socken,2,Sweden,socken,2,A:socken,0961,Sanda,,
+1158,Sånga socken,2,Sweden,socken,1,A:socken,2498,Sånga,,
+5089,Särslöv,2,Sweden,bare,1,A:socken,1362,Särslöv,,
+4806,Särslöv socken,2,Sweden,socken,1,A:socken,1362,Särslöv,,
+1215,Sävar socken,2,Sweden,socken,1,A:socken,0153,Sävar,,
+4172,Saxtorp socken,2,Sweden,socken,1,A:socken,1331,Saxtorp,,
+1388,Selånger socken,2,Sweden,socken,2,A:socken,2487,Selånger,,
+966,Sidensjö socken,2,Sweden,socken,9,A:socken,2488,Sidensjö,,
+4177,Silbodal socken,2,Sweden,socken,1,A:socken,2179,Silbodal,,
+4178,Silte socken,2,Sweden,socken,2,A:socken,0962,Silte,,
+4786,Sireköpinge socken,2,Sweden,socken,2,A:socken,1334,Sireköpinge,,
+1207,Själevads socken,2,Sweden,socken,3,A:socken,2489,Själevad,,
+4179,Sjonhem socken,2,Sweden,socken,1,A:socken,0963,Sjonhem,,
+5063,Sjörup,2,Sweden,bare,1,A:socken,1335,Sjörup,,
+4787,Sjörup socken,2,Sweden,socken,1,A:socken,1335,Sjörup,,
+4788,Skabersjö socken,2,Sweden,socken,1,A:socken,1336,Skabersjö,,
+4793,Skäfthammar socken,2,Sweden,socken,1,A:socken,0268,Skäfthammar,,
+4185,Skållerud socken,2,Sweden,socken,1,A:socken,1773,Skållerud,,
+4791,Skånela socken,2,Sweden,socken,1,A:socken,0085,Skånela,,
+4186,Skånes-Fagerhult socken,2,Sweden,socken,1,A:socken,1116,Skånes-Fagerhult,,
+5070,Skårby,2,Sweden,bare,1,A:socken,1343,Skårby,,
+4792,Skårby socken,2,Sweden,socken,1,A:socken,1343,Skårby,,
+1144,Skeby socken,2,Sweden,socken,1,A:socken,2025,Skeby,,
+1353,Skederid socken,2,Sweden,socken,3,A:socken,0082,Skederid,,
+4789,Skedevi socken,2,Sweden,socken,3,A:socken,0490,Skedevi,,
+920,Skee socken,2,Sweden,socken,5,A:socken,1595,Skee,,
+1088,Skellefteå socken,2,Sweden,socken,2,A:socken,0149,Skellefteå,,
+5065,Skeppsås,2,Sweden,bare,1,A:socken,0491,Skeppsås,,
+4790,Skeppsås socken,2,Sweden,socken,1,A:socken,0491,Skeppsås,,
+1259,Skog socken,2,Sweden,socken,1,A:socken,2437,Skog,,
+1134,Skogs socken,2,Sweden,socken,1,A:socken,2490,Skog,,
+4794,Skönberga socken,2,Sweden,socken,1,A:socken,0495,Skönberga,,
+1253,Skön socken,2,Sweden,socken,1,A:socken,2492,Skön,,
+1174,Skövde socken,2,Sweden,socken,1,A:socken,2030,Skövde,,
+911,Skredsvik socken,2,Sweden,socken,4,A:socken,1596,Skredsvik,,
+4183,Skummeslöv socken,2,Sweden,socken,1,A:socken,1489,Skummeslöv,,
+4184,Skuttunge socken,2,Sweden,socken,1,A:socken,0267,Skuttunge,,
+838,Slöinge socken,2,Sweden,socken,2,A:socken,1493,Slöinge,,
+4795,Smedstorp socken,2,Sweden,socken,1,A:socken,1117,Smedstorp,,
+4207,Söderåkra socken,2,Sweden,socken,2,A:socken,0868,Söderåkra,,
+4208,Södra Åkarp socken,2,Sweden,socken,1,A:socken,1369,Södra Åkarp,,
+5091,Södra Möckleby kyrka,2,Sweden,kyrka,1,A:socken,0869,Södra Möckleby,,
+4809,Södra Möckleby socken,2,Sweden,socken,1,A:socken,0869,Södra Möckleby,,
+3790,Södra Unnaryd socken,2,Sweden,socken,1,A:socken,0668,Södra Unnaryd,,
+4796,Sollentuna socken,2,Sweden,socken,3,A:socken,0087,Sollentuna,,
+4797,Solna socken,2,Sweden,socken,2,A:socken,0088,Solna,,
+4209,Sölvesborg socken,2,Sweden,socken,1,A:socken,1015,Sölvesborg,,
+858,Söndrums socken,2,Sweden,socken,1,A:socken,1503,Söndrum,,
+1111,Sorsele socken,2,Sweden,socken,1,A:socken,0151,Sorsele,,
+4798,Sorunda socken,2,Sweden,socken,1,A:socken,0089,Sorunda,,
+4799,Sproge socken,2,Sweden,socken,1,A:socken,0964,Sproge,,
+830,Stafsinge socken,2,Sweden,socken,5,A:socken,1496,Stafsinge,,
+4201,Stävie socken,2,Sweden,socken,1,A:socken,1356,Stävie,,
+4800,Stenkumla socken,2,Sweden,socken,1,A:socken,0965,Stenkumla,,
+4801,Stockholm socken,2,Sweden,socken,11,A:socken,0091,Stockholm,,
+5083,Stora Harrie,2,Sweden,bare,1,A:socken,1350,Stora Harrie,,
+4802,Stora Harrie socken,2,Sweden,socken,1,A:socken,1350,Stora Harrie,,
+4198,Stora Herrestad socken,2,Sweden,socken,2,A:socken,1351,Stora Herrestad,,
+4199,Stora Köpinge socken,2,Sweden,socken,2,A:socken,1352,Stora Köpinge,,
+4192,Stora Malm socken,2,Sweden,socken,1,A:socken,0369,Stora Malm,,
+1263,Strängnäs socken,2,Sweden,socken,3,A:socken,4001,Strängnäs,,
+4803,Strå socken,2,Sweden,socken,1,A:socken,0499,Strå,,
+1057,Styrsö socken,2,Sweden,socken,1,A:socken,1602,Styrsö,,
+4804,Sundre socken,2,Sweden,socken,1,A:socken,0968,Sundre,,
+1218,Sundsvall socken,2,Sweden,socken,1,A:socken,2497,Sundsvall,,
+4805,Svärta socken,2,Sweden,socken,1,A:socken,0372,Svärta,,
+1223,Svarteborg socken,2,Sweden,socken,8,A:socken,1603,Svarteborg,,
+4228,Tåby socken,2,Sweden,socken,1,A:socken,0514,Tåby,,
+4230,Täby socken,2,Sweden,socken,1,A:socken,2267,Täby,,
+1275,Tännäs socken,2,Sweden,socken,2,A:socken,2571,Tännäs,,
+1234,Tanum socken,2,Sweden,socken,8,A:socken,1606,Tanum,,
+4810,Tegelsmora socken,2,Sweden,socken,1,A:socken,0274,Tegelsmora,,
+4211,Tensta socken,2,Sweden,socken,2,A:socken,0275,Tensta,,
+5092,Tidersrum,2,Sweden,bare,1,A:socken,0507,Tidersrum,,
+4811,Tidersrum socken,2,Sweden,socken,1,A:socken,0507,Tidersrum,,
+4213,Tierp socken,2,Sweden,socken,3,A:socken,0276,Tierp,,
+1403,Tillinge socken,2,Sweden,socken,2,A:socken,0277,Tillinge,,
+4812,Tingstäde socken,2,Sweden,socken,1,A:socken,0969,Tingstäde,,
+848,Tjärby socken,2,Sweden,socken,1,A:socken,1504,Tjärby,,
+4214,Tofta socken,2,Sweden,socken,2,A:socken,1376,Tofta,,
+955,Tölö socken,2,Sweden,socken,1,A:socken,1510,Tölö,,
+1330,Töre socken,2,Sweden,socken,6,A:socken,0192,Töre,,
+4216,Torhamn socken,2,Sweden,socken,1,A:socken,1017,Torhamn,,
+5097,Torö kyrka,2,Sweden,kyrka,1,A:socken,0100,Torö,,
+1379,Torö socken,2,Sweden,socken,2,A:socken,0100,Torö,,
+5096,Torpa,2,Sweden,bare,2,A:socken,0511,Torpa,,
+4813,Torpa socken,2,Sweden,socken,2,A:socken,0511,Torpa,,
+1176,Torsåkers socken,2,Sweden,socken,1,A:socken,2441,Torsåker,,
+4814,Torsås socken,2,Sweden,socken,1,A:socken,0872,Torsås,,
+1236,Torsby socken,2,Sweden,socken,1,A:socken,1610,Torsby,,
+917,Torslanda socken,2,Sweden,socken,6,A:socken,1611,Torslanda,,
+6271,Torslunda socken,2,Sweden,socken,2,A:socken,0871,Torslunda,,
+4218,Tortuna socken,2,Sweden,socken,1,A:socken,2327,Tortuna,,
+1320,Tossene socken,2,Sweden,socken,2,A:socken,1612,Tossene,,
+4815,Tosterup socken,2,Sweden,socken,1,A:socken,1127,Tosterup,,
+5099,Träne,2,Sweden,bare,1,A:socken,1131,Träne,,
+4818,Träne socken,2,Sweden,socken,1,A:socken,1131,Träne,,
+5098,Trehörna,2,Sweden,bare,1,A:socken,0512,Trehörna,,
+4816,Trehörna socken,2,Sweden,socken,1,A:socken,0512,Trehörna,,
+4220,Trelleborg socken,2,Sweden,socken,5,A:socken,1380,Trelleborg,,
+4221,Trolle-Ljungby socken,2,Sweden,socken,1,A:socken,1129,Trolle-Ljungby,,
+4817,Tryserum socken,2,Sweden,socken,1,A:socken,0513,Tryserum,,
+4224,Tumbo socken,2,Sweden,socken,3,A:socken,0379,Tumbo,,
+1286,Turinge socken,2,Sweden,socken,3,A:socken,0101,Turinge,,
+865,Tvååkers socken,2,Sweden,socken,1,A:socken,1509,Tvååker,,
+4226,Tveta socken,2,Sweden,socken,1,A:socken,0102,Tveta,,
+1309,Tynderö socken,2,Sweden,socken,1,A:socken,2506,Tynderö,,
+5102,Tyresö,2,Sweden,bare,1,A:socken,0103,Tyresö,,
+4819,Tyresö socken,2,Sweden,socken,2,A:socken,0103,Tyresö,,
+4820,Ukna socken,2,Sweden,socken,5,A:socken,0876,Ukna,,
+4821,Ulrika socken,2,Sweden,socken,1,A:socken,0516,Ulrika,,
+963,Umeå socken,2,Sweden,socken,20,A:socken,0142,Umeå,,
+1276,Undersåker socken,2,Sweden,socken,1,A:socken,2572,Undersåker,,
+4193,Uppåkra socken,2,Sweden,socken,1,A:socken,1385,Uppåkra,,
+4837,Väddö socken,2,Sweden,socken,3,A:socken,0112,Väddö,,
+4256,Väderstad socken,2,Sweden,socken,1,A:socken,0530,Väderstad,,
+4822,Vadsbro socken,2,Sweden,socken,1,A:socken,0383,Vadsbro,,
+4823,Vadstena socken,2,Sweden,socken,3,A:socken,0517,Vadstena,,
+1262,Vaksala socken,2,Sweden,socken,1,A:socken,0284,Vaksala,,
+1172,Valbo socken,2,Sweden,socken,2,A:socken,2444,Valbo,,
+873,Vallda socken,2,Sweden,socken,1,A:socken,1514,Vallda,,
+4239,Valleberga socken,2,Sweden,socken,1,A:socken,1136,Valleberga,,
+4825,Vallentuna socken,2,Sweden,socken,2,A:socken,0108,Vallentuna,,
+4824,Vall socken,2,Sweden,socken,1,A:socken,0972,Vall,,
+4826,Valö socken,2,Sweden,socken,3,A:socken,0286,Valö,,
+4240,Valtorp socken,2,Sweden,socken,1,A:socken,2082,Valtorp,,
+4827,Vamlingbo socken,2,Sweden,socken,1,A:socken,0974,Vamlingbo,,
+930,Vänersborgs socken,2,Sweden,socken,1,A:socken,1821,Vänersborg,,
+4835,Vånga socken,2,Sweden,socken,1,A:socken,1145,Vånga,,
+4241,Vansö socken,2,Sweden,socken,1,A:socken,0385,Vansö,,
+4255,Vårfrukyrka socken,2,Sweden,socken,1,A:socken,0292,Vårfrukyrka,,
+5123,Värmdö kyrka,2,Sweden,kyrka,1,A:socken,0113,Värmdö,,
+4838,Värmdö socken,2,Sweden,socken,1,A:socken,0113,Värmdö,,
+4839,Värna socken,2,Sweden,socken,1,A:socken,0531,Värna,,
+870,Värö socken,2,Sweden,socken,1,A:socken,1522,Värö,,
+5124,Väsby,2,Sweden,bare,1,A:socken,1399,Väsby,,
+4840,Väsby socken,2,Sweden,socken,1,A:socken,1399,Väsby,,
+4257,Väse socken,2,Sweden,socken,1,A:socken,2200,Väse,,
+4828,Vassunda socken,2,Sweden,socken,1,A:socken,0287,Vassunda,,
+1100,Västerbitterna socken,2,Sweden,socken,2,A:socken,2097,Västerbitterna,,
+4258,Västergarn socken,2,Sweden,socken,1,A:socken,0979,Västergarn,,
+1372,Västerhaninge socken,2,Sweden,socken,2,A:socken,0114,Västerhaninge,,
+4259,Västerljung socken,2,Sweden,socken,2,A:socken,0387,Västerljung,,
+4841,Västerlövsta socken,2,Sweden,socken,1,A:socken,2332,Västerlövsta,,
+5127,Västermo kyrka,2,Sweden,kyrka,1,A:socken,0388,Västermo,,
+4842,Västermo socken,2,Sweden,socken,1,A:socken,0388,Västermo,,
+3796,Västervik socken,2,Sweden,socken,3,A:socken,0884,Västervik,,
+4843,Västra Eneby socken,2,Sweden,socken,1,A:socken,0533,Västra Eneby,,
+4262,Västra Karaby socken,2,Sweden,socken,1,A:socken,1404,Västra Karaby,,
+4844,Västra Klagstorp socken,2,Sweden,socken,1,A:socken,1405,Västra Klagstorp,,
+4845,Västra Nöbbelöv socken,2,Sweden,socken,1,A:socken,1407,Västra Nöbbelöv,,
+4263,Västra Tollstad socken,2,Sweden,socken,1,A:socken,0539,Västra Tollstad,,
+4846,Västra Vingåker socken,2,Sweden,socken,1,A:socken,0389,Västra Vingåker,,
+4847,Västra Vram socken,2,Sweden,socken,2,A:socken,1151,Västra Vram,,
+4264,Väte socken,2,Sweden,socken,1,A:socken,0981,Väte,,
+5120,Våthult,2,Sweden,bare,1,A:socken,0683,Våthult,,
+4836,Våthult socken,2,Sweden,socken,1,A:socken,0683,Våthult,,
+975,Vättlösa socken,2,Sweden,socken,1,A:socken,2101,Vättlösa,,
+5129,Väversunda,2,Sweden,bare,1,A:socken,0540,Väversunda,,
+4848,Väversunda socken,2,Sweden,socken,1,A:socken,0540,Väversunda,,
+3860,Växjö socken,2,Sweden,socken,1,A:socken,0773,Växjö,,
+4243,Vendel socken,2,Sweden,socken,1,A:socken,0289,Vendel,,
+4244,Ventlinge socken,2,Sweden,socken,1,A:socken,0878,Ventlinge,,
+4247,Veta socken,2,Sweden,socken,1,A:socken,0521,Veta,,
+3792,Vetlanda socken,2,Sweden,socken,1,A:socken,0677,Vetlanda,,
+984,Viby socken,2,Sweden,socken,3,A:socken,2268,Viby,,
+5113,Vickleby kyrka,2,Sweden,kyrka,1,A:socken,0879,Vickleby,,
+4830,Vickleby socken,2,Sweden,socken,1,A:socken,0879,Vickleby,,
+1064,Vika socken,2,Sweden,socken,1,A:socken,2388,Vika,,
+4248,Viksta socken,2,Sweden,socken,1,A:socken,0290,Viksta,,
+1377,Vilhelmina socken,2,Sweden,socken,1,A:socken,0156,Vilhelmina,,
+5115,Villie,2,Sweden,bare,1,A:socken,1393,Villie,,
+4831,Villie socken,2,Sweden,socken,1,A:socken,1393,Villie,,
+3793,Vimmerby socken,2,Sweden,socken,1,A:socken,4116,Vimmerby,,
+861,Vinbergs socken,2,Sweden,socken,2,A:socken,1520,Vinberg,,
+4250,Vintrosa socken,2,Sweden,socken,1,A:socken,2270,Vintrosa,,
+5118,Vireda,2,Sweden,bare,1,A:socken,0679,Vireda,,
+4832,Vireda socken,2,Sweden,socken,1,A:socken,0679,Vireda,,
+4251,Visby socken,2,Sweden,socken,18,A:socken,0976,Visby,,
+3794,Visingsö socken,2,Sweden,socken,2,A:socken,0680,Visingsö,,
+3795,Vissefjärda socken,2,Sweden,socken,1,A:socken,0882,Vissefjärda,,
+5119,Visseltofta,2,Sweden,bare,1,A:socken,1141,Visseltofta,,
+4833,Visseltofta socken,2,Sweden,socken,1,A:socken,1141,Visseltofta,,
+6272,Vist socken,2,Sweden,socken,1,A:socken,0525,Vist,,
+4834,Voxtorp socken,2,Sweden,socken,1,A:socken,0883,Voxtorp,,
+4252,Vreta Kloster socken,2,Sweden,socken,1,A:socken,0526,Vreta kloster,,
+907,Ytterby,2,Sweden,bare,2,A:socken,1619,Ytterby,,
+1405,Ytterby socken,2,Sweden,socken,1,A:socken,1619,Ytterby,,
+829,Falkenbergs kommun,2,Sweden,kommun,19,B:gadm_majority,,,SWE.5.1_1,Falkenberg
+916,Göteborgs kommun,2,Sweden,kommun,18,B:gadm_majority,,,SWE.21.11_1,Göteborg
+832,Hallands län,2,Sweden,lan,38,B:gadm_majority,,,SWE.5_1,Halland
+3737,Kalmar län,2,Sweden,lan,66,B:gadm_majority,,,SWE.8_1,Kalmar
+1076,Malmö kommun,2,Sweden,kommun,17,B:gadm_majority,,,SWE.13.19_1,Malmö
+4610,Mjölby kommun,2,Sweden,kommun,6,B:gadm_majority,,,SWE.12.6_1,Mjölby
+4612,Mörbylånga kommun,2,Sweden,kommun,13,B:gadm_majority,,,SWE.8.7_1,Mörbylånga
+1226,Stockholms län,2,Sweden,lan,65,B:gadm_majority,,,SWE.15_1,Stockholm
+1247,Tanum kommun,2,Sweden,kommun,13,B:gadm_majority,,,SWE.21.40_1,Tanum
+1312,Uppsala län,2,Sweden,lan,31,B:gadm_majority,,,SWE.16_1,Uppsala
+1062,Västmanlands län,2,Sweden,lan,14,B:gadm_majority,,,SWE.20_1,Västmanland
+4638,Vingåker kommun,2,Sweden,kommun,3,B:gadm_majority,,,SWE.14.9_1,Vingåker
+1146,Askims socken,2,Sweden,socken,3,B:socken_majority,1531,Askim,,
+4006,Dalby socken,2,Sweden,socken,4,B:socken_majority,1209,Dalby,,
+4013,Ekeby socken,2,Sweden,socken,4,B:socken_majority,0909,Ekeby,,
+4677,Eksjö socken,2,Sweden,socken,13,B:socken_majority,4044,Eksjö,,
+1416,Herrestad socken,2,Sweden,socken,3,B:socken_majority,0432,Herrestad,,
+4126,Litslena socken,2,Sweden,socken,3,B:socken_majority,0255,Litslena,,
+1165,Nora socken,2,Sweden,socken,4,B:socken_majority,2308,Nora,,
+1304,Norrsunda socken,2,Sweden,socken,4,B:socken_majority,0057,Norrsunda,,
+940,Övraby socken,2,Sweden,socken,3,B:socken_majority,1529,Övraby,,
+846,Skrea socken,2,Sweden,socken,9,B:socken_majority,1488,Skrea,,
+834,Snöstorps socken,2,Sweden,socken,3,B:socken_majority,1494,Snöstorp,,
+962,Stensele socken,2,Sweden,socken,3,B:socken_majority,0152,Stensele,,
+1374,Tuna socken,2,Sweden,socken,3,B:socken_majority,2505,Tuna,,
+1248,Västerås socken,2,Sweden,socken,4,B:socken_majority,2334,Västerås,,
+3750,Ljungby kommun,2,Sweden,kommun,2,C:gadm_review,,,SWE.9.4_1,Ljungby
+1383,Mellannorrlands län,2,Sweden,lan,1,C:gadm_review,,,,
+1063,Örebro län,2,Sweden,lan,3,C:gadm_review,,,,
+1290,Österåker kommun,2,Sweden,kommun,8,C:gadm_review,,,SWE.15.12_1,Österåker
+1364,Storuman kommun,2,Sweden,kommun,1,C:gadm_review,,,SWE.18.11_1,Storuman
+4634,Upplands Väsby kommun,2,Sweden,kommun,1,C:gadm_review,,,,
+3797,Ålem socken,2,Sweden,socken,2,C:socken_fuzzy,0888,Ålem,,
+4864,Alvesta Härlöv,2,Sweden,bare,1,C:socken_fuzzy,0724,Härlöv,,
+4884,Bredsätra kyrka,2,Sweden,kyrka,1,C:socken_fuzzy,0790,Bredsättra,,
+4665,Bredsätra socken,2,Sweden,socken,1,C:socken_fuzzy,0790,Bredsättra,,
+912,Bro socken,2,Sweden,socken,4,C:socken_fuzzy,1540,Bro,,
+4032,Gamla Uppsala socken,2,Sweden,socken,1,C:socken_fuzzy,0282,Uppsala,,
+4917,Glömminge prästgård,2,Sweden,bare,1,C:socken_fuzzy,0808,Glömminge,,
+4700,Gryt socken,2,Sweden,socken,2,C:socken_fuzzy,0425,Gryt,,
+4708,Halla socken,2,Sweden,socken,2,C:socken_fuzzy,0328,Halla,,
+4933,Herrestad,2,Sweden,bare,2,C:socken_fuzzy,0432,Herrestad,,
+4730,Hörsne socken,2,Sweden,socken,1,C:socken_fuzzy,0940,Hörsne-Bara,,
+4092,Karaby socken,2,Sweden,socken,1,C:socken_fuzzy,1950,Karaby,,
+4962,Klagstorp,2,Sweden,bare,1,C:socken_fuzzy,1405,Västra Klagstorp,,
+5016,Köpinge,2,Sweden,bare,1,C:socken_fuzzy,1082,Köpinge,,
+4124,Lilla Slågarp & Västra Alstad,7,Sweden,bare,1,C:socken_fuzzy,1295,Lilla Slågarp,,
+1086,Malmö socken,2,Sweden,socken,4,C:socken_fuzzy,1306,Malmö,,
+5033,Mellby,2,Sweden,bare,2,C:socken_fuzzy,0632,Mellby,,
+5043,Nöbbelöv,2,Sweden,bare,1,C:socken_fuzzy,1407,Västra Nöbbelöv,,
+5045,Orkestaby,2,Sweden,bare,1,C:socken_fuzzy,0065,Orkesta,,
+4857,Österåker socken,2,Sweden,socken,2,C:socken_fuzzy,0125,Österåker,,
+1391,Roslags-Kulla socken,2,Sweden,socken,2,C:socken_fuzzy,0070,Roslags-Kulla,,
+4785,Sandby socken,2,Sweden,socken,2,C:socken_fuzzy,0863,Sandby,,
+6266,Skänninge parish,2,Sweden,bare,1,C:socken_fuzzy,0493,Skänninge,,
+5072,Skönberga prästgård,2,Sweden,bare,1,C:socken_fuzzy,0495,Skönberga,,
+5067,Skrukeby,2,Sweden,bare,1,C:socken_fuzzy,0555,Östra Skrukeby,,
+4807,Söderby karl socken,2,Sweden,socken,2,C:socken_fuzzy,0096,Söderby-Karl,,
+5082,Stockholms Slott,2,Sweden,bare,1,C:socken_fuzzy,0091,Stockholm,,
+1200,Torbjörnstorps socken,2,Sweden,socken,1,C:socken_fuzzy,2061,Torbjörntorp,,
+997,Umeå stads socken,2,Sweden,socken,4,C:socken_fuzzy,0155,Umeå,,
+5108,Vadsbroby,2,Sweden,bare,1,C:socken_fuzzy,0383,Vadsbro,,
+4238,Vallby socken,2,Sweden,socken,2,C:socken_fuzzy,0384,Vallby,,
+5121,Vänge-Ekeby,2,Sweden,bare,1,C:socken_fuzzy,0293,Vänge,,
+1245,Vänge socken,2,Sweden,socken,2,C:socken_fuzzy,0293,Vänge,,
+4254,Vårdsberg & Linköping,7,Sweden,bare,1,C:socken_fuzzy,0461,Linköping,,
+5128,Västra Häglinge,2,Sweden,bare,1,C:socken_fuzzy,1062,Häglinge,,
+3971,Aakirkeby,14,Denmark,bare,1,D:dk_sogn,,,,
+967,Bornholms Regionskommune,2,Denmark,bare,4,D:dk_sogn,,,,
+3995,Brudager,2,Denmark,bare,2,D:dk_sogn,,,,
+3921,Fyn,18,Denmark,bare,12,D:dk_sogn,,,,
+4054,Gudbjerg,2,Denmark,bare,1,D:dk_sogn,,,,
+4055,Gudme,2,Denmark,bare,5,D:dk_sogn,,,,
+4072,Hellum,2,Denmark,bare,1,D:dk_sogn,,,,
+4074,Helsinge,2,Denmark,bare,1,D:dk_sogn,,,,
+4076,Hillerslev,2,Denmark,bare,1,D:dk_sogn,,,,
+4083,Hylke,2,Denmark,bare,1,D:dk_sogn,,,,
+4099,Klemensker,2,Denmark,bare,1,D:dk_sogn,,,,
+4105,Kragelund,2,Denmark,bare,1,D:dk_sogn,,,,
+4137,Malling,2,Denmark,bare,1,D:dk_sogn,,,,
+4143,Nyker,2,Denmark,bare,1,D:dk_sogn,,,,
+4153,Oure,2,Denmark,bare,2,D:dk_sogn,,,,
+4166,Saksild,2,Denmark,bare,1,D:dk_sogn,,,,
+4173,Sebber,2,Denmark,bare,1,D:dk_sogn,,,,
+1197,Sjælland,2,Denmark,bare,1,D:dk_sogn,,,,
+1109,Stenløse,2,Denmark,bare,1,D:dk_sogn,,,,
+1108,Torup,2,Denmark,bare,1,D:dk_sogn,,,,
+4101,Kortrijk,2,Belgium,bare,1,D:foreign_other,,,,
+3968,Åland,2,Finland,bare,4,D:foreign_other,,,,
+4020,Eura,2,Finland,bare,1,D:foreign_other,,,,
+4068,Hauho,14,Finland,bare,1,D:foreign_other,,,,
+4117,Kökar,2,Finland,bare,1,D:foreign_other,,,,
+4114,Kymi,14,Finland,bare,1,D:foreign_other,,,,
+4148,Nousiainen,2,Finland,bare,1,D:foreign_other,,,,
+3987,Pori,2,Finland,bare,1,D:foreign_other,,,,
+4163,Rovaniemi,2,Finland,bare,1,D:foreign_other,,,,
+4169,Saltvik,2,Finland,bare,2,D:foreign_other,,,,
+3939,Uusimaa,2,Finland,bare,2,D:foreign_other,,,FIN.4.1_1,Eastern Uusimaa
+3919,Varsinais-Suomi,14,Finland,bare,3,D:foreign_other,,,,
+1138,Lappland,2,Finland|Sweden,bare,20,D:foreign_other,,,FIN.2_1,Lapland
+3989,Blowatz,2,Germany,bare,1,D:foreign_other,,,,
+4049,Grube,2,Germany,bare,1,D:foreign_other,,,,
+3938,Nordrhein-Westfalen or Belgium,7,Germany/Belgium?,bare,1,D:foreign_other,,,,
+3913,Attica,2,Greece,bare,1,D:foreign_other,,,,
+4189,Sligeach,2,Ireland,bare,3,D:foreign_other,,,,
+4001,Carunia,2,Italy,bare,1,D:foreign_other,,,,
+4142,Murlo,2,Italy,bare,1,D:foreign_other,,,,
+3951,Sicilia,2,Italy,bare,1,D:foreign_other,,,ITA.15_1,Sicily
+3925,Isle of Bazaruto,18,Mozambique,bare,1,D:foreign_other,,,,
+3940,Oost Flevoland,14,Netherlands,bare,1,D:foreign_other,,,NLD.2_1,Flevoland
+4012,Eidanger,2,Norway,bare,4,D:foreign_other,,,,
+4064,Haram,2,Norway,bare,1,D:foreign_other,,,,
+964,Kvitøya,7,Norway,bare,1,D:foreign_other,,,,
+1198,Målselvs kommune,2,Norway,kommun,1,D:foreign_other,,,NOR.17.16_1,Målselv
+1124,Øvre Dividal National Park,7,Norway,bare,1,D:foreign_other,,,,
+3955,Sunnmøre,16,Norway,bare,1,D:foreign_other,,,,
+1164,Sværholthalvøya,7,Norway,bare,1,D:foreign_other,,,,
+4217,Torridal,16,Norway,bare,1,D:foreign_other,,,,
+1155,Varanger peninsula,7,Norway,bare,1,D:foreign_other,,,,
+3961,Transilvania,16,Romania,bare,1,D:foreign_other,,,,
+736,Novgorodskaya Oblast,2,Russian Federation,bare,2,D:foreign_other,,,,
+952,Ångermanland,2,Sweden,bare,58,D:landskap,,,,
+601,Blekinge,2,Sweden,bare,5,D:landskap,,,,
+910,Bohuslän,2,Sweden,bare,70,D:landskap,,,,
+626,Dalarna,2,Sweden,bare,5,D:landskap,,,,
+980,Dalsland,2,Sweden,bare,2,D:landskap,,,,
+977,Gästrikland,2,Sweden,bare,6,D:landskap,,,,
+4597,Gotland kommun,2,Sweden,kommun,63,D:landskap,,,SWE.4.1_1,Gotland
+660,Halland,2,Sweden,bare,51,D:landskap,,,,
+661,Hälsingland,2,Sweden,bare,8,D:landskap,,,,
+1323,Härjedalen,2,Sweden,bare,2,D:landskap,,,,
+1238,Jämtland,2,Sweden,bare,3,D:landskap,,,,
+1154,Medelpad,2,Sweden,bare,13,D:landskap,,,,
+958,Närke,2,Sweden,bare,12,D:landskap,,,,
+728,Norrbotten,2,Sweden,bare,19,D:landskap,,,,
+3888,Öland,18,Sweden,bare,38,D:landskap,,,,
+3969,Östergötland,2,Sweden,bare,78,D:landskap,,,,
+780,Skåne,2,Sweden,bare,175,D:landskap,,,,
+1004,Skåne län,2,Sweden,lan,81,D:landskap,,,SWE.13_1,Skåne
+781,Småland,7,Sweden,bare,107,D:landskap,,,,
+1246,Södermanland,2,Sweden,bare,80,D:landskap,,,,
+806,Uppland,2,Sweden,bare,135,D:landskap,,,,
+990,Värmland,2,Sweden,bare,6,D:landskap,,,,
+812,Västerbotten,2,Sweden,bare,47,D:landskap,,,,
+813,Västergötland,2,Sweden,bare,44,D:landskap,,,,
+1231,Västmanland,2,Sweden,bare,6,D:landskap,,,,
+3973,Almby socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4261,Badelunda socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4894,Domkyrkan,2,Sweden,kyrka,2,D:socken_absorbed,,,,
+4014,Eker socken,2,Sweden,socken,2,D:socken_absorbed,,,,
+4029,Fosie socken,2,Sweden,socken,2,D:socken_absorbed,,,,
+4720,Husby-Sjuhundra socken,2,Sweden,socken,1,D:socken_absorbed,0031,Husby-Sjuhundra,,
+4960,Kalmar Voxtorps kyrka,2,Sweden,kyrka,1,D:socken_absorbed,,,,
+4744,Landeryd socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4129,Los socken,2,Sweden,socken,1,D:socken_absorbed,2423,Los,,
+1163,Lundby socken,2,Sweden,socken,2,D:socken_absorbed,,,,
+4278,Östra Eneby socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4171,Sandseryd socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+922,Uddevalla socken,2,Sweden,socken,2,D:socken_absorbed,1615,Uddevalla,,
+939,Våmbs socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+1043,Västra Frölunda socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4829,Vickelby socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+4849,Ydre socken,2,Sweden,socken,1,D:socken_absorbed,,,,
+5132,Åby,2,Sweden,bare,1,E:not_region,0887,Åby,,
+5133,Åkarp,2,Sweden,bare,1,E:not_region,,,,
+5137,Ängstigen,2,Sweden,bare,1,E:not_region,,,,
+5134,Åsby,2,Sweden,bare,1,E:not_region,,,,
+5135,Åtvidaberg kyrkeby,2,Sweden,bare,1,E:not_region,,,,
+4870,Bankekinds kyrkojord,2,Sweden,bare,1,E:not_region,,,,
+4872,Bergsjöholm,2,Sweden,bare,1,E:not_region,,,,
+4873,Billsta,2,Sweden,bare,1,E:not_region,,,,
+4874,Biskopshuset,2,Sweden,bare,1,E:not_region,,,,
+4878,Björkenäs,2,Sweden,bare,1,E:not_region,,,,
+4879,Björklunda,2,Sweden,bare,1,E:not_region,,,,
+4881,Borntorp,2,Sweden,bare,1,E:not_region,,,,
+4882,Bosarp,2,Sweden,bare,1,E:not_region,1197,Bosarp,,
+4883,Brahekyrkogården,2,Sweden,bare,1,E:not_region,,,,
+1119,Bredbogsmyran,7,Sweden,bare,1,E:not_region,,,,
+4885,Broarp,2,Sweden,bare,1,E:not_region,,,,
+3994,Bromölla,2,Sweden,bare,1,E:not_region,,,,
+4887,Bruksgatan,2,Sweden,bare,1,E:not_region,,,,
+4891,Burmeister,2,Sweden,bare,1,E:not_region,,,,
+4893,Djurgården,2,Sweden,bare,2,E:not_region,,,,
+4895,Drottningholm,2,Sweden,bare,1,E:not_region,,,,
+1106,Edsholms borg,14,Sweden,bare,1,E:not_region,,,,
+4897,Ekeberg,2,Sweden,bare,1,E:not_region,,,,
+4898,Ekeby,2,Sweden,bare,1,E:not_region,0218,Ekeby,,
+4899,Ekelunda,2,Sweden,bare,1,E:not_region,,,,
+4900,Erikskulle,2,Sweden,bare,1,E:not_region,,,,
+4901,Eriksöre,2,Sweden,bare,1,E:not_region,,,,
+4908,Fåglarp,2,Sweden,bare,1,E:not_region,,,,
+4909,Fångö,2,Sweden,bare,1,E:not_region,,,,
+4903,Finntorp,2,Sweden,bare,1,E:not_region,,,,
+1079,Fisksjömyran,7,Sweden,bare,1,E:not_region,,,,
+3811,Flöxhult,2,Sweden,bare,1,E:not_region,,,,
+4911,Föllingsö,2,Sweden,bare,1,E:not_region,,,,
+4906,Friggestad,2,Sweden,bare,1,E:not_region,,,,
+4920,Gällstaö Gård,2,Sweden,bare,1,E:not_region,,,,
+4912,Gamla staden,2,Sweden,bare,2,E:not_region,,,,
+4913,Gamla vägen,2,Sweden,bare,1,E:not_region,,,,
+4915,Gimo,2,Sweden,bare,1,E:not_region,,,,
+4916,Glimmingehus,2,Sweden,bare,1,E:not_region,,,,
+4919,Grävsten,2,Sweden,bare,1,E:not_region,,,,
+4918,Grisslehamn,2,Sweden,bare,1,E:not_region,,,,
+4922,Haga,2,Sweden,bare,1,E:not_region,0026,Haga,,
+4926,Hala,2,Sweden,bare,1,E:not_region,,,,
+4947,Häljaryd,2,Sweden,bare,1,E:not_region,,,,
+4948,Härads kyrkby,2,Sweden,bare,1,E:not_region,,,,
+4929,Harpsund,2,Sweden,bare,1,E:not_region,,,,
+4946,Hårsbäck Sör,2,Sweden,bare,1,E:not_region,,,,
+4950,Häverö prästgård,2,Sweden,bare,1,E:not_region,,,,
+4951,Hävla,2,Sweden,bare,2,E:not_region,,,,
+4932,Helgelsens gård,2,Sweden,bare,1,E:not_region,,,,
+4934,Herrökna gård,2,Sweden,bare,1,E:not_region,,,,
+4935,Hester,2,Sweden,bare,1,E:not_region,,,,
+1046,Högberget,7,Sweden,bare,1,E:not_region,,,,
+4952,Högsjö gård,2,Sweden,bare,1,E:not_region,,,,
+4953,Hönstorp,2,Sweden,bare,1,E:not_region,,,,
+4940,Hovdala,2,Sweden,bare,1,E:not_region,,,,
+4941,Hulla,2,Sweden,bare,1,E:not_region,,,,
+4943,Hults kulla,2,Sweden,bare,1,E:not_region,,,,
+4944,Hunnebergsgatan,2,Sweden,bare,1,E:not_region,,,,
+4945,Husby,2,Sweden,bare,1,E:not_region,2356,Husby,,
+4955,Ilnestorp,2,Sweden,bare,1,E:not_region,,,,
+4957,Innerstaden,2,Sweden,bare,1,E:not_region,,,,
+1002,Jovan ekopark,7,Sweden,bare,2,E:not_region,,,,
+4958,Juteboda,2,Sweden,bare,1,E:not_region,,,,
+4961,Karkebo,2,Sweden,bare,1,E:not_region,,,,
+4963,Klosterkyrkan,2,Sweden,bare,1,E:not_region,,,,
+4964,Kolberga,2,Sweden,bare,1,E:not_region,,,,
+4965,Kolstad,2,Sweden,bare,1,E:not_region,,,,
+4969,Kråkvik,2,Sweden,bare,1,E:not_region,,,,
+4966,Krapperup,2,Sweden,bare,1,E:not_region,,,,
+4967,Krogsfall,2,Sweden,bare,1,E:not_region,,,,
+4968,Krusenberg,2,Sweden,bare,1,E:not_region,,,,
+4971,Kulltorp,2,Sweden,bare,1,E:not_region,0618,Kulltorp,,
+4973,Kumlabykyrkogården,2,Sweden,bare,1,E:not_region,,,,
+4974,Kummelnäs gård,2,Sweden,bare,1,E:not_region,,,,
+4975,Kvarteret Allön,2,Sweden,kvarter,1,E:not_region,,,,
+4976,Kvarteret Almen,2,Sweden,kvarter,1,E:not_region,,,,
+4977,Kvarteret Ankaret,2,Sweden,kvarter,1,E:not_region,,,,
+4978,Kvarteret Apoteket,2,Sweden,kvarter,1,E:not_region,,,,
+4982,Kvarteret Båtsmannen,2,Sweden,kvarter,1,E:not_region,,,,
+4979,Kvarteret Bokbindaren,2,Sweden,kvarter,1,E:not_region,,,,
+4980,Kvarteret Boktryckaren,2,Sweden,kvarter,1,E:not_region,,,,
+4981,Kvarteret Borgmästaren,2,Sweden,kvarter,1,E:not_region,,,,
+4983,Kvarteret Ciselören,2,Sweden,kvarter,1,E:not_region,,,,
+4984,Kvarteret Fältskären,2,Sweden,kvarter,1,E:not_region,,,,
+4985,Kvarteret Färgaren,2,Sweden,kvarter,1,E:not_region,,,,
+4986,Kvarteret Garvaren,2,Sweden,kvarter,1,E:not_region,,,,
+4987,Kvarteret Gråmunkeholmen,2,Sweden,kvarter,3,E:not_region,,,,
+4988,Kvarteret Guldsmeden,2,Sweden,kvarter,1,E:not_region,,,,
+4989,Kvarteret Hattmakaren,2,Sweden,kvarter,1,E:not_region,,,,
+4990,Kvarteret Innerstaden,2,Sweden,kvarter,2,E:not_region,,,,
+4991,Kvarteret Kaplanen,2,Sweden,kvarter,1,E:not_region,,,,
+4992,Kvarteret Kassamannen,2,Sweden,kvarter,1,E:not_region,,,,
+4993,Kvarteret Kommendanten,2,Sweden,kvarter,1,E:not_region,,,,
+4995,Kvarteret Kopparslagaren,2,Sweden,kvarter,1,E:not_region,,,,
+4996,Kvarteret Krögaren,2,Sweden,kvarter,1,E:not_region,,,,
+4997,Kvarteret Laboratorn,2,Sweden,kvarter,1,E:not_region,,,,
+4998,Kvarteret Museet,2,Sweden,kvarter,1,E:not_region,,,,
+4999,Kvarteret Norge,2,Sweden,kvarter,1,E:not_region,,,,
+5000,Kvarteret Novisen,2,Sweden,kvarter,1,E:not_region,,,,
+5001,Kvarteret Ormen,2,Sweden,kvarter,1,E:not_region,,,,
+5002,Kvarteret Orren,2,Sweden,kvarter,1,E:not_region,,,,
+5012,Kvarteret Östergötland,2,Sweden,kvarter,1,E:not_region,,,,
+5003,Kvarteret Prelaten,2,Sweden,kvarter,1,E:not_region,,,,
+5004,Kvarteret Priorn,2,Sweden,kvarter,1,E:not_region,,,,
+5006,Kvarteret Rådhuset,2,Sweden,kvarter,1,E:not_region,,,,
+5005,Kvarteret Repslagaren,2,Sweden,kvarter,1,E:not_region,,,,
+5007,Kvarteret Skonaren,2,Sweden,kvarter,1,E:not_region,,,,
+5008,Kvarteret Specksrum,2,Sweden,kvarter,1,E:not_region,,,,
+5009,Kvarteret Svartbrodern,2,Sweden,kvarter,1,E:not_region,,,,
+5010,Kvarteret Vaxblekaren,2,Sweden,kvarter,1,E:not_region,,,,
+5011,Kvarteret Vinskänken,2,Sweden,kvarter,1,E:not_region,,,,
+5013,Kvilla,2,Sweden,bare,1,E:not_region,,,,
+5014,Kyrkogården,2,Sweden,bare,34,E:not_region,,,,
+5017,Landsnora kvarn,2,Sweden,bare,1,E:not_region,,,,
+961,Långmyran,7,Sweden,bare,1,E:not_region,,,,
+5018,Lilla Björkudden,2,Sweden,bare,1,E:not_region,,,,
+3824,Lilla Rätö,2,Sweden,bare,1,E:not_region,,,,
+5019,Lilla Rotsunda,2,Sweden,bare,1,E:not_region,,,,
+5025,Lögla,2,Sweden,bare,1,E:not_region,,,,
+5021,Lohärads Prästgård,2,Sweden,bare,1,E:not_region,,,,
+5022,Lopperstad,2,Sweden,bare,1,E:not_region,,,,
+5027,Lövö,2,Sweden,bare,1,E:not_region,,,,
+3826,Måcketorp,2,Sweden,bare,1,E:not_region,,,,
+5028,Malmstorp,2,Sweden,bare,1,E:not_region,,,,
+5029,Mariannelund,2,Sweden,bare,1,E:not_region,,,,
+5030,Marsjö,2,Sweden,bare,1,E:not_region,,,,
+5031,Masten,2,Sweden,bare,1,E:not_region,,,,
+5032,Mellanköpinge,2,Sweden,bare,1,E:not_region,,,,
+5042,Näs,2,Sweden,bare,1,E:not_region,2004,Näs,,
+5036,Noors Herrgård,2,Sweden,bare,1,E:not_region,,,,
+5037,Nora Prästgård,2,Sweden,bare,1,E:not_region,,,,
+5039,Norra Åsum,2,Sweden,bare,1,E:not_region,,,,
+1048,Nya Lödöse,14,Sweden,bare,1,E:not_region,,,,
+5138,Öndal,2,Sweden,bare,1,E:not_region,,,,
+5044,Onkel Adamsgården,2,Sweden,bare,1,E:not_region,,,,
+5141,Östrabo,2,Sweden,bare,1,E:not_region,,,,
+5046,Ottenby,2,Sweden,bare,1,E:not_region,,,,
+1179,Porsmyran,7,Sweden,bare,1,E:not_region,,,,
+5048,Prästgården,2,Sweden,bare,2,E:not_region,,,,
+5049,Prästtorp,2,Sweden,bare,1,E:not_region,,,,
+5050,Qvarnarp,2,Sweden,bare,1,E:not_region,,,,
+5054,Roma kloster,2,Sweden,bare,1,E:not_region,,,,
+5055,Rundelsgränd,2,Sweden,bare,1,E:not_region,,,,
+5056,Rydboholm,2,Sweden,bare,2,E:not_region,,,,
+5058,Ryssebo,2,Sweden,bare,1,E:not_region,,,,
+5059,Salvarp,2,Sweden,bare,1,E:not_region,,,,
+5060,Sandby,2,Sweden,bare,1,E:not_region,0863,Sandby,,
+5061,Sandemar,2,Sweden,bare,1,E:not_region,,,,
+5062,Sankta Maria,2,Sweden,bare,1,E:not_region,,,,
+5090,Sättra,2,Sweden,bare,1,E:not_region,,,,
+5068,Skålsta,2,Sweden,bare,1,E:not_region,,,,
+5069,Skånsta,2,Sweden,bare,1,E:not_region,,,,
+5064,Skedshult,2,Sweden,bare,3,E:not_region,,,,
+5071,Sköldsborg,2,Sweden,bare,1,E:not_region,,,,
+5066,Skrickerum,2,Sweden,bare,1,E:not_region,,,,
+5077,Slättåkra,2,Sweden,bare,1,E:not_region,1492,Slättåkra,,
+5073,Slattefors,2,Sweden,bare,1,E:not_region,,,,
+5074,Slevringe,2,Sweden,bare,1,E:not_region,,,,
+5075,Slottsfogden,2,Sweden,bare,1,E:not_region,,,,
+5076,Slottsskogen,2,Sweden,bare,1,E:not_region,,,,
+5078,Sonnorp,2,Sweden,bare,1,E:not_region,,,,
+5079,Specksrum,2,Sweden,bare,1,E:not_region,,,,
+5080,Stallbacksvägen 8,2,Sweden,bare,1,E:not_region,,,,
+5087,Stämmeryd,2,Sweden,bare,1,E:not_region,,,,
+5086,Stångsmåla,2,Sweden,bare,1,E:not_region,,,,
+5081,Steninge,2,Sweden,bare,1,E:not_region,1498,Steninge,,
+5084,Stora Hulterska,2,Sweden,bare,1,E:not_region,,,,
+1066,Stormosslidberget,7,Sweden,bare,1,E:not_region,,,,
+5085,Strandskogen,2,Sweden,bare,1,E:not_region,,,,
+5088,Svaneberg,2,Sweden,bare,1,E:not_region,,,,
+1013,Svartsjömyran,7,Sweden,bare,1,E:not_region,,,,
+5103,Tångerda,2,Sweden,bare,1,E:not_region,,,,
+5093,Tingshustorget,2,Sweden,bare,1,E:not_region,,,,
+5094,Tofta,2,Sweden,bare,1,E:not_region,0970,Tofta,,
+5095,Torhult,2,Sweden,bare,1,E:not_region,,,,
+5104,Törnbotten,2,Sweden,bare,1,E:not_region,,,,
+5100,Tumbo Prästgård,2,Sweden,bare,1,E:not_region,,,,
+5101,Tvartorp,2,Sweden,bare,1,E:not_region,,,,
+5105,Uggelbo,2,Sweden,bare,1,E:not_region,,,,
+5106,Ulrika,2,Sweden,bare,1,E:not_region,0516,Ulrika,,
+5107,Ulriksdal,2,Sweden,bare,1,E:not_region,,,,
+5109,Vallsnäs,2,Sweden,bare,1,E:not_region,,,,
+5110,Vanserum,2,Sweden,bare,1,E:not_region,,,,
+5122,Värdshusbacken,2,Sweden,bare,1,E:not_region,,,,
+5125,Väsby kvarn,2,Sweden,bare,1,E:not_region,,,,
+5126,Väster Lakbäck,2,Sweden,bare,1,E:not_region,,,,
+4586,Västra Götaland,7,Sweden,bare,1,E:not_region,,,,
+5130,Växjö Ör,2,Sweden,bare,1,E:not_region,,,,
+5111,Verksgatan,2,Sweden,bare,1,E:not_region,,,,
+5112,Viby gård,2,Sweden,bare,1,E:not_region,,,,
+5114,Viggeby,2,Sweden,bare,1,E:not_region,,,,
+3847,Viggesbo,2,Sweden,bare,1,E:not_region,,,,
+5116,Vingåker-Kvarngölet,2,Sweden,bare,1,E:not_region,,,,
+5117,Vippröste,2,Sweden,bare,1,E:not_region,,,,
+5131,Ydre Vi-Smedstorp,2,Sweden,bare,1,E:not_region,,,,

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Region → map boundaries: the short version</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1f2328; --muted: #646b73; --line: #e3e0d8; --card: #ffffff;
+    --hover: #f2efe7; --accent: #2b6cb0;
+    --linked: #3f8f5a; --nonregion: #9a9488; --missing: #d08a1f;
+    --inside: #2f8a4f; --outside: #c43d3d; --nocoord: #9a9488;
+    --land: #ece8de; --landline: #cfc9bb;
+    --b0: #2b6cb0; --b1: #b0472b; --b2: #6b46c1; --b3: #2c7a7b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181b; --fg: #e6e3dc; --muted: #9aa0a6; --line: #2e3237; --card: #1d2024;
+      --hover: #262a2f; --accent: #6aa7e8;
+      --linked: #5bb37a; --nonregion: #7d7869; --missing: #e3a33e;
+      --inside: #5bc27f; --outside: #ec6b6b;
+      --land: #23272b; --landline: #3a3f45;
+      --b0: #6aa7e8; --b1: #e88a6a; --b2: #a88be8; --b3: #5ec4c4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 1.8rem; margin: 0 0 8px; line-height: 1.2; }
+  h2 { font-size: 1.2rem; margin: 40px 0 12px; }
+  p { margin: 8px 0; }
+  .goal { font-size: 1.05rem; }
+  .hint { color: var(--muted); font-size: .9rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em;
+         background: var(--hover); padding: 1px 5px; border-radius: 4px; }
+
+  /* Pie */
+  .pie-wrap { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+  .pie-wrap svg { width: 220px; height: 220px; flex: none; }
+  .pie-wrap path { cursor: pointer; stroke: var(--bg); stroke-width: 2; transition: transform .15s; transform-origin: 110px 110px; }
+  .pie-wrap path:hover, .pie-wrap path:focus { transform: scale(1.04); outline: none; }
+  .legend { display: grid; gap: 6px; }
+  .legend button { display: flex; align-items: center; gap: 10px; text-align: left; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+  .legend .n { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3ch; text-align: right; }
+
+  /* Flow */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .flow .box { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: .92rem; }
+  .flow .q { border-style: dashed; }
+  .flow .arrow { color: var(--muted); }
+  .flow .ends { display: grid; gap: 6px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.click { cursor: pointer; }
+  tr.click:hover, tr.click:focus-visible { background: var(--hover); outline: none; }
+  tr.click td:last-child { white-space: nowrap; }
+  tr.click td:last-child::after, li.click::after { content: " ›"; color: var(--accent); font-weight: 700; }
+
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+  button:hover, button:focus-visible { background: var(--hover); outline: none; }
+
+  ul.todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  ul.todo li { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  ul.todo li.click { cursor: pointer; }
+  ul.todo li.click:hover, ul.todo li.click:focus-visible { background: var(--hover); outline: none; }
+  .status { margin-top: 32px; padding: 12px 16px; border-left: 4px solid var(--missing); background: var(--card); border-radius: 4px; }
+  footer { margin-top: 32px; color: var(--muted); font-size: .85rem; }
+  a { color: var(--accent); }
+
+  /* Panel */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  aside { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: var(--bg);
+          border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.12);
+          transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+  aside.open { transform: none; }
+  .panel-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+  .panel-head h3 { margin: 0 32px 4px 0; font-size: 1.2rem; }
+  .panel-head .close { position: absolute; top: 12px; right: 12px; font-size: 1.4rem; line-height: 1; padding: 4px 10px; }
+  .panel-head input { width: 100%; margin-top: 10px; padding: 7px 10px; border: 1px solid var(--line);
+                      border-radius: 6px; background: var(--card); color: var(--fg); font: inherit; }
+  .panel-body { overflow-y: auto; padding: 8px 12px 40px; flex: 1; }
+  .group-title { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+                 margin: 18px 8px 4px; font-weight: 600; }
+  .group-title .n { font-weight: 400; }
+  details.loc { border-bottom: 1px solid var(--line); }
+  details.loc summary { list-style: none; cursor: pointer; padding: 8px; border-radius: 6px; display: flex; gap: 10px; align-items: baseline; }
+  details.loc summary::-webkit-details-marker { display: none; }
+  details.loc summary::before { content: "▸"; color: var(--muted); width: 1ch; flex: none; }
+  details.loc[open] summary::before { content: "▾"; }
+  details.loc summary:hover { background: var(--hover); }
+  .loc-name { font-weight: 600; }
+  .loc-meta { color: var(--muted); font-size: .85rem; margin-left: auto; white-space: nowrap; }
+  .loc-detail { padding: 4px 8px 16px 26px; font-size: .92rem; }
+  .loc-detail .note { color: var(--muted); font-style: italic; }
+  .boundary { margin: 6px 0; display: flex; gap: 8px; align-items: baseline; }
+  .boundary .chip { width: 12px; height: 12px; border-radius: 2px; flex: none; transform: translateY(1px); }
+  .map { width: 100%; aspect-ratio: 4 / 3; background: var(--card); border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; display: block; }
+  .sites { list-style: none; padding: 0; margin: 4px 0 0; columns: 2; column-gap: 16px; font-size: .88rem; }
+  .sites li { break-inside: avoid; padding: 1px 0; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .pill { display: inline-block; font-size: .78rem; padding: 1px 8px; border-radius: 10px; background: var(--hover); color: var(--muted); }
+  .empty { color: var(--muted); padding: 16px 8px; }
+  @media (max-width: 560px) { .sites { columns: 1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Region → map boundaries: the short version</h1>
+  <p class="goal"><strong>Goal:</strong> every region in SEAD's <em>Region</em> filter gets a boundary polygon, so it can be drawn on the map.</p>
+  <p class="hint">Anything with a › can be clicked to see the regions behind the number.</p>
+
+  <h2>Where we are</h2>
+  <div class="pie-wrap">
+    <svg id="pie" viewBox="0 0 220 220" role="img" aria-label="1,156 regions in the filter"></svg>
+    <div>
+      <p><strong>1,156 regions in the filter</strong></p>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+
+  <h2>How it works</h2>
+  <div class="flow" aria-label="Matching flow">
+    <div class="box">SEAD region<br><span class="hint">e.g. "Dalby socken"</span></div>
+    <span class="arrow">→</span>
+    <div class="box">Find boundaries<br>with that name</div>
+    <span class="arrow">→</span>
+    <div class="box q">Do the region's<br>sites lie inside?</div>
+    <span class="arrow">→</span>
+    <div class="ends">
+      <div class="box">yes: ✅ link it</div>
+      <div class="box">no: ⚠️ flag for review</div>
+    </div>
+  </div>
+  <p>Name alone isn't enough: Sweden has several parishes called <em>Dalby</em>. The sites decide which one is meant.
+     <button data-list="name:Dalby" class="hint" style="color:var(--accent)">See Dalby ›</button></p>
+
+  <h2>Where the boundaries come from</h2>
+  <table>
+    <thead><tr><th>What</th><th>Source</th><th class="num">Regions</th></tr></thead>
+    <tbody>
+      <tr class="click" tabindex="0" data-list="src:lm_socken_stad"><td>Swedish parishes (socknar)</td><td>Lantmäteriet</td><td class="num" data-count="src:lm_socken_stad"></td></tr>
+      <tr class="click" tabindex="0" data-list="src:lm_landskap"><td>Swedish provinces (landskap)</td><td>built from Lantmäteriet's parishes</td><td class="num" data-count="src:lm_landskap"></td></tr>
+      <tr class="click" tabindex="0" data-list="src:gadm"><td>Kommuner, län, foreign regions</td><td>GADM</td><td class="num" data-count="src:gadm"></td></tr>
+    </tbody>
+  </table>
+  <p>Polygons live in a new database schema, <strong><code>lookup</code></strong>. The links live in a new table, <strong><code>tbl_location_boundaries</code></strong>.</p>
+
+  <h2>How sure are we?</h2>
+  <table>
+    <thead><tr><th>Match</th><th>Meaning</th><th class="num">Regions</th></tr></thead>
+    <tbody id="match-rows"></tbody>
+  </table>
+
+  <h2>Needs a decision</h2>
+  <table>
+    <thead><tr><th>#</th><th>Question</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr class="click" tabindex="0" data-list="decision:landskap"><td>1</td><td>Does "Norrbotten" mean the <strong>landskap</strong> or the <strong>län</strong>? The sites suggest the län for Norrbotten, Västerbotten and Östergötland.</td><td>Johan</td></tr>
+      <tr class="click" tabindex="0" data-list="missing:danish"><td>2</td><td>How to get <strong>Danish parish</strong> boundaries (<span data-count="missing:danish"></span> regions)? They now require a Datafordeler login.</td><td>Johan</td></tr>
+      <tr><td>3</td><td>Create the GitHub issues and <strong>commit</strong> the work?</td><td>Johan</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Still to do</h2>
+  <ul class="todo">
+    <li class="click" tabindex="0" data-list="missing:foreign">🌍 <span data-count="missing:foreign"></span> foreign regions: get boundaries from OpenStreetMap</li>
+    <li class="click" tabindex="0" data-list="missing:swedish">🏙️ <span data-count="missing:swedish_parish"></span> Swedish parishes swallowed by towns before 1976 (e.g. Fosie, Badelunda), and Mellannorrlands län: no boundary source yet</li>
+    <li class="click" tabindex="0" data-list="nonregion">🏠 <span data-count="nonregion"></span> non-regions: decide case by case what they should be in SEAD</li>
+    <li>🗺️ Show the boundaries on the map (API and client)</li>
+  </ul>
+
+  <div class="status"><strong>Status:</strong> nothing committed or deployed yet. Everything is set up in a local test copy, <code>sead_staging_region_mapping</code>.</div>
+
+  <footer>
+    Details: <a href="../human-brief.md">human-brief.md</a> · <a href="../README.md">README</a> · <a href="../05-decision-log.md">Decision log</a><br>
+    Data from the local copy <code>sead_staging_region_mapping</code>, 2026-11-25. The maps use simplified outlines, so a site near a border can look a little off.
+    Regenerate <code>data.js</code> with <code>supporting/export_human_brief_data.sql</code> and <code>supporting/build_human_brief_data.py</code>.
+  </footer>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside id="panel" aria-hidden="true" role="dialog" aria-labelledby="panel-title">
+  <div class="panel-head">
+    <h3 id="panel-title"></h3>
+    <div class="hint" id="panel-desc"></div>
+    <button class="close" id="panel-close" aria-label="Close">×</button>
+    <input id="panel-search" type="search" placeholder="Filter by name…" aria-label="Filter by name">
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</aside>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.BRIEF_DATA;
+const byId = new Map(D.locations.map(l => [l.id, l]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => n.toLocaleString("en-US");
+
+const MATCH = [
+  ["confirmed", "✅ confirmed", "name matches, all sites inside"],
+  ["shared_name", "🔀 shared name", "one SEAD region covers several same-named places"],
+  ["majority", "🟡 majority", "most sites inside"],
+  ["manual", "✍️ manual", "picked by hand, with a note"],
+  ["name_variant", "🔤 name variant", "spelling differs, sites confirm it"],
+  ["sites_disagree", "⚠️ sites disagree", "name matches, sites are elsewhere"],
+];
+const MATCH_LABEL = Object.fromEntries(MATCH.map(m => [m[0], m[1]]));
+const SOURCE_LABEL = {
+  lm_socken_stad: "Lantmäteriet parish or town",
+  lm_landskap: "Province (landskap)",
+  gadm_adm_0: "GADM country",
+  gadm_adm_1: "GADM level 1 (län, fylke…)",
+  gadm_adm_2: "GADM level 2 (kommun…)",
+};
+const MISSING_LABEL = {
+  danish: "Danish: needs DAGI parish polygons",
+  foreign: "Foreign: needs OpenStreetMap or another source",
+  swedish_parish: "Swedish parish not separate in Lantmäteriet's data",
+  other: "Not a real administrative unit",
+};
+// Why each Swedish location has no boundary yet (from 07-open-issues-and-next-steps.md).
+const WHY = {
+  3973: "Absorbed into the town of Örebro before 1976.",
+  4014: "Absorbed into the town of Örebro before 1976.",
+  4261: "Absorbed into the town of Västerås before 1976.",
+  4029: "Absorbed into the town of Malmö before 1976.",
+  4032: "Absorbed into the town of Uppsala before 1976.",
+  4744: "Absorbed into the town of Linköping before 1976.",
+  4278: "Absorbed into the town of Norrköping before 1976.",
+  939:  "Absorbed into the town of Skövde before 1976.",
+  1043: "Absorbed into the town of Göteborg before 1976.",
+  1163: "Its two sites are in Göteborg and Västerås, so two different Lundby parishes.",
+  4171: "Renamed Norrahammar (code 0641). Candidate for a manual link.",
+  4829: "A spelling variant of Vickleby (0879). Its site lies in Torslunda.",
+  4849: "A härad (hundred), not a parish. There is no härad layer.",
+  1383: "Not a real län.",
+  4001: "Not yet identified.",
+};
+
+// ---- Lists ---------------------------------------------------------------
+const all = D.locations;
+const LISTS = {
+  linked:    () => ({ title: "Linked to a boundary", desc: "Regions with at least one boundary, grouped by how sure the match is.",
+                      items: all.filter(l => l.group === "linked"), groupBy: l => MATCH_LABEL[l.sub], order: MATCH.map(m => m[1]) }),
+  nonregion: () => ({ title: "Not really a region", desc: "Farms, churches, streets and other places in the Region filter. To be handled by hand, case by case.",
+                      items: all.filter(l => l.group === "nonregion"), groupBy: l => l.sub }),
+  missing:   () => ({ title: "Still missing a boundary", desc: "Administrative units with no boundary source yet.",
+                      items: all.filter(l => l.group === "missing"), groupBy: l => MISSING_LABEL[l.sub],
+                      order: Object.values(MISSING_LABEL) }),
+  "missing:danish":  () => ({ title: "Danish regions without a boundary", desc: "Mostly parishes (sogne). Their polygons are at Datafordeler, which needs a login.",
+                      items: all.filter(l => l.sub === "danish") }),
+  "missing:foreign": () => ({ title: "Foreign regions without a boundary", desc: "To be fetched from OpenStreetMap, grouped by country.",
+                      items: all.filter(l => l.sub === "foreign"), groupBy: l => l.country }),
+  "missing:swedish": () => ({ title: "Swedish regions without a boundary", desc: "Parishes not kept separate in Lantmäteriet's data, and one non-existent län.",
+                      items: all.filter(l => l.sub === "swedish_parish" || l.sub === "other"), groupBy: l => MISSING_LABEL[l.sub] }),
+  "decision:landskap": () => ({ title: "Landskap or län?", desc: "These bare names are both a province (landskap) and a county (län). They are currently linked to the landskap. Open a row to see which sites fall outside it.",
+                      items: all.filter(l => ["Norrbotten", "Västerbotten", "Östergötland", "Södermanland", "Halland"].includes(l.name)) }),
+};
+for (const [code, label, meaning] of MATCH)
+  LISTS["mt:" + code] = () => ({ title: label, desc: meaning + ".", items: all.filter(l => l.group === "linked" && l.sub === code) });
+for (const src of Object.keys(SOURCE_LABEL))
+  LISTS["src:" + src] = () => ({ title: SOURCE_LABEL[src], desc: "", items: all.filter(l => l.links.some(k => k.src === src)) });
+LISTS["src:lm_socken_stad"] = () => ({ title: "Swedish parishes (socknar)", desc: "Linked to Lantmäteriet's Socken och stad, grouped by match type.",
+  items: all.filter(l => l.links.some(k => k.src === "lm_socken_stad")), groupBy: l => MATCH_LABEL[l.sub], order: MATCH.map(m => m[1]) });
+LISTS["src:lm_landskap"] = () => ({ title: "Swedish provinces (landskap)", desc: "Each built as the union of its parishes.",
+  items: all.filter(l => l.links.some(k => k.src === "lm_landskap")) });
+LISTS["src:gadm"] = () => ({ title: "Kommuner, län and foreign regions (GADM)", desc: "Linked to GADM 4.1, grouped by country.",
+  items: all.filter(l => l.links.some(k => k.src.startsWith("gadm_"))), groupBy: l => l.country });
+
+function getList(key) {
+  if (key.startsWith("name:")) {
+    const n = key.slice(5).toLowerCase();
+    return { title: `Regions called "${key.slice(5)}"`, desc: "", items: all.filter(l => l.name.toLowerCase().startsWith(n)) };
+  }
+  return LISTS[key] ? LISTS[key]() : null;
+}
+
+// ---- Counts, pie, match table -------------------------------------------
+document.querySelectorAll("[data-count]").forEach(el => {
+  const k = el.dataset.count;
+  const list = k === "missing:swedish_parish" ? all.filter(l => l.sub === "swedish_parish") : getList(k);
+  el.textContent = fmt((list.items || list).length);
+});
+
+const PIE = [
+  ["linked", "Linked to a boundary", "var(--linked)"],
+  ["nonregion", "Not really a region (farm, church, street…)", "var(--nonregion)"],
+  ["missing", "Still missing a boundary", "var(--missing)"],
+];
+(function drawPie() {
+  const svg = document.getElementById("pie"), legend = document.getElementById("legend");
+  const total = all.length;
+  let a0 = -Math.PI / 2;
+  for (const [key, label, color] of PIE) {
+    const n = all.filter(l => l.group === key).length;
+    const a1 = a0 + 2 * Math.PI * n / total;
+    const p = (a, r) => `${110 + r * Math.cos(a)},${110 + r * Math.sin(a)}`;
+    const large = a1 - a0 > Math.PI ? 1 : 0;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M${p(a0, 104)} A104,104 0 ${large} 1 ${p(a1, 104)} L${p(a1, 52)} A52,52 0 ${large} 0 ${p(a0, 52)} Z`);
+    path.setAttribute("fill", color);
+    path.setAttribute("tabindex", "0");
+    path.dataset.list = key;
+    path.innerHTML = `<title>${esc(label)}: ${fmt(n)}</title>`;
+    svg.appendChild(path);
+    legend.insertAdjacentHTML("beforeend",
+      `<button data-list="${key}"><span class="swatch" style="background:${color}"></span><span class="n">${fmt(n)}</span><span>${esc(label)} ›</span></button>`);
+    a0 = a1;
+  }
+  svg.insertAdjacentHTML("beforeend", `<text x="110" y="106" text-anchor="middle" font-size="26" font-weight="700" fill="currentColor">${fmt(total)}</text>
+    <text x="110" y="128" text-anchor="middle" font-size="12" fill="currentColor" opacity=".6">regions</text>`);
+})();
+
+document.getElementById("match-rows").innerHTML = MATCH.map(([code, label, meaning]) =>
+  `<tr class="click" tabindex="0" data-list="mt:${code}"><td>${label}</td><td>${esc(meaning)}</td>
+   <td class="num">${fmt(all.filter(l => l.group === "linked" && l.sub === code).length)}</td></tr>`).join("");
+
+// ---- Panel -----------------------------------------------------------------
+const panel = document.getElementById("panel"), scrim = document.getElementById("scrim");
+const body = document.getElementById("panel-body"), search = document.getElementById("panel-search");
+let current = null;
+
+function openList(key, push = true) {
+  const list = getList(key);
+  if (!list) return;
+  current = list;
+  document.getElementById("panel-title").textContent = `${list.title} (${fmt(list.items.length)})`;
+  document.getElementById("panel-desc").textContent = list.desc;
+  search.value = "";
+  renderItems();
+  panel.classList.add("open"); scrim.classList.add("open"); panel.setAttribute("aria-hidden", "false");
+  body.scrollTop = 0;
+  if (push) history.replaceState(null, "", "#" + encodeURIComponent(key));
+  if (list.items.length <= 3) body.querySelectorAll("details").forEach(d => d.open = true);
+}
+function closePanel() {
+  panel.classList.remove("open"); scrim.classList.remove("open"); panel.setAttribute("aria-hidden", "true");
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
+function renderItems() {
+  const q = search.value.trim().toLowerCase();
+  const items = current.items.filter(l => !q || l.name.toLowerCase().includes(q))
+                             .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  if (!items.length) { body.innerHTML = `<div class="empty">No regions match.</div>`; return; }
+  const groups = new Map();
+  for (const l of items) {
+    const g = current.groupBy ? current.groupBy(l) : "";
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(l);
+  }
+  let keys = [...groups.keys()];
+  if (current.order) keys.sort((a, b) => current.order.indexOf(a) - current.order.indexOf(b));
+  else keys.sort((a, b) => groups.get(b).length - groups.get(a).length || a.localeCompare(b));
+  body.innerHTML = keys.map(g =>
+    (g ? `<div class="group-title">${esc(g)} <span class="n">· ${groups.get(g).length}</span></div>` : "") +
+    groups.get(g).map(l => `<details class="loc" data-id="${l.id}"><summary><span class="loc-name">${esc(l.name)}</span>
+      <span class="loc-meta">${esc(l.country)} · ${l.sites.length} site${l.sites.length === 1 ? "" : "s"}</span></summary>
+      <div class="loc-detail"></div></details>`).join("")).join("");
+}
+
+body.addEventListener("toggle", e => {
+  const d = e.target;
+  if (d.tagName !== "DETAILS" || !d.open) return;
+  const det = d.querySelector(".loc-detail");
+  if (!det.dataset.done) { det.innerHTML = detailHtml(byId.get(+d.dataset.id)); det.dataset.done = 1; }
+}, true);
+
+const BCOLORS = ["var(--b0)", "var(--b1)", "var(--b2)", "var(--b3)"];
+function detailHtml(l) {
+  const inside = new Set(l.links.flatMap(k => k.inside));
+  let h = "";
+  if (l.group === "linked") {
+    h += `<div><span class="pill">${MATCH_LABEL[l.sub]}</span></div>`;
+    l.links.forEach((k, i) => {
+      const b = D.boundaries[k.src + ":" + k.key];
+      const withCoord = l.sites.filter(s => D.sites[s] && D.sites[s][1] != null).length;
+      h += `<div class="boundary"><span class="chip" style="background:${BCOLORS[i % 4]}"></span><div>
+        <strong>${esc(b ? b.label : k.key)}</strong> <span class="hint">${esc(SOURCE_LABEL[k.src])}, key <code>${esc(k.key)}</code></span><br>
+        ${k.inside.length} of ${withCoord} sites inside${k.note ? ` · <span class="note">${esc(k.note)}</span>` : ""}</div></div>`;
+    });
+  } else if (l.group === "nonregion") {
+    h += `<div><span class="pill">${esc(l.sub)}</span></div>`;
+  } else {
+    h += `<div><span class="pill">No boundary yet</span>${WHY[l.id] ? ` <span class="note">${esc(WHY[l.id])}</span>` : ""}</div>`;
+  }
+  h += mapSvg(l, inside);
+  h += `<ul class="sites">` + l.sites.map(id => {
+    const s = D.sites[id];
+    if (!s) return "";
+    const noCoord = s[1] == null;
+    const color = noCoord ? "var(--nocoord)" : l.group !== "linked" ? "var(--accent)" : inside.has(id) ? "var(--inside)" : "var(--outside)";
+    const tip = noCoord ? "no coordinates" : l.group !== "linked" ? "" : inside.has(id) ? "inside" : "outside";
+    return `<li title="${tip}"><span class="dot" style="background:${color}"></span><a href="https://browser.sead.se/site/${id}" target="_blank" rel="noopener">${esc(s[0])}</a>${noCoord ? ' <span class="hint">(no coordinates)</span>' : ""}</li>`;
+  }).join("") + `</ul>`;
+  if (l.group === "linked") h += `<p class="hint"><span class="dot" style="background:var(--inside)"></span>inside the boundary (within 2 km) &nbsp; <span class="dot" style="background:var(--outside)"></span>outside</p>`;
+  return h;
+}
+
+// ---- Mini map (equirectangular, longitude scaled by cos(latitude)) ----------
+function eachCoord(geom, f) {
+  const walk = c => typeof c[0] === "number" ? f(c) : c.forEach(walk);
+  walk(geom.coordinates);
+}
+function pathD(geom, P) {
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
+  return polys.map(poly => poly.map(ring => "M" + ring.map(c => P(c).map(v => v.toFixed(4)).join(",")).join("L") + "Z").join("")).join("");
+}
+function mapSvg(l, inside) {
+  const geoms = l.links.map(k => D.boundaries[k.src + ":" + k.key]).filter(Boolean).map(b => b.geom);
+  const pts = l.sites.map(id => [id, D.sites[id]]).filter(([, s]) => s && s[1] != null);
+  if (!geoms.length && !pts.length) return "";
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const ext = c => { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]); };
+  geoms.forEach(g => eachCoord(g, ext));
+  pts.forEach(([, s]) => ext([s[2], s[1]]));
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180);
+  let w = (x1 - x0) * k, hgt = y1 - y0;
+  const minSpan = geoms.length ? 0.25 : 1.2;  // without a boundary, show enough surroundings to recognise the place
+  if (w < minSpan && hgt < minSpan) { const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2; x0 = cx - minSpan / k / 2; x1 = cx + minSpan / k / 2; y0 = cy - minSpan / 2; y1 = cy + minSpan / 2; }
+  w = (x1 - x0) * k; hgt = y1 - y0;
+  // Fit into a 4:3 frame with a margin.
+  const pad = 0.08;
+  let W = w * (1 + 2 * pad), H = hgt * (1 + 2 * pad);
+  if (W / H > 4 / 3) H = W * 3 / 4; else W = H * 4 / 3;
+  const cx = (x0 + x1) / 2 * k, cy = -(y0 + y1) / 2;
+  const vb = [cx - W / 2, cy - H / 2, W, H];
+  const P = c => [c[0] * k, -c[1]];
+  const r = W * 0.008;
+  let s = `<svg class="map" viewBox="${vb.join(" ")}" preserveAspectRatio="xMidYMid meet" aria-label="Map of ${esc(l.name)}">`;
+  for (const g of Object.values(D.context))
+    s += `<path d="${pathD(g, P)}" fill="var(--land)" stroke="var(--landline)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  geoms.forEach((g, i) => s += `<path d="${pathD(g, P)}" fill="${BCOLORS[i % 4]}" fill-opacity=".14" stroke="${BCOLORS[i % 4]}" stroke-width="2" vector-effect="non-scaling-stroke"/>`);
+  for (const [id, site] of pts) {
+    const [x, y] = P([site[2], site[1]]);
+    const color = l.group !== "linked" ? "var(--accent)" : inside.has(id) ? "var(--inside)" : "var(--outside)";
+    s += `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" fill-opacity=".9" stroke="var(--card)" stroke-width="1" vector-effect="non-scaling-stroke"><title>${esc(site[0])}</title></circle>`;
+  }
+  return s + `</svg>`;
+}
+
+// ---- Wiring --------------------------------------------------------------------
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-list]");
+  if (t) openList(t.dataset.list);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && panel.classList.contains("open")) closePanel();
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-list]") && e.target.tagName !== "BUTTON") {
+    e.preventDefault(); openList(e.target.dataset.list);
+  }
+});
+scrim.addEventListener("click", closePanel);
+document.getElementById("panel-close").addEventListener("click", closePanel);
+search.addEventListener("input", renderItems);
+if (location.hash.length > 1) openList(decodeURIComponent(location.hash.slice(1)), false);
+</script>
+</body>
+</html>

@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Region review: sites' regions and region boundaries</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1f2328; --muted: #646b73; --line: #e3e0d8; --card: #ffffff; --hover: #f2efe7;
+    --accent: #2b6cb0; --yes: #2f8a4f; --no: #c43d3d; --move: #b7791f; --site: #d9822b; --ok: #2f8a4f; --grey: #8c8c8c;
+    --cand: #2b6cb0; --sugg: #b0472b; --warnbg: #fdf3e1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181b; --fg: #e6e3dc; --muted: #9aa0a6; --line: #2e3237; --card: #1d2024; --hover: #262a2f;
+      --accent: #6aa7e8; --yes: #5bc27f; --no: #ec6b6b; --move: #e0a84a; --site: #f0a04b; --ok: #5bc27f; --grey: #8f969c;
+      --cand: #6aa7e8; --sugg: #e88a6a; --warnbg: #3a3020;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .top-inner { max-width: 1180px; margin: 0 auto; padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .top-inner h1 { font-size: 1.1rem; margin: 0; margin-right: auto; }
+  .tabs { max-width: 1180px; margin: 0 auto; padding: 0 20px; display: flex; gap: 4px; }
+  .tabs button { border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 8px 16px; background: var(--hover); font-weight: 600; }
+  .tabs button.on { background: var(--card); color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  .tabs .n { font-weight: 400; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+  input[type=text], input[type=search] { font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  button, .btn { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover, .btn:hover { background: var(--hover); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: var(--hover); font-weight: 600; }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px 20px 80px; }
+  details.intro { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; }
+  details.intro summary { cursor: pointer; font-weight: 600; }
+  .intro p { margin: 6px 0; }
+  table.t { border-collapse: collapse; margin: 4px 0 8px; font-size: .9rem; }
+  table.t td, table.t th { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.t th { font-size: .8rem; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 16px 0; overflow: hidden; scroll-margin-top: 120px; }
+  .card.done { opacity: .8; }
+  .card.flash { box-shadow: 0 0 0 3px var(--accent); }
+  .card-head { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .card-head h2 { font-size: 1.05rem; margin: 0; }
+  .card-head .right { margin-left: auto; font-size: .88rem; color: var(--muted); }
+  .card-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+  @media (max-width: 880px) { .card-body { grid-template-columns: 1fr; } }
+  .map-wrap { padding: 12px; border-right: 1px solid var(--line); }
+  .map { width: 100%; aspect-ratio: 4 / 3; display: block; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  .zoom { margin-top: 6px; }
+  .legend { list-style: none; margin: 8px 0 0; padding: 0; font-size: .82rem; display: grid; gap: 3px; }
+  .legend li { display: flex; gap: 8px; align-items: baseline; }
+  .legend .sw { flex: none; width: 22px; display: inline-flex; justify-content: center; }
+  .legend i { display: inline-block; width: 20px; height: 0; border-top: 2.5px solid; transform: translateY(-3px); }
+  .legend i.dash { border-top-style: dashed; }
+  .legend b.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  .body-r { padding: 8px 14px 14px; }
+  h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 8px 0 4px; }
+  .hint { background: var(--warnbg); border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: .88rem; }
+  .reg { border-bottom: 1px solid var(--line); padding: 7px 2px; }
+  .reg:last-child { border-bottom: 0; }
+  .reg-head { display: flex; gap: 8px; align-items: baseline; }
+  .st { flex: none; width: 20px; text-align: center; font-weight: 700; }
+  .st.ok { color: var(--ok); } .st.bad { color: var(--no); } .st.na { color: var(--grey); }
+  .reg-name { font-weight: 600; }
+  .reg-info { font-size: .84rem; color: var(--muted); margin-left: 28px; }
+  .question { margin: 6px 0 2px 28px; }
+  .question .q { font-weight: 600; font-size: .92rem; margin-bottom: 4px; }
+  .decide { display: grid; gap: 5px; }
+  .decide label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; user-select: none; font-size: .9rem; }
+  .decide input[type=checkbox] { margin: 0; width: 16px; height: 16px; flex: none; }
+  .decide .lt { flex: 1; min-width: 0; }
+  .decide .effect { flex-basis: 100%; margin-left: 24px; font-size: .78rem; color: var(--muted); }
+  .layers { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; font-size: .82rem; align-items: center; }
+  .layers button { padding: 2px 8px; font-size: .82rem; border-radius: 12px; opacity: .55; }
+  .layers button.on { opacity: 1; font-weight: 600; background: var(--hover); }
+  .layers .sw { display: inline-block; width: 14px; height: 0; border-top: 3px solid; margin-right: 5px; transform: translateY(-3px); }
+  .layers .sw.dash { border-top-style: dashed; }
+  .reg-name[data-layer] { cursor: pointer; text-decoration: underline dotted; }
+  .decide label.keep:has(input:checked), .decide label.link:has(input:checked), .decide label.add:has(input:checked) { border-color: var(--yes); background: color-mix(in srgb, var(--yes) 14%, transparent); }
+  .decide label.replace:has(input:checked) { border-color: var(--move); background: color-mix(in srgb, var(--move) 15%, transparent); }
+  .decide label.other:has(input:checked), .decide label.coords:has(input:checked), .decide label.nolink:has(input:checked) { border-color: var(--no); background: color-mix(in srgb, var(--no) 12%, transparent); }
+  .stamp { font-size: .76rem; color: var(--muted); margin-top: 3px; }
+  details.adds { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 6px; }
+  details.adds summary { cursor: pointer; font-size: .9rem; }
+  .ev { font-size: .88rem; margin: 2px 0; }
+  .ev ul { margin: 2px 0 4px; padding-left: 20px; }
+  .summary { font-weight: 600; margin: 8px 0; }
+  .warn { color: var(--no); font-weight: 600; }
+  a { color: var(--accent); }
+  code { font-size: .85em; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <h1>Region review</h1>
+    <label>Reviewer <input type="text" id="reviewer" placeholder="Your name" size="14"></label>
+    <div class="seg" id="filter"><button data-f="open" class="on">Undecided</button><button data-f="all">All</button><button data-f="done">Decided</button></div>
+    <input type="search" id="search" placeholder="Filter by name…" size="16">
+    <button class="primary" id="download">Download CSV</button>
+    <label class="btn" title="Load decisions from a CSV downloaded earlier">Load CSV<input type="file" id="load" accept=".csv,text/csv" hidden></label>
+  </div>
+  <div class="tabs">
+    <button data-tab="sites" class="on">1 · Sites<span class="n" id="n-sites"></span></button>
+    <button data-tab="regions">2 · Regions<span class="n" id="n-regions"></span></button>
+  </div>
+</header>
+<main>
+  <details class="intro" open>
+    <summary>How this review works</summary>
+    <p>Every SEAD site is linked to several regions (country, län, kommun, socken, landskap…). Many of those regions now have a
+       boundary on the map. This review looks at the cases where a site's coordinates and a region's boundary <em>don't add up</em>, in two steps:</p>
+    <table class="t">
+      <tr><td><strong>1 · Sites</strong></td><td>One card per site, listing <em>all</em> the regions the site is linked to in SEAD, with a ✓ where its coordinates lie inside the
+          region's boundary and a ✗ where they don't. Only the ✗ rows are questions: keep the region, replace it (with a suggestion of the same level where
+          there is one), mark it as wrong, or mark the coordinates as wrong. Regions can be <em>suggested</em> for adding, but nothing is ever added automatically.</td></tr>
+      <tr><td><strong>2 · Regions</strong></td><td>One card per region concerned, with the evidence from step 1 already applied: sites moved away or with wrong coordinates
+          no longer count, and sites confirmed as belonging to the region do, even if they lie just outside the boundary. You decide whether the region is linked
+          to its boundary on the map.</td></tr>
+    </table>
+    <p>Nothing in SEAD changes while you review. Your answers become a change request that is reviewed in a pull request (decisions D-21, D-22, D-24).</p>
+    <p class="muted">Where the map information comes from: parishes and towns from <strong>Lantmäteriet</strong>; kommuner, län and foreign regions from <strong>GADM</strong>
+       (coarse coastlines); landskap are <strong>our own</strong> construction from Lantmäteriet's parishes, so they are only suggested where the parish's landskap is known
+       (Wikidata or a hand-made assignment), never where it was guessed.</p>
+    <p class="muted">Decisions are saved in this browser as you go. When you're done, <strong>Download CSV</strong> and send it back. Data generated <span id="generated"></span>.</p>
+  </details>
+  <div id="list"></div>
+</main>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const R = window.REVIEW_DATA;
+const STORE = "sead-region-review-v2", STORE_V1 = "sead-near-boundary-review-v1";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const km = m => m < 1000 ? `${m} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+const SITES = R.sites, REGIONS = R.regions || [];
+const siteById = new Map(SITES.map(s => [s.site_id, s]));
+const regionName = id => { for (const s of SITES) for (const r of s.regions) if (r[0] === id) return r[1]; return String(id); };
+
+// ---- names and provenance --------------------------------------------------------------------------
+function unitName(src, key) {
+  const b = R.boundaries[src + ":" + key];
+  if (!b) return key;
+  const p = b.label.split(", ");
+  if (src === "lm_socken_stad") return `${b.label} ${b.typ === 2 ? "stad" : "socken"}`;
+  if (src === "lm_landskap") return `${b.label} (landskap)`;
+  if (src === "gadm_adm_2") return p[2] === "Sweden" ? `${p[0]} (kommun in ${p[1]})` : `${p[0]} (${p[1]}, ${p[2]})`;
+  if (src === "gadm_adm_1") return p[1] === "Sweden" ? `${p[0]} (län)` : `${p[0]} (${p[1]})`;
+  return b.label;
+}
+function unitSource(src, key) {
+  const b = R.boundaries[src + ":" + key] || {};
+  if (src === "lm_socken_stad") return `Lantmäteriet ${b.typ === 2 ? "town" : "parish"} ${key}`;
+  if (src === "lm_landskap") return "our own landskap boundary, built from Lantmäteriet's parishes";
+  if (src === "gadm_adm_2") return `GADM municipality ${key}`;
+  if (src === "gadm_adm_1") return `GADM county/region ${key}`;
+  if (src === "gadm_adm_0") return `GADM country ${key}`;
+  return key;
+}
+const LEVEL = { lm_socken_stad: "parish or town", lm_landskap: "landskap", gadm_adm_2: "kommun / municipality", gadm_adm_1: "län / county", gadm_adm_0: "country" };
+const BASIS = { wikidata: "according to Wikidata", override: "by our hand-made assignment" };
+// SEAD regions already linked to a boundary, so a replacement can say whether it reuses one
+function existingRegions(src, key) { return (R.linked_regions || {})[src + ":" + key] || []; }
+function existingTxt(src, key) {
+  const ex = existingRegions(src, key);
+  return ex.length ? `existing SEAD region ${ex.map(([id, n]) => `“${esc(n)}”`).join(", ")}`
+                   : "no SEAD region exists for it yet; a new one would be created";
+}
+
+// ---- decisions --------------------------------------------------------------------------------------
+// keys: c|site|location (tab 1 question), a|site|source|key (suggested addition), l|location|source|key (tab 2 link)
+// value: {decision, target_source, target_key, reviewed_by, reviewed_on, comment}
+const decisions = {};
+const ck = (site, loc) => `c|${site}|${loc}`, ak = (site, src, key) => `a|${site}|${src}|${key}`, lk = (loc, src, key) => `l|${loc}|${src}|${key}`;
+function fromRow(q, site, loc, d, ts, tk, by, on, comment) {
+  const v = { decision: d, target_source: ts || "", target_key: tk || "", reviewed_by: by || "", reviewed_on: on || "", comment: comment || "" };
+  if (q === "check") decisions[ck(site, loc)] = v;
+  else if (q === "add") decisions[ak(site, ts, tk)] = v;
+  else if (q === "link") decisions[lk(loc, ts, tk)] = v;
+}
+for (const d of R.decisions || []) fromRow(d.question, d.site_id, d.location_id, d.decision, d.target_source, d.target_key, d.reviewed_by, d.reviewed_on, d.comment);
+// answers saved by the first, region-based versions of the page: location|source|key|site
+const legacy = { yes: "keep", move: "replace" };
+for (const [k, v] of Object.entries(JSON.parse(localStorage.getItem(STORE_V1) || "{}"))) {
+  const [loc, , , site] = k.split("|");
+  if (!decisions[ck(site, loc)]) decisions[ck(site, loc)] = { decision: legacy[v.decision] || v.decision, target_source: v.move_source || "",
+    target_key: v.move_key || "", reviewed_by: v.reviewed_by, reviewed_on: v.reviewed_on, comment: v.comment || "" };
+}
+Object.assign(decisions, JSON.parse(localStorage.getItem(STORE) || "{}"));
+const save = () => localStorage.setItem(STORE, JSON.stringify(decisions));
+
+const reviewer = document.getElementById("reviewer");
+reviewer.value = localStorage.getItem(STORE + ":reviewer") || localStorage.getItem(STORE_V1 + ":reviewer") || "";
+reviewer.addEventListener("input", () => localStorage.setItem(STORE + ":reviewer", reviewer.value.trim()));
+document.getElementById("generated").textContent = R.generated;
+
+// ---- tab 1 logic ---------------------------------------------------------------------------------------
+const badChecks = s => s.checks.filter(c => !c.inside);
+const siteOpen = s => badChecks(s).some(c => !decisions[ck(s.site_id, c.location_id)]);
+const levelOf = c => c.links[0][0];
+
+// replacement suggestions for a region whose boundary misses the site: same level only, each with where it comes from
+function suggestions(s, c) {
+  const src = levelOf(c), own = new Set(c.links.map(([a, b]) => a + ":" + b)), out = [];
+  const add = (key, why) => { if (key && !own.has(src + ":" + key) && !out.some(o => o.key === key)) out.push({ src, key, why }); };
+  if (src === "lm_socken_stad") {
+    add(s.in_lm, "Lantmäteriet: the coordinates lie in it");
+    if (!s.in_lm && s.nearest?.lm_socken_stad) add(s.nearest.lm_socken_stad[0], `nearest Lantmäteriet parish or town, ${km(s.nearest.lm_socken_stad[1])} from the coordinates`);
+    if (s.name_parish) add(s.name_parish[0], `named in the site's name (RAÄ numbers are given per parish); ${s.name_parish[1] ? km(s.name_parish[1]) + " from the coordinates" : "the coordinates lie in it"}`);
+  } else if (src === "gadm_adm_2") {
+    add(s.in_g2, "GADM: the coordinates lie in it");
+    if (!s.in_g2 && s.nearest?.gadm_adm_2) add(s.nearest.gadm_adm_2[0], `nearest GADM municipality, ${km(s.nearest.gadm_adm_2[1])} from the coordinates`);
+  } else if (src === "gadm_adm_1") {
+    add(s.in_g1, "GADM: the coordinates lie in it");
+    if (!s.in_g1 && s.nearest?.gadm_adm_1) add(s.nearest.gadm_adm_1[0], `nearest GADM county/region, ${km(s.nearest.gadm_adm_1[1])} from the coordinates`);
+  } else if (src === "lm_landskap" && s.lm_landskap && BASIS[s.lm_basis]) {
+    add(s.lm_landskap, `the coordinates lie in ${unitName("lm_socken_stad", s.in_lm)}, which belongs to ${s.lm_landskap} ${BASIS[s.lm_basis]}`);
+  }
+  return out;
+}
+function noSuggestionWhy(s, c) {
+  const src = levelOf(c);
+  if (src === "lm_landskap" && s.in_lm && !BASIS[s.lm_basis])
+    return `No landskap is suggested: the coordinates lie in ${unitName("lm_socken_stad", s.in_lm)}, whose landskap we only guessed (from its neighbours), so it can't be trusted.`;
+  if (src === "gadm_adm_0") return "No country is suggested.";
+  return "No unit of the same level contains the coordinates, or is near them.";
+}
+// possible additions: a level the site has no region of, where the coordinates lie in a unit (never applied automatically)
+function additions(s) {
+  const have = new Set(s.checks.map(levelOf)), out = [];
+  if (!have.has("lm_socken_stad") && s.in_lm) out.push(["lm_socken_stad", s.in_lm, "Lantmäteriet: the coordinates lie in it"]);
+  if (!have.has("gadm_adm_2") && s.in_g2) out.push(["gadm_adm_2", s.in_g2, "GADM: the coordinates lie in it"]);
+  if (!have.has("gadm_adm_1") && s.in_g1) out.push(["gadm_adm_1", s.in_g1, "GADM: the coordinates lie in it"]);
+  if (!have.has("lm_landskap") && s.lm_landskap && BASIS[s.lm_basis]) out.push(["lm_landskap", s.lm_landskap, `via ${unitName("lm_socken_stad", s.in_lm)}, ${BASIS[s.lm_basis]}`]);
+  return out;
+}
+function siteHints(s) {
+  const h = [], bad = badChecks(s);
+  if (bad.length === s.checks.length && s.checks.length > 1)
+    h.push(`None of the site's ${s.checks.length} regions with a boundary contain its coordinates. The coordinates may be wrong rather than the regions.`);
+  if (!s.in_lm && !s.in_g2) h.push("The coordinates lie in no unit at all: at sea by both Lantmäteriet's and GADM's coastlines.");
+  if (s.name_parish && s.name_parish[1] > 2000) {
+    const has = s.checks.some(c => c.links.some(([a, b]) => a === "lm_socken_stad" && b === s.name_parish[0]));
+    h.push(`The site's name points to ${esc(unitName("lm_socken_stad", s.name_parish[0]))}, ${km(s.name_parish[1])} from the coordinates${has ? ", which is also one of the site's regions" : ""}.`);
+  }
+  return h;
+}
+
+// ---- tab 2 logic: evidence from tab 1 -----------------------------------------------------------------
+// each site of the region: [site_id, lat, lon, inside, dist_m, near_pair]
+function evidence(r) {
+  const ev = { inside: [], keptNear: [], keptFar: [], legacyNo: [], away: [], coords: [], open: [] };
+  for (const [id, , , inside, dist] of r.sites) {
+    if (inside) { ev.inside.push(id); continue; }
+    const d = decisions[ck(id, r.location_id)]?.decision;
+    if (!d) ev.open.push(id);
+    else if (d === "keep") (dist <= 2000 ? ev.keptNear : ev.keptFar).push(id);
+    else if (d === "no") ev.legacyNo.push(id);
+    else if (d === "coords") ev.coords.push(id);
+    else ev.away.push(id);
+  }
+  ev.counted = r.sites.length - ev.away.length - ev.coords.length;
+  ev.support = ev.inside.length + ev.keptNear.length;
+  return ev;
+}
+const regionOpen = r => r.links.some(l => !decisions[lk(r.location_id, l.source, l.key)]);
+
+// ---- rendering ----------------------------------------------------------------------------------------------
+let tab = "sites", filter = "open";
+document.querySelector(".tabs").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  render(); window.scrollTo(0, 0);
+});
+document.getElementById("filter").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll("#filter button").forEach(x => x.classList.toggle("on", x === b));
+  render();
+});
+document.getElementById("search").addEventListener("input", render);
+
+function counts() {
+  const sd = SITES.filter(s => !siteOpen(s)).length, rd = REGIONS.filter(r => !regionOpen(r)).length;
+  document.getElementById("n-sites").textContent = `${sd} of ${SITES.length} done`;
+  document.getElementById("n-regions").textContent = `${rd} of ${REGIONS.length} done`;
+}
+function render() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const pass = open => filter === "all" || (filter === "open") === open;
+  let html;
+  if (tab === "sites") {
+    const list = SITES.filter(s => pass(siteOpen(s)) && (!q || s.name.toLowerCase().includes(q) || s.regions.some(r => r[1].toLowerCase().includes(q))))
+                      .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+    html = list.length ? list.map(siteCard).join("") : `<div class="empty">Nothing here.</div>`;
+  } else {
+    const list = REGIONS.filter(r => pass(regionOpen(r)) && (!q || r.name.toLowerCase().includes(q)))
+      .sort((a, b) => (b.links.some(l => l.status === "pending") - a.links.some(l => l.status === "pending")) || a.name.localeCompare(b.name, "sv"));
+    html = list.length ? list.map(regionCard).join("") : `<div class="empty">Nothing here.</div>`;
+  }
+  document.getElementById("list").innerHTML = html;
+  counts();
+}
+
+function opt(key, cls, val, label, effect, ts = "", tk = "") {
+  const d = decisions[key] || {};
+  const on = d.decision === val && (!ts || (d.target_source === ts && d.target_key === tk)) || (val === "keep" && d.decision === "no");
+  return `<label class="${cls}"><input type="checkbox" data-k="${esc(key)}" data-d="${val}" data-ts="${esc(ts)}" data-tk="${esc(tk)}" ${on ? "checked" : ""}> <span class="lt">${label}</span>
+    ${effect ? `<span class="effect">${effect}</span>` : ""}</label>`;
+}
+function stamp(key) {
+  const d = decisions[key];
+  if (!d || !d.decision) return `<div class="stamp" data-stamp="${esc(key)}"></div>`;
+  const what = { keep: "Keep", no: "Keep (earlier answer: doesn't support the boundary link)", replace: `Replace with ${unitName(d.target_source, d.target_key)}`,
+                 other: "Region is wrong, see comment", coords: "Coordinates look wrong", add: "Suggest adding", link: "Link", nolink: "Don't link" }[d.decision] || d.decision;
+  return `<div class="stamp" data-stamp="${esc(key)}">${esc(what)} · ${esc(d.reviewed_by || "?")} · ${esc(d.reviewed_on || "")}</div>`;
+}
+const comment = key => `<input class="comment" type="text" data-k="${esc(key)}" placeholder="Comment (optional)" value="${esc(decisions[key]?.comment || "")}">`;
+
+function siteCard(s) {
+  const bad = badChecks(s);
+  let h = `<section class="card ${siteOpen(s) ? "" : "done"}" id="site-${s.site_id}" data-site="${s.site_id}">
+    <div class="card-head"><h2><a href="https://browser.sead.se/site/${s.site_id}" target="_blank" rel="noopener">${esc(s.name)}</a></h2>
+      <span class="right">${bad.length} ${bad.length === 1 ? "region doesn't" : "regions don't"} fit the coordinates ·
+      <a href="https://www.openstreetmap.org/?mlat=${s.lat}&mlon=${s.lon}#map=13/${s.lat}/${s.lon}" target="_blank" rel="noopener">${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</a></span></div>
+    <div class="card-body"><div class="map-wrap">${layerButtons(s)}${siteMap(s)}
+      <div class="seg zoom"><button data-z="fit" class="${stateOf(s).zoom === "fit" ? "on" : ""}">Fit the shown boundaries</button><button data-z="close" class="${stateOf(s).zoom === "close" ? "on" : ""}">Close to the site</button></div>
+      <ul class="legend"><li><span class="sw"><b class="dot" style="background:var(--site)"></b></span><span>The site's coordinates</span></li>
+        <li><span class="sw"><i style="border-color:var(--cand)"></i></span><span>A region's boundary, in the colour of its button above (click a region's name to show it)</span></li>
+        <li><span class="sw"><i class="dash" style="border-color:var(--sugg)"></i></span><span>Suggested replacements</span></li></ul></div>
+    <div class="body-r">`;
+  for (const t of siteHints(s)) h += `<div class="hint">💡 ${t}</div>`;
+  h += `<h3>Regions this site is linked to in SEAD</h3>`;
+  const checkBy = new Map(s.checks.map(c => [c.location_id, c]));
+  const rows = [...s.regions].sort((a, b) => {
+    const ca = checkBy.get(a[0]), cb = checkBy.get(b[0]);
+    const rank = c => !c ? 2 : c.inside ? 1 : 0;
+    return rank(ca) - rank(cb);
+  });
+  for (const [locId, locName, typeId, typeName] of rows) {
+    const c = checkBy.get(locId);
+    if (!c) { h += `<div class="reg"><div class="reg-head"><span class="st na">·</span><span class="reg-name">${esc(locName)}</span></div>
+      <div class="reg-info">${esc(typeName)}; no boundary to check against</div></div>`; continue; }
+    const bnames = c.links.map(([a, b, st]) => `${esc(unitName(a, b))} <span class="muted">(${esc(unitSource(a, b))}${st === "pending" ? ", not linked yet" : ""})</span>`).join(", ");
+    if (c.inside) { h += `<div class="reg"><div class="reg-head"><span class="st ok">✓</span><span class="reg-name" data-layer="r${locId}" title="Show on the map">${esc(locName)}</span></div>
+      <div class="reg-info">coordinates inside its boundary: ${bnames}</div></div>`; continue; }
+    const key = ck(s.site_id, locId), region = `“${esc(locName)}”`;
+    h += `<div class="reg"><div class="reg-head"><span class="st bad">✗</span><span class="reg-name" data-layer="r${locId}" title="Show on the map">${esc(locName)}</span></div>
+      <div class="reg-info">coordinates <strong>${km(c.dist_m)} outside</strong> its boundary: ${bnames}</div>
+      <div class="question"><div class="q">Is ${region} right for this site?</div><div class="decide">`;
+    h += opt(key, "keep", "keep", `Keep ${region}: the site belongs here`,
+      c.dist_m <= 2000 ? "The boundary is probably just a little off here. In step 2 this site counts in favour of linking the region to its boundary."
+                       : "The region's boundary may be wrong or rough here. In step 2 the site still counts against the boundary (it is more than 2 km away).");
+    const sug = suggestions(s, c);
+    for (const g of sug) h += opt(key, "replace", "replace", `Replace ${region} with <strong>${esc(unitName(g.src, g.key))}</strong>`,
+      `same level (${esc(LEVEL[g.src])}); ${esc(g.why)}; ${existingTxt(g.src, g.key)}`, g.src, g.key);
+    if (!sug.length) h += `<div class="muted" style="font-size:.82rem">${esc(noSuggestionWhy(s, c))}</div>`;
+    h += opt(key, "other", "other", `${region} is wrong, but none of these is right (say what in the comment)`, "");
+    h += opt(key, "coords", "coords", "The site's coordinates look wrong", `${region} stays; the coordinates are flagged for checking, and the site no longer counts as evidence in step 2.`);
+    h += comment(key) + `</div>${stamp(key)}</div></div>`;
+  }
+  const adds = additions(s);
+  if (adds.length) {
+    h += `<details class="adds"><summary>Possible additions (optional, ${adds.length})</summary>
+      <p class="muted" style="font-size:.84rem;margin:4px 0">The site has no region at these levels. Tick to suggest adding one; nothing is added automatically.</p><div class="decide">`;
+    for (const [src, key, why] of adds) {
+      const k = ak(s.site_id, src, key);
+      h += opt(k, "add", "add", `Suggest adding <strong>${esc(unitName(src, key))}</strong>`, `${esc(LEVEL[src])}; ${esc(why)}; ${existingTxt(src, key)}`, src, key) + stamp(k);
+    }
+    h += `</div></details>`;
+  }
+  return h + `</div></div></section>`;
+}
+
+function regionCard(r) {
+  const ev = evidence(r);
+  const pending = r.links.some(l => l.status === "pending");
+  const siteLink = id => { const s = siteById.get(id); return `<a href="#site-${id}" data-goto="${id}">${esc(s ? s.name : id)}</a>`; };
+  const siteDist = id => r.sites.find(x => x[0] === id)[4];
+  const list = (ids, extra = "") => `<ul>${ids.map(id => `<li>${siteLink(id)} <span class="muted">${km(siteDist(id))} outside${extra}</span></li>`).join("")}</ul>`;
+  let h = `<section class="card ${regionOpen(r) ? "" : "done"}" data-loc="${r.location_id}">
+    <div class="card-head"><h2>SEAD region “${esc(r.name)}”</h2>
+      <span class="right">${pending ? '<span class="warn">not linked yet</span>' : `linked now (${esc(r.links.map(l => l.match_type).join(", "))})`} · ${r.sites.length} sites with coordinates</span></div>
+    <div class="card-body"><div class="map-wrap">${regionMap(r, ev)}
+      <ul class="legend"><li><span class="sw"><i style="border-color:var(--cand)"></i></span><span>The region's boundary</span></li>
+        <li><span class="sw"><b class="dot" style="background:var(--ok)"></b></span><span>Inside, or kept in step 1 (counts for)</span></li>
+        <li><span class="sw"><b class="dot" style="background:var(--no)"></b></span><span>Outside, kept in step 1 but more than 2 km away (counts against)</span></li>
+        <li><span class="sw"><b class="dot" style="background:var(--grey)"></b></span><span>Moved away or coordinates wrong (doesn't count)</span></li>
+        <li><span class="sw"><b class="dot" style="background:var(--card);border:2px solid var(--site)"></b></span><span>Not decided in step 1 yet</span></li></ul></div>
+    <div class="body-r"><h3>Evidence from step 1</h3>
+      <div class="ev">✓ <strong>${ev.inside.length}</strong> ${ev.inside.length === 1 ? "site lies" : "sites lie"} inside the boundary.</div>`;
+  if (ev.keptNear.length) h += `<div class="ev">✓ <strong>${ev.keptNear.length}</strong> just outside (within 2 km), kept in step 1, so ${ev.keptNear.length === 1 ? "it counts" : "they count"} for the link: ${list(ev.keptNear)}</div>`;
+  if (ev.legacyNo.length) h += `<div class="ev">• <strong>${ev.legacyNo.length}</strong> kept, but an earlier answer said ${ev.legacyNo.length === 1 ? "it doesn't" : "they don't"} support the boundary: ${list(ev.legacyNo)}</div>`;
+  if (ev.keptFar.length) h += `<div class="ev">✗ <strong>${ev.keptFar.length}</strong> kept in step 1 but more than 2 km outside, so ${ev.keptFar.length === 1 ? "it counts" : "they count"} against: ${list(ev.keptFar)}</div>`;
+  if (ev.away.length) h += `<div class="ev">– <strong>${ev.away.length}</strong> replaced or marked wrong in step 1, so no longer counted: ${list(ev.away)}</div>`;
+  if (ev.coords.length) h += `<div class="ev">– <strong>${ev.coords.length}</strong> with coordinates marked wrong in step 1, not counted: ${list(ev.coords)}</div>`;
+  if (ev.open.length) h += `<div class="ev"><span class="warn">?</span> <strong>${ev.open.length}</strong> not decided in step 1 yet (click to go there): ${list(ev.open)}</div>`;
+  const n = ev.counted;
+  const summary = n === 0 ? "No site counts any more: the region has no evidence for any boundary."
+    : `${ev.support} of the ${n} sites that count support the boundary${ev.support === n ? " (all of them)" : ev.support * 2 >= n ? " (a majority)" : " (fewer than half)"}.`;
+  h += `<div class="summary">${summary}${ev.open.length ? ` <span class="muted">(${ev.open.length} still open in step 1)</span>` : ""}</div>`;
+  for (const l of r.links) {
+    const key = lk(r.location_id, l.source, l.key), bn = esc(unitName(l.source, l.key));
+    h += `<h3>Link to ${bn}</h3><div class="muted" style="font-size:.84rem">${esc(unitSource(l.source, l.key))}${l.status === "pending" ? "; not linked yet: it needs your yes" : `; linked now as ${esc(l.match_type)}`}</div>
+      <div class="decide">`;
+    h += opt(key, "link", "link", `Link “${esc(r.name)}” to ${bn}`, "The region is drawn on the map with this boundary.", l.source, l.key);
+    h += opt(key, "nolink", "nolink", "Don't link", "The region gets no boundary from this source (it may still have others).", l.source, l.key);
+    h += comment(key) + `</div>${stamp(key)}`;
+  }
+  return h + `</div></div></section>`;
+}
+
+// ---- maps ---------------------------------------------------------------------------------------------------
+// Site maps show one layer per region of the site (in its own colour) plus the suggested replacements; the reviewer
+// switches them on and off. By default only the first region that doesn't fit is shown.
+const LAYER_COLORS = ["#2b6cb0", "#6b46c1", "#2c7a7b", "#b83280", "#975a16", "#4a5568"];
+const mapState = new Map();   // site_id → {on: Set of layer ids, zoom}
+function siteLayers(s) {
+  const layers = [];
+  const pos = id => s.regions.findIndex(r => r[0] === id);   // the order of the region list on the card
+  const byList = (a, b) => pos(a.location_id) - pos(b.location_id);
+  const ordered = [...badChecks(s).sort(byList), ...s.checks.filter(c => c.inside).sort(byList)];
+  ordered.forEach((c, i) => layers.push({ id: "r" + c.location_id, label: regionName(c.location_id), bad: !c.inside,
+    color: LAYER_COLORS[i % LAYER_COLORS.length], links: c.links }));
+  const seen = new Set(), sugg = [];
+  for (const c of badChecks(s)) for (const g of suggestions(s, c)) if (!seen.has(g.src + g.key)) { seen.add(g.src + g.key); sugg.push([g.src, g.key]); }
+  if (sugg.length) layers.push({ id: "sugg", label: "Suggested replacements", sugg });
+  return layers;
+}
+function stateOf(s) {
+  if (!mapState.has(s.site_id)) {
+    const first = siteLayers(s).find(l => l.bad);
+    mapState.set(s.site_id, { on: new Set(first ? [first.id] : []), zoom: "fit" });
+  }
+  return mapState.get(s.site_id);
+}
+function layerButtons(s) {
+  const st = stateOf(s);
+  return `<div class="layers"><span class="muted">Show:</span>` + siteLayers(s).map(l =>
+    `<button data-layer="${l.id}" class="${st.on.has(l.id) ? "on" : ""}" title="${l.bad === false ? "coordinates inside" : ""}">` +
+    (l.sugg ? `<span class="sw dash" style="border-color:var(--sugg)"></span>` : `<span class="sw" style="border-color:${l.color}"></span>${l.bad ? "✗ " : "✓ "}`) +
+    `${esc(l.label)}</button>`).join("") + `</div>`;
+}
+function walk(geom, f) { const w = c => typeof c[0] === "number" ? f(c) : c.forEach(w); w(geom.coordinates); }
+function pathD(geom, P) {
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
+  return polys.map(poly => poly.map(r => "M" + r.map(c => P(c).map(v => v.toFixed(5)).join(",")).join("L") + "Z").join("")).join("");
+}
+// shapes: [{geom, stroke, dash, fill, title}]; points: [{lat, lon, fill, ring, big, title}]; frame: [lon0, lat0, lon1, lat1]
+function svgMap(shapes, points, frame) {
+  let [x0, y0, x1, y1] = frame;
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180);
+  let W = (x1 - x0) * k * 1.08 || 0.1, H = (y1 - y0) * 1.08 || 0.1;
+  if (W / H > 4 / 3) H = W * 3 / 4; else W = H * 4 / 3;
+  const cx = (x0 + x1) / 2 * k, cy = -(y0 + y1) / 2, P = c => [c[0] * k, -c[1]], r = W * 0.012;
+  let s = `<svg class="map" viewBox="${cx - W / 2} ${cy - H / 2} ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+  for (const g of shapes) s += `<path d="${pathD(g.geom, P)}" fill="${g.fill || "none"}" fill-opacity=".15" stroke="${g.stroke}" stroke-width="${g.dash ? 1.6 : 2}" ${g.dash ? 'stroke-dasharray="6 4"' : ""} vector-effect="non-scaling-stroke"><title>${esc(g.title)}</title></path>`;
+  for (const p of points) {
+    const [x, y] = P([p.lon, p.lat]);
+    s += `<circle cx="${x}" cy="${y}" r="${p.big ? r : r * .7}" fill="${p.fill}" stroke="${p.ring || "var(--card)"}" stroke-width="${p.ring ? 2.5 : 1.2}" vector-effect="non-scaling-stroke"><title>${esc(p.title)}</title></circle>`;
+  }
+  return s + `</svg>`;
+}
+function frameOf(geoms, pts, padDeg = 0) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const ext = (lon, lat) => { x0 = Math.min(x0, lon); x1 = Math.max(x1, lon); y0 = Math.min(y0, lat); y1 = Math.max(y1, lat); };
+  geoms.forEach(g => walk(g, c => ext(c[0], c[1])));
+  pts.forEach(p => ext(p.lon, p.lat));
+  const padLon = padDeg / Math.cos(y0 * Math.PI / 180);
+  return [x0 - padLon, y0 - padDeg, x1 + padLon, y1 + padDeg];
+}
+function siteMap(s) {
+  const st = stateOf(s), shapes = [];
+  for (const l of siteLayers(s)) {
+    if (!st.on.has(l.id)) continue;
+    if (l.sugg) { for (const [a, b] of l.sugg) { const g = R.boundaries[a + ":" + b]; if (g) shapes.push({ geom: g.geom, stroke: "var(--sugg)", dash: true, title: unitName(a, b) }); } }
+    else for (const [a, b] of l.links) { const g = R.boundaries[a + ":" + b]; if (g) shapes.push({ geom: g.geom, stroke: l.color, fill: l.color, title: `${l.label}: ${unitName(a, b)}` }); }
+  }
+  const pt = { lat: s.lat, lon: s.lon, fill: "var(--site)", big: true, title: s.name };
+  const frame = st.zoom === "close" || !shapes.length ? frameOf([], [pt], 0.05) : frameOf(shapes.map(x => x.geom), [pt]);
+  return svgMap(shapes, [pt], frame);
+}
+function regionMap(r, ev) {
+  const shapes = r.links.map(l => R.boundaries[l.source + ":" + l.key]).filter(Boolean).map(b => ({ geom: b.geom, stroke: "var(--cand)", fill: "var(--cand)", title: b.label }));
+  const cls = new Map();
+  ev.inside.forEach(id => cls.set(id, "ok")); ev.keptNear.forEach(id => cls.set(id, "ok")); ev.legacyNo.forEach(id => cls.set(id, "far"));
+  ev.keptFar.forEach(id => cls.set(id, "far")); ev.away.forEach(id => cls.set(id, "grey")); ev.coords.forEach(id => cls.set(id, "grey")); ev.open.forEach(id => cls.set(id, "open"));
+  const pts = r.sites.map(([id, lat, lon]) => {
+    const c = cls.get(id), name = siteById.get(id)?.name || "";
+    return { lat, lon, title: name, big: c !== "ok",
+      fill: c === "ok" ? "var(--ok)" : c === "far" ? "var(--no)" : c === "grey" ? "var(--grey)" : "var(--card)", ring: c === "open" ? "var(--site)" : null };
+  });
+  return svgMap(shapes, pts, frameOf(shapes.map(x => x.geom), pts));
+}
+
+// ---- interaction ---------------------------------------------------------------------------------------------
+const list = document.getElementById("list");
+list.addEventListener("click", e => {
+  const z = e.target.closest(".zoom button");
+  if (z) {
+    const card = z.closest(".card"), s = siteById.get(+card.dataset.site);
+    stateOf(s).zoom = z.dataset.z;
+    card.querySelector(".map").outerHTML = siteMap(s);
+    card.querySelectorAll(".zoom button").forEach(b => b.classList.toggle("on", b === z));
+  }
+  const ly = e.target.closest("[data-layer]");
+  if (ly) {
+    const card = ly.closest(".card"), s = siteById.get(+card.dataset.site), st = stateOf(s), id = ly.dataset.layer;
+    if (ly.classList.contains("reg-name")) { st.on = new Set([id]); card.querySelector(".map-wrap").scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+    else if (st.on.has(id)) st.on.delete(id); else st.on.add(id);
+    card.querySelector(".layers").outerHTML = layerButtons(s);
+    card.querySelector(".map").outerHTML = siteMap(s);
+  }
+  const g = e.target.closest("[data-goto]");
+  if (g) {
+    e.preventDefault();
+    tab = "sites"; filter = "all";
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x.dataset.tab === "sites"));
+    document.querySelectorAll("#filter button").forEach(x => x.classList.toggle("on", x.dataset.f === "all"));
+    document.getElementById("search").value = "";
+    render();
+    const card = document.getElementById("site-" + g.dataset.goto);
+    if (card) { card.scrollIntoView({ behavior: "smooth" }); card.classList.add("flash"); setTimeout(() => card.classList.remove("flash"), 1600); }
+  }
+});
+list.addEventListener("change", e => {
+  const t = e.target, key = t.dataset.k;
+  if (!key) return;
+  if (t.matches("input[type=checkbox]")) {
+    if (!reviewer.value.trim()) {
+      t.checked = false;
+      alert("Please enter your name as reviewer first, so the decision can be attributed.");
+      reviewer.focus(); return;
+    }
+    t.closest(".decide").querySelectorAll(`input[type=checkbox][data-k="${CSS.escape(key)}"]`).forEach(x => { if (x !== t) x.checked = false; });
+    if (t.checked) decisions[key] = { decision: t.dataset.d, target_source: t.dataset.ts, target_key: t.dataset.tk,
+                                      reviewed_by: reviewer.value.trim(), reviewed_on: new Date().toISOString().slice(0, 10),
+                                      comment: t.closest(".decide").querySelector(`.comment[data-k="${CSS.escape(key)}"]`)?.value || "" };
+    else delete decisions[key];
+    save();
+    const st = list.querySelector(`[data-stamp="${CSS.escape(key)}"]`);
+    if (st) st.outerHTML = stamp(key);
+    counts();
+  } else if (t.matches(".comment")) {
+    if (decisions[key]) { decisions[key].comment = t.value; save(); }
+  }
+});
+
+// ---- CSV ----------------------------------------------------------------------------------------------------------
+const COLS = ["question", "site_id", "site_name", "location_id", "location_name", "decision", "target_source", "target_key", "target_label",
+              "dist_m", "reviewed_by", "reviewed_on", "comment"];
+const csvCell = v => { v = String(v ?? ""); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+document.getElementById("download").addEventListener("click", () => {
+  const rows = [COLS.join(",")];
+  const row = (q, s, locId, locName, key, dist, ts0, tk0) => {
+    const d = decisions[key] || {};
+    const ts = d.target_source || ts0 || "", tk = d.target_key || tk0 || "";
+    rows.push([q, s?.site_id ?? "", s?.name ?? "", locId ?? "", locName ?? "", d.decision, ts, tk, ts ? unitName(ts, tk) : "", dist ?? "",
+               d.reviewed_by, d.reviewed_on, d.comment].map(csvCell).join(","));
+  };
+  for (const s of SITES) {
+    for (const c of badChecks(s)) row("check", s, c.location_id, regionName(c.location_id), ck(s.site_id, c.location_id), c.dist_m);
+    for (const [src, key] of additions(s)) if (decisions[ak(s.site_id, src, key)]) row("add", s, "", "", ak(s.site_id, src, key), "", src, key);
+  }
+  for (const r of REGIONS) for (const l of r.links) row("link", null, r.location_id, r.name, lk(r.location_id, l.source, l.key), "", l.source, l.key);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.join("\n") + "\n"], { type: "text/csv" }));
+  a.download = "near_boundary_review.csv";
+  a.click();
+});
+function parseCsv(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+document.getElementById("load").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const [head, ...rows] = parseCsv(await f.text());
+  const ix = Object.fromEntries(head.map((h, i) => [h, i]));
+  const get = (r, c) => ix[c] === undefined ? "" : (r[ix[c]] || "");
+  let n = 0;
+  for (const r of rows) {
+    const d = get(r, "decision"); if (!d) continue;
+    if (ix.question !== undefined)
+      fromRow(get(r, "question"), get(r, "site_id"), get(r, "location_id"), d, get(r, "target_source"), get(r, "target_key"),
+              get(r, "reviewed_by"), get(r, "reviewed_on"), get(r, "comment"));
+    else   // first, region-based versions of the page
+      fromRow("check", get(r, "site_id"), get(r, "location_id"), legacy[d] || d, get(r, "move_source"), get(r, "move_key"),
+              get(r, "reviewed_by"), get(r, "reviewed_on"), get(r, "comment"));
+    n++;
+  }
+  save(); render(); e.target.value = "";
+  alert(`Loaded ${n} decisions.`);
+});
+
+render();
+</script>
+</body>
+</html>
